@@ -1,0 +1,175 @@
+name: GH Actions CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly tests at midnight on Sundays run on main by default:
+    #   Scheduled workflows run on the latest commit on the default or base branch.
+    #   (from https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule)
+    - cron: "0 0 * * 0"
+
+concurrency:
+  # Specific group naming so CI is only cancelled
+  # within same PR or on merge to main
+  group: ${{ github.ref }}-${{ github.head_ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash  -l {0}
+
+jobs:
+  main-tests:
+    if: "github.repository == 'MDAnalysis/mdadash'"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build information
+        run: |
+          uname -a
+          df -h
+          ulimit -a
+
+      # More info on options: https://github.com/conda-incubator/setup-miniconda
+      - name: Install conda dependencies
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          environment-file: devtools/conda-envs/test_env.yaml
+          add-pip-as-python-dependency: true
+
+          miniforge-version: "latest"
+          use-mamba: true
+          channels: conda-forge
+
+          activate-environment: mdadash-test
+          auto-update-conda: true
+          auto-activate-base: false
+          show-channel-urls: true
+
+      - name: Install package
+        run: |
+          python --version
+          python -m pip install .  --no-deps
+
+      - name: Python information
+        run: |
+          which python
+          which pip
+          pip list
+
+          conda info
+          conda list
+
+      - name: Run backend tests
+        run: |
+          pytest -n 2 -v --cov=mdadash --cov-report=xml --color=yes mdadash/backend/tests/
+
+      - name: Run frontend tests
+        run: |
+          npm run test:unit --prefix mdadash/frontend -- --run
+
+      #- name: codecov
+      #  if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
+      #  uses: codecov/codecov-action@v5
+      #  with:
+      #    file: coverage.xml
+      #    name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+      #    verbose: True
+      #    # to upload coverage reports, set a secret called CODECOV_TOKEN
+      #    # in the repository settings
+      #    # (Obtain this from the Codecov website after setting up the repository there)
+      #    token: ${{ secrets.CODECOV_TOKEN }}
+      #    # To fail the CI if there's an error, keep this set to true
+      #    # If repository forks need to run CI, you may need to set this to false
+      #    # Forks can't access the CODECOV_TOKEN secret,
+      #    # and a failed upload registers as an error
+      #    fail_ci_if_error: true
+
+  pylint_check:
+    if: "github.repository == 'MDAnalysis/mdadash'"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pylint
+        run: |
+          which pip
+          which python
+          pip install pylint mdanalysis
+
+      - name: Run Pylint
+        env:
+          PYLINTRC: .pylintrc
+        run: |
+          pylint .
+
+  pypi_check:
+    if: "github.repository == 'MDAnalysis/mdadash'"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pipx twine
+
+      - name: Build package
+        run: |
+          python -m pipx run build --sdist
+
+      - name: Check package build
+        run: |
+          DISTRIBUTION=$(ls -t1 dist/mdadash-*.tar.gz | head -n 1)
+          test -n "${DISTRIBUTION}" || { echo "no distribution dist/mdadash-*.tar.gz found"; exit 1; }
+          echo "twine check $DISTRIBUTION"
+          twine check $DISTRIBUTION
+
+  backend_lint_check:
+    name: Backend lint check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/ruff-action@v3
+
+      - name: Check backend code formatting for diff
+        run: ruff format --diff
+
+      - name: Check backend code formatting for project
+        run: ruff check
+
+  frontend_lint_check:
+    name: Frontend lint check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix mdadash/frontend
+
+      - name: Run lint
+        run: |
+          npm run lint --prefix mdadash/frontend

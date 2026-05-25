@@ -1,0 +1,10 @@
+include LICENSE
+include MANIFEST.in
+include AUTHORS.md CHANGELOG.md CODE_OF_CONDUCT.md README.md
+
+graft mdadash
+global-exclude *.py[cod] __pycache__ *.so
+
+prune mdadash/frontend/node_modules
+recursive-exclude mdadash/frontend/node_modules *
+recursive-include mdadash/frontend/dist *

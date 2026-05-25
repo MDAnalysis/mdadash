@@ -1,0 +1,16 @@
+name: mdadash-dev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Base depends
+  - python
+  - pip
+
+  # Development
+  - nodejs
+  - twine
+  - ruff
+
+  # Build
+  - build
