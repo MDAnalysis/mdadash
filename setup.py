@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from setuptools import setup
@@ -9,8 +10,9 @@ from setuptools.command.sdist import sdist
 
 def _build_frontend():
     frontend_dir = Path(__file__).parent / "mdadash" / "frontend"
-    subprocess.run(["npm", "ci"], cwd=frontend_dir, check=True)
-    subprocess.run(["npm", "run", "build"], cwd=frontend_dir, check=True)
+    npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+    subprocess.run([npm_cmd, "ci"], cwd=frontend_dir, check=True)
+    subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir, check=True)
 
 
 class _sdist(sdist):
