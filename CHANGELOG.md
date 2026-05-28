@@ -30,6 +30,7 @@ PardhavMaradani
 <!-- New added features -->
 
 - Added overall project structure
+- Added async jupyter kernel support
 
 ### Fixed
 
