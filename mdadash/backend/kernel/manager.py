@@ -24,6 +24,8 @@ class KernelManager:
         self.kc = None
         self._pending_futures = {}
         self._is_running = False
+        self.comm_id = uuid.uuid4().hex
+        self.listen_task = None
 
     async def start(self) -> None:
         """Start the async kernel"""
@@ -83,7 +85,7 @@ class KernelManager:
                         file = sys.stdout if content["name"] == "stdout" else sys.stderr
                         print(f"KERNEL: {output}", end="", file=file)
                 else:
-                    logger.debug(f"IOPUB: {msg}")
+                    logger.debug("IOPUB: %s", msg)
                     # TODO: handle other message types
             except (asyncio.TimeoutError, queue.Empty):
                 continue
@@ -95,13 +97,12 @@ class KernelManager:
                 msg = await self.kc.shell_channel.get_msg(timeout=0.1)
                 # msg_type = msg["header"]["msg_type"]
                 # content = msg["content"]
-                logger.debug(f"SHELL: {msg}")
+                logger.debug("SHELL: %s", msg)
             except (asyncio.TimeoutError, queue.Empty):
                 continue
 
     def _comm_open(self):
         """Internal: Open comms with the kernel"""
-        self.comm_id = uuid.uuid4().hex
         content = {
             "comm_id": self.comm_id,
             "target_name": "kernel_comm_handler",
@@ -131,7 +132,7 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
 
     async def send_message_await_response(
-        self, msg_type: str, data: dict = {}, timeout: int = 5
+        self, msg_type: str, data: dict = None, timeout: int = 5
     ) -> dict | None:
         """Send message to kernel and wait for a response (async)
 
@@ -158,12 +159,12 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
         try:
             return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError:
-            raise TimeoutError("Timed out waiting for kernel response")
+        except asyncio.TimeoutError as e:
+            raise TimeoutError("Timed out waiting for kernel response") from e
         finally:
             self._pending_futures.pop(msg_id, None)
 
-    async def connect_to_simulation(self, config: dict = {}) -> dict:
+    async def connect_to_simulation(self, config: dict = None) -> dict:
         """Connect to the MD simulation
 
         Parameters

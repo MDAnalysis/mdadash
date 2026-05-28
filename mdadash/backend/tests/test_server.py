@@ -15,8 +15,8 @@ def test_main_app():
     assert response.status_code == 200
 
 
-@pytest.fixture
-def imd_server():
+@pytest.fixture(name="imd_server")
+def imd_server_fixture():
     u = mda.Universe(TPR, XTC)
     server = InThreadIMDServer(u.trajectory)
     info = create_default_imdsinfo_v3()
@@ -36,10 +36,10 @@ def test_simulation_connect_disconnect(imd_server):
             "trajectory": f"imd://localhost:{imd_server.port}",
         }
     )
-    with TestClient(app) as client:
+    with TestClient(app) as c:
         # test connect
-        response = client.get("/api/connect")
+        response = c.get("/api/connect")
         assert response.json()["status"] == "connected"
         # test disconnect
-        response = client.get("/api/disconnect")
+        response = c.get("/api/disconnect")
         assert response.json()["status"] == "disconnected"

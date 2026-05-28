@@ -38,9 +38,9 @@ class CommHandler:
         else:
             raise ValueError("comm is not open yet")
 
-    def _handle_comm_open(self, comm: comm.base_comm.BaseComm, msg):
+    def _handle_comm_open(self, _comm: comm.base_comm.BaseComm, _msg):
         """Internal: Handler when the comm is opened (comm_open)"""
-        self._comm = comm
+        self._comm = _comm
         # set the handler for comm messages (comm_msg)
         self._comm.on_msg(self._handle_msg)
 
@@ -63,7 +63,7 @@ def connect_to_simulation(config: dict) -> None:
         A config dictionary with all params needed for universe creation
 
     """
-    global u
+    global u  # pylint: disable=global-statement
     try:
         kwargs = {}
         topology = config.get("topology")
@@ -82,11 +82,11 @@ def connect_to_simulation(config: dict) -> None:
             **kwargs,
         )
         comm_handler.send({"status": "connected"})
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         comm_handler.send({"status": "error", "message": str(e)})
 
 
-def disconnect_from_simulation(data: dict) -> None:
+def disconnect_from_simulation(_data: dict) -> None:
     """Disconnect from MD simulation"""
     u.trajectory.close()
     comm_handler.send({"status": "disconnected"})
