@@ -12,6 +12,7 @@ dependencies:
   - pytest-cov
   - pytest-xdist
   - codecov
+  - httpx
 
   # Pip-only installs
   #- pip:
