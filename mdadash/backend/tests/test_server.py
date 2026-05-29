@@ -30,7 +30,7 @@ def imd_server_fixture():
 
 
 def test_simulation_connect_disconnect(imd_server):
-    sm.state["universe_config"].update(
+    sm.state["universe_config"][0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
@@ -38,8 +38,8 @@ def test_simulation_connect_disconnect(imd_server):
     )
     with TestClient(app) as c:
         # test connect
-        response = c.get("/api/connect")
+        response = c.get("/api/connect/0")
         assert response.json()["status"] == "connected"
         # test disconnect
-        response = c.get("/api/disconnect")
+        response = c.get("/api/disconnect/0")
         assert response.json()["status"] == "disconnected"

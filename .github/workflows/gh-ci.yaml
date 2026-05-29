@@ -57,11 +57,12 @@ jobs:
           auto-update-conda: true
           auto-activate-base: false
           show-channel-urls: true
+          conda-remove-defaults: true
 
       - name: Install package
         run: |
           python --version
-          python -m pip install .
+          python -m pip install . --no-deps
 
       - name: Python information
         run: |

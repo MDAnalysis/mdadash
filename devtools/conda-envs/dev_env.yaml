@@ -1,7 +1,6 @@
 name: mdadash-dev
 channels:
   - conda-forge
-  - defaults
 dependencies:
   # Base depends
   - python

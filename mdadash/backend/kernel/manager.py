@@ -6,6 +6,8 @@ import uuid
 
 from jupyter_client import AsyncKernelManager
 
+from ..state.manager import StateManager
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +21,8 @@ class KernelManager:
 
     """
 
-    def __init__(self):
+    def __init__(self, sm: StateManager):
+        self.sm = sm
         self.km = AsyncKernelManager(kernel_name="python3")
         self.kc = None
         self._pending_futures = {}
@@ -42,6 +45,10 @@ class KernelManager:
         # open comms with the kernel
         self._comm_open()
         self._is_running = True
+        # initialize n universes in kernel universe manager
+        await self.send_message(
+            "init_n_universes", {"n": len(self.sm.state["universe_config"])}
+        )
 
     async def stop(self) -> None:
         """Stop the async kernel"""
@@ -164,12 +171,12 @@ class KernelManager:
         finally:
             self._pending_futures.pop(msg_id, None)
 
-    async def connect_to_simulation(self, config: dict = None) -> dict:
+    async def connect_to_simulation(self, data: dict) -> dict:
         """Connect to the MD simulation
 
         Parameters
         ----------
-        config: dict
+        data: dict
             Config dict required to create the MDAnalysis Universe
 
         Returns
@@ -178,10 +185,15 @@ class KernelManager:
             Response dict indicating status
 
         """
-        return await self.send_message_await_response("connect_to_simulation", config)
+        return await self.send_message_await_response("connect_to_simulation", data)
 
-    async def disconnect_from_simulation(self) -> dict:
+    async def disconnect_from_simulation(self, data: dict) -> dict:
         """Disconnect from the MD simulation
+
+        Parameters
+        ----------
+        data: dict
+            Config dict required to create the MDAnalysis Universe
 
         Returns
         -------
@@ -189,4 +201,6 @@ class KernelManager:
             Response dict indicating status
 
         """
-        return await self.send_message_await_response("disconnect_from_simulation")
+        return await self.send_message_await_response(
+            "disconnect_from_simulation", data
+        )

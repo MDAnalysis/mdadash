@@ -20,11 +20,9 @@ maintainers = [
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "comm>=0.2.3",
     "fastapi>=0.136.3",
     "imdclient>=0.2.3",
     "ipykernel>=7.2.0",
-    "jupyter-client>=8.8.0",
     "MDAnalysis>=2.10.0",
     "python-socketio>=5.16.2",
     "uvicorn>=0.47.0",

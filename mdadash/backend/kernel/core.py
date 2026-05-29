@@ -1,8 +1,6 @@
 import comm
 import MDAnalysis as mda
 
-u = None  # Universe
-
 
 class CommHandler:
     """Comm Handler
@@ -54,44 +52,110 @@ class CommHandler:
             raise ValueError(f"{msg_type} does not have a registered handler")
 
 
-def connect_to_simulation(config: dict) -> None:
-    """Connect to MD simulation
+class UniverseManager:
+    """Universe Manager
 
-    Parameters
-    ----------
-    config: dict
-        A config dictionary with all params needed for universe creation
+    This class is responsible for managing all MDAnalysis universes. It has
+    handlers to interact with the MD simulation. These handlers are invoked by
+    comm messages sent from the server.
+
+    This also provides an iterable and indexable access to the individual
+    universes.
 
     """
-    global u  # pylint: disable=global-statement
-    try:
-        kwargs = {}
-        topology = config.get("topology")
-        trajectory = config.get("trajectory")
-        for key, value in config.items():
-            if key in ("topology", "trajectory", "kwargs"):
-                continue
-            if value is not None:
+
+    def __init__(self):
+        self._universes = []
+
+    def __iter__(self) -> iter:
+        """To support iteration"""
+        return iter(self._universes)
+
+    def __len__(self) -> int:
+        """Number of universes"""
+        return len(self._universes)
+
+    def __getitem__(self, index: int):
+        """Return universe based on index"""
+        # numeric index based array access
+        _max = len(self._universes)
+        if 0 <= index < _max:
+            return self._universes[index]
+        raise ValueError(f"Invalid index {index} of {_max} items")
+
+    def init_n_universes(self, n: int) -> None:
+        """Initialize array for n universes
+
+        Parameters
+        ----------
+        n: int
+            Number of universes to initialize
+
+        """
+        self._universes = [None] * n
+
+    def connect_to_simulation(self, data: dict) -> None:
+        """Connect to MD simulation
+
+        Parameters
+        ----------
+        data: dict
+            A data dictionary with all params needed for universe creation.
+            This dictionary has the following keys:
+            uid: int
+                The universe index
+            config: dict
+                Universe related config like topology, trajectory, imdclient
+                params, user-defined kwargs etc
+
+
+        """
+        try:
+            uid = data.get("uid", None)
+            config = data.get("config", None)
+            if uid is None or config is None:
+                comm_handler.send({"status": "error", "message": "Invalid data"})
+                return
+            # TODO: add more validations
+            kwargs = {}
+            topology = config.get("topology")
+            trajectory = config.get("trajectory")
+            for key, value in config.items():
+                if key in ("topology", "trajectory", "kwargs"):
+                    continue
+                if value is not None:
+                    kwargs[key] = value
+            for key, value in config["kwargs"].items():
                 kwargs[key] = value
-        for key, value in config["kwargs"].items():
-            kwargs[key] = value
-        # create universe
-        u = mda.Universe(
-            topology,
-            trajectory,
-            **kwargs,
-        )
-        comm_handler.send({"status": "connected"})
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        comm_handler.send({"status": "error", "message": str(e)})
+            # create universe
+            self._universes[uid] = mda.Universe(
+                topology,
+                trajectory,
+                **kwargs,
+            )
+            comm_handler.send({"status": "connected"})
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            comm_handler.send({"status": "error", "message": str(e)})
+
+    def disconnect_from_simulation(self, data: dict) -> None:
+        """Disconnect from MD simulation"""
+        uid = data.get("uid", None)
+        if uid is None:
+            comm_handler.send({"status": "error", "message": "Invalid data"})
+            return
+        # TODO: add more validations
+        self._universes[uid].trajectory.close()
+        comm_handler.send({"status": "disconnected"})
 
 
-def disconnect_from_simulation(_data: dict) -> None:
-    """Disconnect from MD simulation"""
-    u.trajectory.close()
-    comm_handler.send({"status": "disconnected"})
+def init_n_universes(data: dict) -> None:
+    um.init_n_universes(data.get("n"))
 
 
+um = UniverseManager()
 comm_handler = CommHandler()
-comm_handler.register_handler("connect_to_simulation", connect_to_simulation)
-comm_handler.register_handler("disconnect_from_simulation", disconnect_from_simulation)
+comm_handler.register_handler("init_n_universes", init_n_universes)
+comm_handler.register_handler("connect_to_simulation", um.connect_to_simulation)
+comm_handler.register_handler(
+    "disconnect_from_simulation", um.disconnect_from_simulation
+)

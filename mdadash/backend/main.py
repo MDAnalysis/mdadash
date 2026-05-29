@@ -14,7 +14,7 @@ from .state.manager import StateManager
 logging.basicConfig(level=logging.INFO)
 
 sm = StateManager()
-km = KernelManager()
+km = KernelManager(sm)
 logger = logging.getLogger(__name__)
 
 
@@ -38,14 +38,15 @@ app.mount(
 )
 
 
-@app.get("/api/connect")
-async def connect_to_simulation():
-    return await km.connect_to_simulation(sm.state["universe_config"])
+@app.get("/api/connect/{uid}")
+async def connect_to_simulation(uid: int):
+    data = {"uid": uid, "config": sm.state["universe_config"][uid]}
+    return await km.connect_to_simulation(data)
 
 
-@app.get("/api/disconnect")
-async def disconnect_from_simulation():
-    return await km.disconnect_from_simulation()
+@app.get("/api/disconnect/{uid}")
+async def disconnect_from_simulation(uid: int):
+    return await km.disconnect_from_simulation({"uid": uid})
 
 
 @app.get("/")
@@ -86,8 +87,8 @@ def start_server():
     parser.add_argument(
         "--dashboard-host",
         type=str,
-        default="0.0.0.0",
-        help="Host address to bind dashboard server to (default: 0.0.0.0)",
+        default="127.0.0.1",
+        help="Host address to bind dashboard server to (default: 127.0.0.1)",
     )
     parser.add_argument(
         "--reload", action="store_true", help="Enable auto-reload (default: false)"
@@ -103,8 +104,8 @@ def start_server():
     args = parser.parse_args()
     log_level = getattr(logging, args.log_level.upper(), None)
     logging.getLogger().setLevel(log_level)
-    # update state with topology and trajectory details
-    sm.state["universe_config"].update(
+    # update state with topology and trajectory details (first universe)
+    sm.state["universe_config"][0].update(
         {
             "topology": args.topology,
             "trajectory": args.trajectory,
