@@ -6,6 +6,7 @@ dependencies:
   # Base depends
   - python
   - pip
+  - nodejs
 
   - mdanalysis-sphinx-theme >=1.0.1
 
