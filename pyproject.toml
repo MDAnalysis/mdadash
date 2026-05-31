@@ -89,6 +89,7 @@ minversion = "6.0"
 testpaths = [
     "mdadash/backend/tests",
 ]
+asyncio_mode = "auto"
 
 [tool.black]
 line-length = 80
@@ -112,6 +113,7 @@ omit = [
     # Omit the tests
     "*/tests/*",
 ]
+patch = ["subprocess"]
 
 [tool.coverage.report]
 exclude_also = [

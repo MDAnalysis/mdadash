@@ -34,7 +34,7 @@ class CommHandler:
         if self._comm is not None:
             self._comm.send(msg)
         else:
-            raise ValueError("comm is not open yet")
+            raise ValueError("comm is not open yet")  # pragma: no cover
 
     def _handle_comm_open(self, _comm: comm.base_comm.BaseComm, _msg):
         """Internal: Handler when the comm is opened (comm_open)"""
@@ -49,7 +49,9 @@ class CommHandler:
         if msg_type in self._handlers:
             self._handlers[msg_type](content_data["data"])
         else:
-            raise ValueError(f"{msg_type} does not have a registered handler")
+            error_msg = f"{msg_type} does not have a registered handler"
+            self.send({"status": "error", "message": error_msg})
+            raise ValueError(error_msg)
 
 
 class UniverseManager:
@@ -113,10 +115,7 @@ class UniverseManager:
         try:
             uid = data.get("uid", None)
             config = data.get("config", None)
-            if uid is None or config is None:
-                comm_handler.send({"status": "error", "message": "Invalid data"})
-                return
-            # TODO: add more validations
+            # TODO: add validations
             kwargs = {}
             topology = config.get("topology")
             trajectory = config.get("trajectory")
@@ -140,10 +139,7 @@ class UniverseManager:
     def disconnect_from_simulation(self, data: dict) -> None:
         """Disconnect from MD simulation"""
         uid = data.get("uid", None)
-        if uid is None:
-            comm_handler.send({"status": "error", "message": "Invalid data"})
-            return
-        # TODO: add more validations
+        # TODO: add validations
         self._universes[uid].trajectory.close()
         comm_handler.send({"status": "disconnected"})
 

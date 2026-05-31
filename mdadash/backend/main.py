@@ -2,9 +2,10 @@ import argparse
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Annotated
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Path
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -39,14 +40,21 @@ app.mount(
 
 
 @app.get("/api/connect/{uid}")
-async def connect_to_simulation(uid: int):
-    data = {"uid": uid, "config": sm.state["universe_config"][uid]}
-    return await km.connect_to_simulation(data)
+async def connect_to_simulation(uid: Annotated[int, Path(title="Universe ID", ge=0)]):
+    universe_config = sm.state["universe_config"]
+    if 0 <= uid < len(universe_config):
+        data = {"uid": uid, "config": universe_config[uid]}
+        return await km.connect_to_simulation(data)
+    raise HTTPException(status_code=400, detail="Invalid universe id")
 
 
 @app.get("/api/disconnect/{uid}")
-async def disconnect_from_simulation(uid: int):
-    return await km.disconnect_from_simulation({"uid": uid})
+async def disconnect_from_simulation(
+    uid: Annotated[int, Path(title="Universe ID", ge=0)],
+):
+    if 0 <= uid < len(sm.state["universe_config"]):
+        return await km.disconnect_from_simulation({"uid": uid})
+    raise HTTPException(status_code=400, detail="Invalid universe id")
 
 
 @app.get("/")

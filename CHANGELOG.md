@@ -31,6 +31,7 @@ PardhavMaradani
 
 - Added overall project structure
 - Added async jupyter kernel support
+- Added more tests and enabled code coverage
 
 ### Fixed
 

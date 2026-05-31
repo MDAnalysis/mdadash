@@ -76,24 +76,37 @@ class KernelManager:
                 msg_type = msg["header"]["msg_type"]
                 content = msg["content"]
                 parent_id = msg.get("parent_header", {}).get("msg_id")
-                # check for responses that are being awaited
-                if (
-                    msg_type == "comm_msg"
-                    and parent_id
-                    and parent_id in self._pending_futures
-                ):
+                # check if a pending future can be resolved with msg
+                resolve_future = False
+                if parent_id and parent_id in self._pending_futures:
                     future = self._pending_futures[parent_id]
                     if not future.done():
+                        resolve_future = True
+                # handle different msg_type's
+                if msg_type == "comm_msg":
+                    if resolve_future:
                         future.set_result(msg["content"]["data"])
-                # redirect kernel stdout and stderr to this server output
-                if msg_type == "stream":
+                        continue
+                elif msg_type == "stream":
+                    if resolve_future:
+                        future.set_result(msg["content"]["text"])
+                        continue
+                    # redirect kernel stdout and stderr to this server output
                     if content["name"] == "stdout" or content["name"] == "stderr":
                         output = content["text"]
                         file = sys.stdout if content["name"] == "stdout" else sys.stderr
-                        print(f"KERNEL: {output}", end="", file=file)
+                        print(
+                            f"KERNEL ({content['name']}): {output}", end="", file=file
+                        )
+                elif msg_type == "error":
+                    # redirect kernel errors to server output
+                    print(f"KERNEL (error): {content['ename']}: {content['evalue']}")
+                    if resolve_future:
+                        future.set_result(content["evalue"])
+                        continue
                 else:
                     logger.debug("IOPUB: %s", msg)
-                    # TODO: handle other message types
+                # TODO: handle other message types
             except (asyncio.TimeoutError, queue.Empty):
                 continue
 
@@ -151,6 +164,9 @@ class KernelManager:
         data: dict
             Dict that gets passed to the handler in the kernel
 
+        timeout: int
+            Timeout in seconds
+
         """
         content = {
             "comm_id": self.comm_id,
@@ -166,8 +182,30 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
         try:
             return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as e:
+        except asyncio.TimeoutError as e:  # pragma: no cover
             raise TimeoutError("Timed out waiting for kernel response") from e
+        finally:
+            self._pending_futures.pop(msg_id, None)
+
+    async def execute_code(self, code: str, timeout: int = 5) -> str:
+        """Execute code in the kernel
+
+        Parameters
+        ----------
+        code: str
+            Code to execute in the kernel
+
+        timeout: int
+            Timeout in seconds
+
+        """
+        msg_id = self.kc.execute(code)
+        future = asyncio.get_running_loop().create_future()
+        self._pending_futures[msg_id] = future
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        except asyncio.TimeoutError as e:  # pragma: no cover
+            raise TimeoutError("Timed out waiting for kernel execute response") from e
         finally:
             self._pending_futures.pop(msg_id, None)
 

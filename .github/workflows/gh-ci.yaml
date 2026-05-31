@@ -81,22 +81,22 @@ jobs:
         run: |
           npm run test:unit --prefix mdadash/frontend -- --run
 
-      #- name: codecov
-      #  if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
-      #  uses: codecov/codecov-action@v5
-      #  with:
-      #    file: coverage.xml
-      #    name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
-      #    verbose: True
-      #    # to upload coverage reports, set a secret called CODECOV_TOKEN
-      #    # in the repository settings
-      #    # (Obtain this from the Codecov website after setting up the repository there)
-      #    token: ${{ secrets.CODECOV_TOKEN }}
-      #    # To fail the CI if there's an error, keep this set to true
-      #    # If repository forks need to run CI, you may need to set this to false
-      #    # Forks can't access the CODECOV_TOKEN secret,
-      #    # and a failed upload registers as an error
-      #    fail_ci_if_error: true
+      - name: codecov
+        if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
+        uses: codecov/codecov-action@v5
+        with:
+          file: coverage.xml
+          name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+          verbose: True
+          # to upload coverage reports, set a secret called CODECOV_TOKEN
+          # in the repository settings
+          # (Obtain this from the Codecov website after setting up the repository there)
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # To fail the CI if there's an error, keep this set to true
+          # If repository forks need to run CI, you may need to set this to false
+          # Forks can't access the CODECOV_TOKEN secret,
+          # and a failed upload registers as an error
+          fail_ci_if_error: true
 
   pylint_check:
     if: "github.repository == 'MDAnalysis/mdadash'"

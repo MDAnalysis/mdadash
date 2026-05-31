@@ -133,6 +133,33 @@ npm run test:unit --prefix mdadash/frontend -- --run
 pytest -v
 ```
 
+### Code Coverage
+
+#### Frontend
+
+```sh
+cd mdadash/frontend
+npx vitest --run --coverage
+```
+
+The coverage details will be shown on the console. Open `coverage/index.html` to view the interactive coverage report in the browser.
+
+#### Backend
+
+To see coverage output on the console:
+
+```sh
+pytest -v --cov=mdadash
+```
+
+To write coverage output to `html` file:
+
+```sh
+pytest -v --cov=mdadash --cov-report=html
+```
+
+Open `htmlcov/index.html` to view the coverage report in the browser.
+
 ### Build
 
 To build this package:
