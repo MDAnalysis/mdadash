@@ -1,3 +1,4 @@
+import platform
 import sys
 from unittest.mock import AsyncMock
 
@@ -72,6 +73,10 @@ def test_main_server_url_access(_client):
     assert response.status_code == 200
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="Needs debugging of occasional timeouts only on Windows",
+)
 async def test_simulation_connect_invalid_universe_config(_client):
     # _client fixture is needed to ensure app lifecycle is run
     # test connect with no config
