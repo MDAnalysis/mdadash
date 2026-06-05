@@ -88,8 +88,8 @@
                   ></v-btn>
                 </template>
               </v-list-item>
-              <!-- v8 ignore stop -->
               <v-divider v-if="recentAlerts.length > 0"></v-divider>
+              <!-- v8 ignore stop -->
               <v-list-item v-if="recentAlerts.length === 0" title="No new alerts"></v-list-item>
               <v-divider></v-divider>
               <!-- view all alerts -->
