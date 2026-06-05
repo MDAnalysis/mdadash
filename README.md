@@ -117,7 +117,6 @@ Developer instruction for `frontend` code can be found [here](mdadash/frontend/R
 #### Backend
 
 - Use the `editable` installation above (`pip install -e .`)
-- Run `mdadash` with the `--reload` option to auto-reload when changes detected
 
 ### Tests
 
@@ -203,6 +202,23 @@ To run all jobs:
 ```sh
 act
 ```
+
+### Docs
+
+Setting up the docs environment:
+
+```sh
+conda env update --name mdadash --file docs/requirements.yaml
+```
+
+Building docs locally:
+
+```sh
+cd docs
+make clean && make html
+```
+
+Open `docs/_build/html/index.html` to view the docs in the browser.
 
 ### Copyright
 

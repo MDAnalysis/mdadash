@@ -57,10 +57,15 @@ extensions = [
 ]
 
 autosummary_generate = True
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "show-inheritance": True,
+}
 # This skips generating an autodoc of the test module
 # when using the autosummary directive that is included
 # by default in api.rst
-autodoc_mock_imports = ["mdadash.tests"]
+autodoc_mock_imports = ["mdadash.backend.main", "mdadash.backend.tests"]
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True

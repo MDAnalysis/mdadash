@@ -1,4 +1,5 @@
 import sys
+from unittest.mock import AsyncMock
 
 import MDAnalysis as mda
 import pytest
@@ -6,13 +7,15 @@ from fastapi.testclient import TestClient
 from imdclient.tests.server import InThreadIMDServer
 from imdclient.tests.utils import create_default_imdsinfo_v3
 
-from mdadash.backend.main import app, km, sm, start_server
+from mdadash.backend.main import app, km, sio, sm, start_server
 from mdadash.backend.tests.data.files import TPR, XTC
 
 from .utils import run_task_until_done
 
+sio.emit = AsyncMock()
 
-@pytest.fixture(scope="session", name="client")
+
+@pytest.fixture(scope="session", name="_client")
 def client_fixture():
     with TestClient(app) as client:
         yield client
@@ -42,7 +45,7 @@ def test_start_server(mocker):
             "--topology",
             str(TPR),
             "--trajectory",
-            "imd://localhost:8889",
+            "imd://localhost:1234",
         ],
     )
     # uvicorn.run is a blocking call, so we need to
@@ -54,56 +57,55 @@ def test_start_server(mocker):
         "mdadash.backend.main:app",
         host="127.0.0.1",
         port=8000,
-        reload=False,
     )
 
 
-def test_main_server_url_access(client):
+def test_main_server_url_access(_client):
     # main dashboard url
-    response = client.get("/")
+    response = _client.get("/")
     assert response.status_code == 200
     # favicon.ico url
-    response = client.get("/favicon.ico")
+    response = _client.get("/favicon.ico")
     assert response.status_code == 200
     # test catch all for any other url
-    response = client.get("/catch/all")
+    response = _client.get("/catch/all")
     assert response.status_code == 200
 
 
-def test_simulation_connect_invalid_universe_config(client):
+async def test_simulation_connect_invalid_universe_config(_client):
+    # _client fixture is needed to ensure app lifecycle is run
     # test connect with no config
-    response = client.get("/api/connect/0")
-    assert response.json()["status"] == "error"
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "error"
 
 
-def test_simulation_connect_disconnect(client, imd_server):
+async def test_simulation_connectivity(_client, imd_server):
     # configure required config for universe
-    sm.state["universe_config"][0].update(
+    sm.universe_configs[0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
-            "kwargs": {
-                "arg1": "value1",
-            },
+            "kwargs": [["arg1", "value1"]],
         }
     )
     # test connect
-    response = client.get("/api/connect/0")
-    assert response.json()["status"] == "connected"
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+    # test resume
+    imd_server.send_frames(1, 10)
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+    # test pause
+    handler = sio.handlers["/"]["pause_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
     # test disconnect
-    response = client.get("/api/disconnect/0")
-    assert response.json()["status"] == "disconnected"
-
-
-def test_simulation_connect_disconnect_invalid_universe_id(client):
-    # test connect
-    response = client.get("/api/connect/1")
-    assert response.status_code == 400
-    assert response.json() == {"detail": "Invalid universe id"}
-    # test disconnect
-    response = client.get("/api/disconnect/1")
-    assert response.status_code == 400
-    assert response.json() == {"detail": "Invalid universe id"}
+    handler = sio.handlers["/"]["disconnect_from_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
 
 
 async def test_km_unregistered_msg_type():
@@ -116,16 +118,14 @@ async def test_km_unregistered_msg_type():
 
 async def test_kernel_universe_access(imd_server):
     # connect to the simulation
-    uid = 0
-    sm.state["universe_config"][uid].update(
+    sm.universe_configs[0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
         }
     )
-    data = {"uid": uid, "config": sm.state["universe_config"][uid]}
-    response = await run_task_until_done(km.connect_to_simulation(data))
-    assert response["status"] == "connected"
+    response = await run_task_until_done(km.connect_to_simulations())
+    assert response["status"] == "ok"
     # check universe manager access in kernel
     code = """
 from mdadash.backend.kernel.core import um
@@ -152,3 +152,26 @@ print(x)
 """
     response = await run_task_until_done(km.execute_code(code))
     assert response == "name 'x' is not defined"
+
+
+async def test_socketio_connect_disconnect():
+    # connect
+    handler = sio.handlers["/"]["connect"]
+    response = await run_task_until_done(handler("_sid", {}))
+    assert response is None
+    # disconnect
+    handler = sio.handlers["/"]["disconnect"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response is None
+
+
+async def test_update_settings():
+    # connect
+    handler = sio.handlers["/"]["update:settings"]
+    settings = sm.settings.copy()
+    await run_task_until_done(handler("_sid", settings))
+    # assert the updated value is not a reference
+    assert settings is not sm.settings
+    assert settings is not sm.state["settings"]
+    # assert values are same
+    assert settings == sm.settings
