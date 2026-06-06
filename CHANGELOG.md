@@ -29,9 +29,10 @@ PardhavMaradani
 
 <!-- New added features -->
 
-- Added overall project structure
-- Added async jupyter kernel support
-- Added more tests and enabled code coverage
+- Added overall project structure (PR #3)
+- Added async jupyter kernel support (PR #4)
+- Added more tests and enabled code coverage (PR #5)
+- Add basic connectivity between frontend and backend (PR #6)
 
 ### Fixed
 

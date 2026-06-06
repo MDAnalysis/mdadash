@@ -77,11 +77,7 @@ jobs:
         run: |
           pytest -n 2 -v --cov=mdadash --cov-report=xml --color=yes mdadash/backend/tests/
 
-      - name: Run frontend tests
-        run: |
-          npm run test:unit --prefix mdadash/frontend -- --run
-
-      - name: codecov
+      - name: Upload backend coverage to codecov
         if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
         uses: codecov/codecov-action@v5
         with:
@@ -96,6 +92,20 @@ jobs:
           # If repository forks need to run CI, you may need to set this to false
           # Forks can't access the CODECOV_TOKEN secret,
           # and a failed upload registers as an error
+          fail_ci_if_error: true
+
+      - name: Run frontend tests
+        run: |
+          npm run test:unit --prefix mdadash/frontend -- --run
+
+      - name: Upload frontend coverage to codecov
+        if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage/lcov.info
+          name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+          verbose: True
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
 
   pylint_check:

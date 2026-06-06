@@ -5,6 +5,14 @@ coverage:
     project:
       default:
         threshold: 50%
+      frontend:
+        target: auto
+        flags:
+          - frontend
+      backend:
+        target: auto
+        flags:
+          - backend
 comment:
   layout: "header"
   require_changes: false
@@ -12,3 +20,14 @@ comment:
   behavior: default
   flags: null
   paths: null
+
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: frontend
+      paths:
+        - mdadash/frontend/src/
+    - name: backend
+      paths:
+        - mdadash/backend/

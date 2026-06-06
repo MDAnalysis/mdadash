@@ -4,6 +4,7 @@ import queue
 import sys
 import uuid
 
+import socketio
 from jupyter_client import AsyncKernelManager
 
 from ..state.manager import StateManager
@@ -11,6 +12,7 @@ from ..state.manager import StateManager
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class KernelManager:
     """Kernel Manager
 
@@ -21,8 +23,9 @@ class KernelManager:
 
     """
 
-    def __init__(self, sm: StateManager):
+    def __init__(self, sm: StateManager, sio: socketio.AsyncServer):
         self.sm = sm
+        self.sio = sio
         self.km = AsyncKernelManager(kernel_name="python3")
         self.kc = None
         self._pending_futures = {}
@@ -47,7 +50,7 @@ class KernelManager:
         self._is_running = True
         # initialize n universes in kernel universe manager
         await self.send_message(
-            "init_n_universes", {"n": len(self.sm.state["universe_config"])}
+            "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
 
     async def stop(self) -> None:
@@ -68,6 +71,34 @@ class KernelManager:
             self._listen_shell_channel(),
         )
 
+    async def _emit_tsdata(self, tsinfo):
+        """Internal: Emit timestep data"""
+        tsdata = tsinfo["tsdata"]
+        step = tsdata.get("step", None)
+        total_steps = self.sm.universe_configs[0].get("total_steps", None)
+        done = (step / total_steps) * 100 if step and total_steps else None
+        timestep_info = {
+            "frame": tsinfo.get("frame", None),
+            "time": tsdata.get("time", None),
+            "step": step,
+            "done": done,
+            "energies": {
+                "temperature": tsdata.get("temperature", None),
+                "total_energy": tsdata.get("total_energy", None),
+                "potential_energy": tsdata.get("potential_energy", None),
+                "van_der_walls_energy": tsdata.get("van_der_walls_energy", None),
+                "coulomb_energy": tsdata.get("coulomb_energy", None),
+                "bonds_energy": tsdata.get("bonds_energy", None),
+                "angles_energy": tsdata.get("angles_energy", None),
+                "dihedrals_energy": tsdata.get("dihedrals_energy", None),
+                "improper_dihedrals_energy": tsdata.get(
+                    "improper_dihedrals_energy", None
+                ),
+            },
+        }
+        await self.sio.emit("timestepInfo", timestep_info)
+
+    # pylint: disable=too-many-branches
     async def _listen_iopub_channel(self):
         """Internal: Listen on iopub channel"""
         while self._is_running:
@@ -84,8 +115,11 @@ class KernelManager:
                         resolve_future = True
                 # handle different msg_type's
                 if msg_type == "comm_msg":
-                    if resolve_future:
-                        future.set_result(msg["content"]["data"])
+                    data = msg["content"]["data"]
+                    if "tsinfo" in data:
+                        await self._emit_tsdata(data["tsinfo"])
+                    elif resolve_future:
+                        future.set_result(data)
                         continue
                 elif msg_type == "stream":
                     if resolve_future:
@@ -209,29 +243,41 @@ class KernelManager:
         finally:
             self._pending_futures.pop(msg_id, None)
 
-    async def connect_to_simulation(self, data: dict) -> dict:
+    async def connect_to_simulations(self) -> dict:
         """Connect to the MD simulation
 
-        Parameters
-        ----------
-        data: dict
-            Config dict required to create the MDAnalysis Universe
-
         Returns
         -------
         response: dict
             Response dict indicating status
 
         """
-        return await self.send_message_await_response("connect_to_simulation", data)
+        response = await self.send_message_await_response(
+            "connect_to_simulations", self.sm.universe_configs
+        )
+        if response["status"] == "ok":
+            self.sm.running_state["connected"] = True
+            self.sm.running_state["running"] = False
+        return response
 
-    async def disconnect_from_simulation(self, data: dict) -> dict:
+    async def disconnect_from_simulations(self) -> dict:
         """Disconnect from the MD simulation
 
-        Parameters
-        ----------
-        data: dict
-            Config dict required to create the MDAnalysis Universe
+        Returns
+        -------
+        response: dict
+            Response dict indicating status
+
+        """
+        response = await self.send_message_await_response(
+            "disconnect_from_simulations", {}
+        )
+        if response["status"] == "ok":
+            self.sm.running_state["connected"] = False
+        return response
+
+    async def pause_simulations(self) -> dict:
+        """Pause MD simulations
 
         Returns
         -------
@@ -239,6 +285,21 @@ class KernelManager:
             Response dict indicating status
 
         """
-        return await self.send_message_await_response(
-            "disconnect_from_simulation", data
-        )
+        response = await self.send_message_await_response("pause_simulations", {})
+        if response["status"] == "ok":
+            self.sm.running_state["running"] = False
+        return response
+
+    async def resume_simulations(self) -> dict:
+        """Resume MD simulations
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status
+
+        """
+        response = await self.send_message_await_response("resume_simulations", {})
+        if response["status"] == "ok":
+            self.sm.running_state["running"] = True
+        return response

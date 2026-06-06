@@ -62,7 +62,14 @@ source = "https://github.com/MDAnalysis/mdadash"
 #documentation = "https://mdadash.readthedocs.io"
 
 [tool.setuptools]
-packages = ["mdadash", "mdadash.backend", "mdadash.backend.tests", "mdadash.data"]
+packages = [
+    "mdadash",
+    "mdadash.backend",
+    "mdadash.backend.state",
+    "mdadash.backend.kernel",
+    "mdadash.backend.tests",
+    "mdadash.data",
+]
 include-package-data = false
 
 [tool.setuptools.package-data]
@@ -114,6 +121,7 @@ omit = [
     "*/tests/*",
 ]
 patch = ["subprocess"]
+disable_warnings = ["couldnt-parse"]
 
 [tool.coverage.report]
 exclude_also = [
