@@ -1,3 +1,8 @@
+"""
+Manager that manages the dashboard state
+"""
+
+
 class StateManager:
     """State Manager
 
@@ -61,21 +66,26 @@ class StateManager:
         }
 
     @property
-    def state(self):
+    def state(self) -> dict:
+        """The complete state dict"""
         return self._state
 
     @property
-    def running_state(self):
+    def running_state(self) -> dict:
+        """The running state dict of the dashboard"""
         return self._state["running_state"]
 
     @property
-    def settings(self):
+    def settings(self) -> dict:
+        """The complete settings dict"""
         return self._state["settings"]
 
     @settings.setter
-    def settings(self, value):
+    def settings(self, value: dict) -> None:
+        """Setter for settings"""
         self._state["settings"] = value
 
     @property
-    def universe_configs(self):
+    def universe_configs(self) -> dict:
+        """All the unviverse configs dict"""
         return self._state["settings"]["universe_configs"]

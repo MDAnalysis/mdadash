@@ -1,5 +1,4 @@
 """
-mdadash
 Dashboard for tracking and analyzing live MD simulations with streaming.
 """
 

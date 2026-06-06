@@ -1,3 +1,7 @@
+"""
+Manager that manages the jupyter_client's AsyncKernelManager
+"""
+
 import asyncio
 import logging
 import queue
@@ -20,6 +24,14 @@ class KernelManager:
     that runs all the MDAnalysis code. It takes care of starting the async
     kernel, stopping it and communicating with it. It interfaces with the
     CommHandler on the kernel side for messaging.
+
+    Parameters
+    ----------
+    sm: :class:`~mdadash.backend.state.manager.StateManager`
+        Instance of the state manager
+
+    sio: :class:`socketio.AsyncServer`
+        Instance of the socket.io server
 
     """
 
@@ -196,10 +208,21 @@ class KernelManager:
             A message type string that the kernel has a handler registered for
 
         data: dict
-            Dict that gets passed to the handler in the kernel
+            Dict that gets passed to the handler in the kernel (default: None)
 
         timeout: int
-            Timeout in seconds
+            Timeout in seconds (default: 5)
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
 
         """
         content = {
@@ -230,7 +253,12 @@ class KernelManager:
             Code to execute in the kernel
 
         timeout: int
-            Timeout in seconds
+            Timeout in seconds (default: 5)
+
+        Returns
+        -------
+        response: str
+            A string representation of the output of the code executed
 
         """
         msg_id = self.kc.execute(code)
@@ -249,7 +277,13 @@ class KernelManager:
         Returns
         -------
         response: dict
-            Response dict indicating status
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
 
         """
         response = await self.send_message_await_response(
@@ -266,7 +300,13 @@ class KernelManager:
         Returns
         -------
         response: dict
-            Response dict indicating status
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
 
         """
         response = await self.send_message_await_response(
@@ -282,7 +322,13 @@ class KernelManager:
         Returns
         -------
         response: dict
-            Response dict indicating status
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
 
         """
         response = await self.send_message_await_response("pause_simulations", {})
@@ -296,7 +342,13 @@ class KernelManager:
         Returns
         -------
         response: dict
-            Response dict indicating status
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
 
         """
         response = await self.send_message_await_response("resume_simulations", {})

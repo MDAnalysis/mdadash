@@ -48,9 +48,12 @@ dev = [
     "build",
 ]
 test = [
-    "pytest>=6.0",
-    "pytest-xdist>=2.5",
-    "pytest-cov>=3.0",
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-xdist",
 ]
 doc = [
     "sphinx",
@@ -67,8 +70,6 @@ packages = [
     "mdadash.backend",
     "mdadash.backend.state",
     "mdadash.backend.kernel",
-    "mdadash.backend.tests",
-    "mdadash.data",
 ]
 include-package-data = false
 
