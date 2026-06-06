@@ -62,7 +62,13 @@ describe('App', () => {
     await connectBtn.trigger('click')
     expect(connectBtn.attributes('disabled')).toBeDefined()
     expect(socket.emit).toHaveBeenCalledWith('connect_to_simulations')
-    await socketListeners['runningState']({ pending: false, connected: true, running: false })
+    window.alert = () => {}
+    await socketListeners['runningState']({
+      pending: false,
+      connected: true,
+      running: false,
+      message: 'ok',
+    })
     await socketListeners['timestepInfo']({ energies: {} })
     await socketListeners['settings']({ universe_configs: [{}] })
     // click resume button

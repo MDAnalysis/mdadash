@@ -231,6 +231,10 @@ const origSettings = ref(null)
 onMounted(() => {
   socket.on('runningState', (data) => {
     runningState.value = data
+    if (data.message) {
+      // Temporarily show error in alert
+      alert('ERROR: ' + data.message)
+    }
   })
   socket.on('timestepInfo', (data) => {
     timestepInfo.value = data

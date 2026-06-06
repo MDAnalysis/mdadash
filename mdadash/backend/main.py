@@ -74,14 +74,15 @@ async def emit_settings():
 @asynccontextmanager
 async def _emit_running_states():
     sm.running_state["pending"] = True
+    sm.running_state["message"] = ""
     await emit_running_state()
     output = {}
     yield output
     response = output["response"]
     sm.running_state["pending"] = False
-    sm.running_state["message"] = (
-        "" if response["status"] == "ok" else response["message"]
-    )
+    if response["status"] != "ok":
+        sm.running_state["message"] = response["message"]
+        logger.error(sm.running_state["message"])
     await emit_running_state()
 
 
