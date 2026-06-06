@@ -79,7 +79,7 @@ jobs:
           ls -l dist
 
       - name: Upload to TestPyPI
-        uses: pypa/gh-action-pypi-publish@v1
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
           repository-url: https://test.pypi.org/legacy/
@@ -110,4 +110,4 @@ jobs:
           ls -l dist
 
       - name: Upload to PyPI
-        uses: pypa/gh-action-pypi-publish@v1
+        uses: pypa/gh-action-pypi-publish@release/v1
