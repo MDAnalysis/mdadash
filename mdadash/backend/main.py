@@ -3,6 +3,7 @@ import copy
 import logging
 import os
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 
 import socketio
 import uvicorn
@@ -158,6 +159,13 @@ def start_server():
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {version('mdadash')}",
+        help="Show the dashboard version and exit",
     )
     # update log level if set
     args = parser.parse_args()

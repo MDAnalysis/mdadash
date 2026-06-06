@@ -1,3 +1,7 @@
+"""
+Kernel core where MDAnalysis code runs
+"""
+
 import asyncio
 
 import comm
@@ -21,7 +25,18 @@ class CommHandler:
         )
 
     def register_handler(self, msg_type: str, handler_func: callable) -> None:
-        """Register a handler function for a message type"""
+        """Register a handler function for a message type
+
+        Parameters
+        ----------
+        msg_type: str
+            A message type to identify the handler
+
+        handler_func: callable
+            The handler function to invoke when a message with this message
+            type is received
+
+        """
         self._handlers[msg_type] = handler_func
 
     def send(self, msg: dict) -> None:
@@ -30,7 +45,7 @@ class CommHandler:
         Parameters
         ----------
         msg: dict
-            A message dictionary
+            A generic message dictionary
 
         """
         if self._comm is not None:
@@ -196,6 +211,7 @@ class UniverseManager:
 
 
 def init_n_universes(data: dict) -> None:
+    """Initialize `n` universes in :class:`UniverseManager`"""
     um.init_n_universes(data.get("n"))
 
 
