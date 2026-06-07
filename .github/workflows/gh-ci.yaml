@@ -83,6 +83,7 @@ jobs:
         with:
           file: coverage.xml
           name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+          flags: backend
           verbose: True
           # to upload coverage reports, set a secret called CODECOV_TOKEN
           # in the repository settings
@@ -104,6 +105,7 @@ jobs:
         with:
           file: ./coverage/lcov.info
           name: codecov-${{ matrix.os }}-py${{ matrix.python-version }}
+          flags: frontend
           verbose: True
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
