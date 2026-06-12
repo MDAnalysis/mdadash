@@ -9,6 +9,7 @@ from imdclient.tests.utils import create_default_imdsinfo_v3
 
 from mdadash.backend.main import app, km, sio, sm, start_server
 from mdadash.backend.tests.data.files import TPR, XTC
+from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
 from .utils import run_task_until_done
 
@@ -87,6 +88,7 @@ async def test_simulation_connectivity(_client, imd_server):
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
             "kwargs": [["arg1", "value1"]],
+            "step": 2,
         }
     )
     # test connect
@@ -175,3 +177,108 @@ async def test_update_settings():
     assert settings is not sm.state["settings"]
     # assert values are same
     assert settings == sm.settings
+
+
+async def test_widget_registration():
+    # test invalid widget class
+    wm = WidgetManager()
+
+    class TestWidget1:
+        pass
+
+    with pytest.raises(ValueError, match="is not a widget class"):
+        wm.register_class(TestWidget1)
+
+    # test widget class without a name
+    with pytest.raises(ValueError, match="name not specified in widget class"):
+
+        class _TestWidget2(WidgetBase):
+            pass
+
+    # test widget class without run method
+    with pytest.raises(ValueError, match="run method not found in class"):
+
+        class _TestWidget3(WidgetBase):
+            name = "TestWidget3"
+
+    # test correct registration
+    class _TestWidget4(WidgetBase):
+        name = "TestWidget4"
+
+        def run(self, u: mda.Universe):
+            pass
+
+    # test duplicate widget name registraion exception
+    with pytest.raises(ValueError, match="already registered"):
+
+        class _TestWidget5(WidgetBase):
+            name = "TestWidget4"
+
+            def run(self, u: mda.Universe):
+                pass
+
+
+async def test_get_available_widgets(_client):
+    # get available widgets
+    handler = sio.handlers["/"]["widgets:get_available_widgets"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["widgets"]
+
+
+async def test_add_remove_widgets(_client):
+    # test add unknown widget
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", "Invalid Widget", ""))
+    uuid = response.get("uuid", None)
+    assert uuid is None
+    # test remove invalid widget
+    handler = sio.handlers["/"]["widgets:remove_widget"]
+    response = await run_task_until_done(handler("_sid", "invalid_uuid"))
+    assert response["status"] == "error"
+    # add widget 1
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
+    uuid1 = response.get("uuid", None)
+    assert uuid1 is not None
+    # add widget 2
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
+    uuid2 = response.get("uuid", None)
+    assert uuid2 is not None
+    # remove widget 1
+    handler = sio.handlers["/"]["widgets:remove_widget"]
+    response = await run_task_until_done(handler("_sid", uuid1))
+    assert response["status"] == "ok"
+    # remove widget 2
+    handler = sio.handlers["/"]["widgets:remove_widget"]
+    response = await run_task_until_done(handler("_sid", uuid2))
+    assert response["status"] == "ok"
+
+
+async def test_update_layout(_client):
+    handler = sio.handlers["/"]["widgets:update_layout"]
+    response = await run_task_until_done(handler("_sid", []))
+    assert response == []
+
+
+async def test_widget_run(_client, imd_server):
+    # add widget 1
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
+    uuid1 = response.get("uuid", None)
+    assert uuid1 is not None
+    # connect to simulation
+    sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": f"imd://localhost:{imd_server.port}",
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+    # run simulation
+    imd_server.send_frames(1, 10)
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"

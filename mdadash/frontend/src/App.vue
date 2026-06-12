@@ -157,7 +157,9 @@
     <!-- Main content -->
     <v-main class="bg-grey-lighten-5">
       <router-view v-slot="{ Component }">
-        <component :is="Component" />
+        <keep-alive>
+          <component :is="Component" />
+        </keep-alive>
       </router-view>
     </v-main>
   </v-app>

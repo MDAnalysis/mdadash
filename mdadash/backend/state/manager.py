@@ -63,6 +63,7 @@ class StateManager:
                     },
                 ],
             },
+            "widgets_layout": [],
         }
 
     @property
@@ -89,3 +90,8 @@ class StateManager:
     def universe_configs(self) -> dict:
         """All the unviverse configs dict"""
         return self._state["settings"]["universe_configs"]
+
+    @property
+    def widgets_layout(self) -> dict:
+        """The widgets layout array of the dashboard"""
+        return self._state["widgets_layout"]

@@ -57,6 +57,7 @@ async def read_favicon():
 async def connect(_sid, _env):
     await emit_running_state()
     await emit_settings()
+    await emit_layout()
 
 
 @sio.on("disconnect")
@@ -119,6 +120,52 @@ async def resume_simulations(_sid):
 async def update_settings(_sid, settings):
     sm.settings = copy.deepcopy(settings)
     await emit_settings()
+
+
+@sio.on("widgets:get_available_widgets")
+async def get_available_widgets(_sid):
+    return await km.get_available_widgets()
+
+
+async def emit_layout():
+    await sio.emit("widgets:layout", sm.widgets_layout)
+
+
+@sio.on("widgets:update_layout")
+async def update_layout(_sid, layout):
+    sm.widgets_layout[:] = layout
+    await emit_layout()
+    return sm.widgets_layout
+
+
+@sio.on("widgets:remove_widget")
+async def remove_widget(_sid, uuid):
+    response = await km.remove_widget_instance(uuid)
+    if len(sm.widgets_layout) == 1:
+        sm.widgets_layout.clear()
+    else:
+        sm.widgets_layout[:] = [w for w in sm.widgets_layout if w.get("i") != uuid]
+    await emit_layout()
+    return response
+
+
+@sio.on("widgets:add_widget")
+async def add_widget(_sid, name, description):
+    response = await km.add_widget_instance(name)
+    if response["status"] == "ok":
+        sm.widgets_layout.append(
+            {
+                "x": 0,
+                "y": 0,
+                "w": 12,
+                "h": 14,
+                "i": response["uuid"],
+                "name": name,
+                "description": description,
+            }
+        )
+        await emit_layout()
+    return response
 
 
 # Note: This catchall should be at the end of all API definitions

@@ -19,6 +19,18 @@ or
 
    uv add mdadash
 
+or
+
+.. code:: sh
+
+   conda install mdadash
+
+or
+
+.. code:: sh
+
+   mamba install mdadash
+
 Run
 ~~~
 

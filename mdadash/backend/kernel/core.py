@@ -7,6 +7,8 @@ import asyncio
 import comm
 import MDAnalysis as mda
 
+from mdadash.backend.widgets.base import WidgetManager
+
 
 class CommHandler:
     """Comm Handler
@@ -134,7 +136,13 @@ class UniverseManager:
                 topology = config.get("topology")
                 trajectory = config.get("trajectory")
                 for key, value in config.items():
-                    if key in ("topology", "trajectory", "kwargs"):
+                    if key in (
+                        "topology",
+                        "trajectory",
+                        "step",
+                        "total_steps",
+                        "kwargs",
+                    ):
                         continue
                     if value is not None:
                         kwargs[key] = value
@@ -147,6 +155,8 @@ class UniverseManager:
                     trajectory,
                     **kwargs,
                 )
+                # set the trajectory step
+                setattr(u.trajectory, "_mdadash_step", config.get("step"))
                 if uid == 0:
                     self._send_tsdata(u)
                 self._universes[uid] = u
@@ -188,7 +198,15 @@ class UniverseManager:
         comm_handler.send({"status": "ok"})
 
     def _trajectory_next(self, u):
-        """Internal: Iterate trajectory by 1 frame"""
+        """Internal: Iterate trajectory by `step` frame(s)"""
+        try:
+            # Burn the timesteps until we reach the desired step
+            # Don't use next() to avoid unnecessary transformations
+            # pylint: disable=protected-access
+            while (u.trajectory._frame + 1) % u.trajectory._mdadash_step != 0:
+                u.trajectory._read_next_timestep()
+        except (EOFError, IOError):  # pragma: no cover
+            raise StopIteration from None
         return u.trajectory.next()
 
     async def _iter_loop(self):
@@ -202,7 +220,8 @@ class UniverseManager:
                         await asyncio.to_thread(self._trajectory_next, u)
                         if uid == 0:
                             self._send_tsdata(u)
-                        # await asyncio.sleep(0)
+                        # run widgets for this timestep
+                        wm.run_widgets(u)
                     except StopIteration as e:  # pragma: no cover
                         print(e)
                     await asyncio.sleep(0)
@@ -210,11 +229,62 @@ class UniverseManager:
             pass
 
 
+class WidgetsComm:
+    """Widgets Communication
+
+    Communication involving WidgetManager
+
+    """
+
+    @staticmethod
+    def get_available_widgets(_data: dict):
+        """Send list of available widgets - name and description"""
+        widgets = []
+        for widget_class in wm.classes.values():
+            widgets.append(
+                {
+                    "name": getattr(widget_class, "name"),
+                    "description": getattr(widget_class, "description", None),
+                }
+            )
+        comm_handler.send({"widgets": widgets})
+
+    @staticmethod
+    def add_instance(data: dict) -> dict:
+        """Add widget instance based on registered widget name"""
+        widget_name = data.get("name", None)
+        uuid = wm.add_widget_instance(widget_name)
+        if uuid is not None:
+            comm_handler.send({"status": "ok", "uuid": uuid})
+        else:
+            comm_handler.send(
+                {
+                    "status": "error",
+                    "message": f"Failed to add widget instance for {widget_name}",
+                }
+            )
+
+    @staticmethod
+    def remove_instance(data: dict) -> dict:
+        """Remove widget instance based on uuid"""
+        uuid = wm.delete_widget_instance(data.get("uuid", None))
+        if uuid is not None:
+            comm_handler.send({"status": "ok"})
+        else:
+            comm_handler.send(
+                {
+                    "status": "error",
+                    "message": f"Failed to remove widget instance with uuid {uuid}",
+                }
+            )
+
+
 def init_n_universes(data: dict) -> None:
     """Initialize `n` universes in :class:`UniverseManager`"""
     um.init_n_universes(data.get("n"))
 
 
+wm = WidgetManager()
 um = UniverseManager()
 comm_handler = CommHandler()
 comm_handler.register_handler("init_n_universes", init_n_universes)
@@ -224,3 +294,9 @@ comm_handler.register_handler(
 )
 comm_handler.register_handler("pause_simulations", um.pause_simulations)
 comm_handler.register_handler("resume_simulations", um.resume_simulations)
+# widgets comm
+comm_handler.register_handler(
+    "widgets:get_available_widgets", WidgetsComm.get_available_widgets
+)
+comm_handler.register_handler("widgets:add_instance", WidgetsComm.add_instance)
+comm_handler.register_handler("widgets:remove_instance", WidgetsComm.remove_instance)

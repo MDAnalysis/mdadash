@@ -150,6 +150,16 @@ class KernelManager:
                     if resolve_future:
                         future.set_result(content["evalue"])
                         continue
+                elif msg_type == "display_data":
+                    if "metadata" in content and "widget_uuid" in content["metadata"]:
+                        # send widget output to browser
+                        await self.sio.emit(
+                            "widgets:output",
+                            {
+                                "uuid": content["metadata"]["widget_uuid"],
+                                "data": content["data"],
+                            },
+                        )
                 else:
                     logger.debug("IOPUB: %s", msg)
                 # TODO: handle other message types
@@ -355,3 +365,64 @@ class KernelManager:
         if response["status"] == "ok":
             self.sm.running_state["running"] = True
         return response
+
+    async def get_available_widgets(self) -> dict:
+        """Get list of available widgets
+
+        Returns
+        -------
+        response: dict
+            List of widget names and descriptions
+
+        """
+        return await self.send_message_await_response(
+            "widgets:get_available_widgets", {}
+        )
+
+    async def add_widget_instance(self, widget_name: str) -> dict:
+        """Add widget instance
+
+        Parameters
+        ----------
+        widget_name: str
+            Widget name to create an instance for
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
+
+        """
+        return await self.send_message_await_response(
+            "widgets:add_instance", {"name": widget_name}
+        )
+
+    async def remove_widget_instance(self, widget_uuid: str) -> dict:
+        """Remove widget instance
+
+        Parameters
+        ----------
+        widget_uuid: str
+            UUID of the widget instance to be removed
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
+
+        """
+        return await self.send_message_await_response(
+            "widgets:remove_instance", {"uuid": widget_uuid}
+        )

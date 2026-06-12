@@ -32,7 +32,8 @@ PardhavMaradani
 - Added overall project structure (PR #3)
 - Added async jupyter kernel support (PR #4)
 - Added more tests and enabled code coverage (PR #5)
-- Add basic connectivity between frontend and backend (PR #6)
+- Added basic connectivity between frontend and backend (PR #6)
+- Added basic widget execution framework and energy widgets
 
 ### Fixed
 

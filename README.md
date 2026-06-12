@@ -41,6 +41,18 @@ or
 uv add mdadash
 ```
 
+or
+
+```sh
+conda install mdadash
+```
+
+or
+
+```sh
+mamba install mdadash
+```
+
 ### Run
 
 Once the package is installed, it can be run using the `mdadash` command to start the dashboard server:
