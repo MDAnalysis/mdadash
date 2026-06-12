@@ -23,7 +23,7 @@ class KernelManager:
     This class is responsible for managing the AsyncKernelManager (async kernel)
     that runs all the MDAnalysis code. It takes care of starting the async
     kernel, stopping it and communicating with it. It interfaces with the
-    CommHandler on the kernel side for messaging.
+    :class:`~mdadash.backend.kernel.core.CommHandler` on the kernel side for messaging.
 
     Parameters
     ----------

@@ -13,9 +13,9 @@ from mdadash.backend.widgets.base import WidgetManager
 class CommHandler:
     """Comm Handler
 
-    This class is responsible for handling all the communication to and from
-    this kernel. This is the class that interfaces with the KernelManager on
-    the server side.
+    This class is responsible for handling all the communication to and
+    from this kernel. This is the class that interfaces with the
+    :class:`~mdadash.backend.kernel.manager.KernelManager` on the server side.
 
     """
 
@@ -232,7 +232,7 @@ class UniverseManager:
 class WidgetsComm:
     """Widgets Communication
 
-    Communication involving WidgetManager
+    Communication involving :class:`~mdadash.backend.widgets.base.WidgetManager`
 
     """
 

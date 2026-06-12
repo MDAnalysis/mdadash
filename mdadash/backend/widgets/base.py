@@ -1,5 +1,5 @@
 """
-Base Class for Widgets and WidgetManager
+Base Class for Widgets and Widget Manager
 """
 
 from abc import ABC, abstractmethod
@@ -34,11 +34,21 @@ class WidgetManager:
 
     """
 
-    classes = {}
-    instances = {}
+    _classes = {}
+    _instances = {}
 
     def __init__(self):
         pass
+
+    @property
+    def classes(self):
+        """Dictionary of registered widget classes keyed by widget name"""
+        return self._classes
+
+    @property
+    def instances(self):
+        """Dictionary of widget instances keyed by widget uuid"""
+        return self._instances
 
     @classmethod
     def register_class(cls, widget_class: WidgetBase) -> None:
@@ -52,9 +62,9 @@ class WidgetManager:
         """
         cls._validate_widget_class(widget_class)
         widget_name = widget_class.name
-        if widget_name in cls.classes:
+        if widget_name in cls._classes:
             raise ValueError(f"Widget name '{widget_name}' already registered")
-        cls.classes[widget_name] = widget_class
+        cls._classes[widget_name] = widget_class
 
     @classmethod
     def _validate_widget_class(cls, widget_class: WidgetBase) -> None:
@@ -94,7 +104,7 @@ class WidgetManager:
         """Remove widget instance
 
         Remove widget instanced based on uuid returned during
-        the instance creation using `add_widget_instance`
+        the instance creation using :meth:`add_widget_instance`
 
         Parameters
         ----------
