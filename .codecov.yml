@@ -5,29 +5,24 @@ coverage:
     project:
       default:
         threshold: 50%
-      frontend:
-        target: auto
-        flags:
-          - frontend
-      backend:
-        target: auto
-        flags:
-          - backend
+
 comment:
-  layout: "header"
+  layout: "header, components"
   require_changes: false
   branches: null
   behavior: default
-  flags: null
-  paths: null
 
-flag_management:
+component_management:
   default_rules:
-    carryforward: true
-  individual_flags:
-    - name: frontend
+    statuses:
+      - type: project
+        target: auto
+  individual_components:
+    - id: frontend
+      name: frontend
       paths:
         - mdadash/frontend/src/
-    - name: backend
+    - id: backend
+      name: backend
       paths:
         - mdadash/backend/
