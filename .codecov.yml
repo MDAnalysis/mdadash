@@ -18,11 +18,11 @@ component_management:
       - type: project
         target: auto
   individual_components:
-    - id: frontend
+    - component_id: frontend
       name: frontend
       paths:
         - mdadash/frontend/src/
-    - id: backend
+    - component_id: backend
       name: backend
       paths:
         - mdadash/backend/
