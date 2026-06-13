@@ -23,7 +23,37 @@ The rules for this file:
 
 <!-- GitHub usernames of contributors to this release -->
 
-PardhavMaradani
+??/??/?? PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added basic widget execution framework and energy widgets (PR #8)
+
+### Fixed
+
+<!-- Bug fixes -->
+
+### Changed
+
+<!-- Changes in existing functionality -->
+
+### Deprecated
+
+<!-- Soon-to-be removed features -->
+
+### Removed
+
+<!-- Removed features -->
+
+## [0.0.2]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+06/06/2026 PardhavMaradani
 
 ### Added
 
@@ -33,7 +63,6 @@ PardhavMaradani
 - Added async jupyter kernel support (PR #4)
 - Added more tests and enabled code coverage (PR #5)
 - Added basic connectivity between frontend and backend (PR #6)
-- Added basic widget execution framework and energy widgets
 
 ### Fixed
 

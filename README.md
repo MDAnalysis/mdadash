@@ -44,13 +44,19 @@ uv add mdadash
 or
 
 ```sh
-conda install mdadash
+conda install -c conda-forge mdadash
 ```
 
 or
 
 ```sh
-mamba install mdadash
+mamba install -c conda-forge mdadash
+```
+
+To execute directly from an isolated environment without installing:
+
+```sh
+uvx mdadash -h
 ```
 
 ### Run

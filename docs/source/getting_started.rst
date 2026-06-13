@@ -23,13 +23,20 @@ or
 
 .. code:: sh
 
-   conda install mdadash
+   conda install -c conda-forge mdadash
 
 or
 
 .. code:: sh
 
-   mamba install mdadash
+   mamba install -c conda-forge mdadash
+
+To execute directly from an isolated environment without installing:
+
+.. code:: sh
+
+   uvx mdadash -h
+
 
 Run
 ~~~
