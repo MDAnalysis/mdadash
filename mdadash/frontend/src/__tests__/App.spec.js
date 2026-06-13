@@ -5,6 +5,15 @@ import * as components from 'vuetify/components'
 import { routes } from '@/router/index.js'
 import { socket } from '@/socket'
 import App from '../App.vue'
+import {
+  mdiBellOutline,
+  mdiDotsVertical,
+  mdiLanConnect,
+  mdiLanDisconnect,
+  mdiPause,
+  mdiPlay,
+  mdiViewDashboard,
+} from '@mdi/js'
 
 const { VAppBar, VBtn } = components
 
@@ -56,7 +65,7 @@ describe('App', () => {
     expect(appBar.exists()).toBe(true)
     // click connect button
     const connectBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-lan-connect')
+      return btn.html().includes(mdiLanConnect)
     })
     expect(connectBtn).toBeDefined()
     await connectBtn.trigger('click')
@@ -73,7 +82,7 @@ describe('App', () => {
     await socketListeners['settings']({ universe_configs: [{}] })
     // click resume button
     const resumeBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-play')
+      return btn.html().includes(mdiPlay)
     })
     expect(resumeBtn).toBeDefined()
     await resumeBtn.trigger('click')
@@ -81,7 +90,7 @@ describe('App', () => {
     await socketListeners['runningState']({ pending: false, connected: true, running: true })
     // click pause button
     const pauseBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-pause')
+      return btn.html().includes(mdiPause)
     })
     expect(pauseBtn).toBeDefined()
     await pauseBtn.trigger('click')
@@ -89,7 +98,7 @@ describe('App', () => {
     await socketListeners['runningState']({ pending: false, connected: true, running: false })
     // click disconnect button
     const disconnectBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-lan-disconnect')
+      return btn.html().includes(mdiLanDisconnect)
     })
     expect(disconnectBtn).toBeDefined()
     await disconnectBtn.trigger('click')
@@ -119,18 +128,18 @@ describe('App', () => {
     expect(appBar.exists()).toBe(true)
     // click on alerts
     const alertsBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-bell-outline')
+      return btn.html().includes(mdiBellOutline)
     })
     expect(alertsBtn).toBeDefined()
     await alertsBtn.trigger('click')
     // click on dashboard icon
     const dashboardBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-view-dashboard')
+      return btn.html().includes(mdiViewDashboard)
     })
     expect(dashboardBtn).toBeDefined()
     await dashboardBtn.trigger('click')
     const moreItemsBtn = appBar.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-dots-vertical')
+      return btn.html().includes(mdiDotsVertical)
     })
     expect(moreItemsBtn).toBeDefined()
     await moreItemsBtn.trigger('click')

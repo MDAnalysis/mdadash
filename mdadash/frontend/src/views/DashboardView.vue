@@ -9,13 +9,10 @@
         @click="isEnergiesExpanded = !isEnergiesExpanded"
       >
         <template v-slot:prepend>
-          <v-icon icon="mdi-chart-timeline-variant" color="primary" />
+          <v-icon :icon="mdiChartTimelineVariant" color="primary" />
         </template>
         <template v-slot:append>
-          <v-btn
-            :icon="isEnergiesExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down'"
-            variant="text"
-          ></v-btn>
+          <v-btn :icon="isEnergiesExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
         </template>
       </v-card-item>
       <v-expand-transition>
@@ -46,7 +43,7 @@
                       size="small"
                       class="ms-2"
                     >
-                      {{ energy.trend > 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}
+                      {{ energy.trend > 0 ? mdiTrendingUp : mdiTrendingDown }}
                     </v-icon>
                   </div>
                 </v-fade-transition>
@@ -180,7 +177,7 @@
                 <v-menu>
                   <template v-slot:activator="{ props }">
                     <v-btn
-                      icon="mdi-dots-vertical"
+                      :icon="mdiDotsVertical"
                       variant="text"
                       size="small"
                       color="medium-emphasis"
@@ -197,7 +194,7 @@
                       <template v-slot:prepend>
                         <v-icon
                           :icon="action.icon"
-                          :color="action.icon == 'mdi-delete' ? 'error' : 'undefined'"
+                          :color="action.icon == mdiDelete ? 'error' : 'undefined'"
                         ></v-icon>
                       </template>
                       <v-list-item-title>{{ action.title }}</v-list-item-title>
@@ -229,6 +226,17 @@
 import { socket } from '@/socket'
 import { ref, inject, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { GridLayout, GridItem } from 'grid-layout-plus'
+import {
+  mdiChartTimelineVariant,
+  mdiChevronDown,
+  mdiChevronUp,
+  mdiContentDuplicate,
+  mdiDelete,
+  mdiDotsVertical,
+  mdiPencil,
+  mdiTrendingDown,
+  mdiTrendingUp,
+} from '@mdi/js'
 
 const energies = [
   { label: 'Absolute temperature', key: 'temperature', units: 'K', trend: 1 },
@@ -243,9 +251,9 @@ const energies = [
 ]
 
 const widgetMenuItems = [
-  { title: 'Edit', icon: 'mdi-pencil' },
-  { title: 'Duplicate', icon: 'mdi-content-duplicate' },
-  { title: 'Delete', icon: 'mdi-delete' },
+  { title: 'Edit', icon: mdiPencil },
+  { title: 'Duplicate', icon: mdiContentDuplicate },
+  { title: 'Delete', icon: mdiDelete },
 ]
 
 const isEnergiesExpanded = ref(true)
