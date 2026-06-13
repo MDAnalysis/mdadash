@@ -10,13 +10,10 @@
           @click="isUCExpanded = !isUCExpanded"
         >
           <template v-slot:prepend>
-            <v-icon icon="mdi-earth" color="primary" />
+            <v-icon :icon="mdiEarth" color="primary" />
           </template>
           <template v-slot:append>
-            <v-btn
-              :icon="isUCExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down'"
-              variant="text"
-            ></v-btn>
+            <v-btn :icon="isUCExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
           </template>
         </v-card-item>
         <v-expand-transition>
@@ -140,7 +137,7 @@
                 </v-col>
                 <v-col>
                   <v-btn
-                    icon="mdi-delete"
+                    :icon="mdiDelete"
                     color="error"
                     variant="text"
                     @click="removeKwarg(index)"
@@ -150,7 +147,7 @@
               </v-row>
               <!-- Add kwarg -->
               <v-btn
-                prepend-icon="mdi-plus"
+                :prepend-icon="mdiPlus"
                 class="mt-2"
                 color="primary"
                 variant="tonal"
@@ -170,6 +167,7 @@
 <script setup>
 import { ref, inject, watch } from 'vue'
 import { socket } from '@/socket'
+import { mdiChevronUp, mdiChevronDown, mdiDelete, mdiEarth, mdiPlus } from '@mdi/js'
 
 const runningState = inject('runningState')
 const settings = inject('settings')

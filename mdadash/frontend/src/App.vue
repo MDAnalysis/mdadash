@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-app-bar color="primary" elevation="1" scroll-behavior="hide">
-      <v-btn icon="mdi-view-dashboard" @click="$router.push('/')"></v-btn>
+      <v-btn :icon="mdiViewDashboard" @click="$router.push('/')"></v-btn>
       <v-app-bar-title>{{ appBarTitle }}</v-app-bar-title>
 
       <!-- app bar icons -->
@@ -16,12 +16,12 @@
               icon
               @click="handlePause"
             >
-              <v-icon :icon="'mdi-pause'" size="large"></v-icon>
+              <v-icon :icon="mdiPause" size="large"></v-icon>
               <v-tooltip activator="parent" location="bottom">Pause</v-tooltip>
             </v-btn>
             <!-- Show Resume icon if paused -->
             <v-btn :disabled="runningState.pending" v-else icon @click="handleResume">
-              <v-icon :icon="'mdi-play'" size="large"></v-icon>
+              <v-icon :icon="mdiPlay" size="large"></v-icon>
               <v-tooltip activator="parent" location="bottom">Resume</v-tooltip>
             </v-btn>
           </div>
@@ -29,7 +29,7 @@
           <!-- Connect / Disconnect icons -->
           <v-btn :disabled="runningState.pending" icon @click="handleConnectDisconnect">
             <v-icon
-              :icon="runningState.connected ? 'mdi-lan-disconnect' : 'mdi-lan-connect'"
+              :icon="runningState.connected ? mdiLanDisconnect : mdiLanConnect"
               size="large"
             ></v-icon>
             <v-tooltip activator="parent" location="bottom">
@@ -40,7 +40,7 @@
           <!-- Disconnect Confirmation Dialog -->
           <!-- v8 ignore start -->
           <v-dialog v-model="showConfirm" max-width="400">
-            <v-card prepend-icon="mdi-alert" title="Confirm">
+            <v-card :prepend-icon="mdiAlert" title="Confirm">
               <v-card-text>Are you sure you want to disconnect from the simulation?</v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
@@ -66,7 +66,7 @@
                   :content="alertsUnreadCount"
                   :model-value="alertsUnreadCount > 0"
                 >
-                  <v-icon icon="mdi-bell-outline" size="large"></v-icon>
+                  <v-icon :icon="mdiBellOutline" size="large"></v-icon>
                 </v-badge>
               </v-btn>
             </template>
@@ -81,7 +81,7 @@
               >
                 <template v-slot:append>
                   <v-btn
-                    icon="mdi-check-circle-outline"
+                    :icon="mdiCheckCircleOutline"
                     variant="text"
                     color="success"
                     @click.stop="removeAlert(alert.id)"
@@ -106,7 +106,7 @@
           <!-- App bar overflow items -->
           <v-menu>
             <template v-slot:activator="{ props }">
-              <v-btn icon="mdi-dots-vertical" size="large" v-bind="props"></v-btn>
+              <v-btn :icon="mdiDotsVertical" size="large" v-bind="props"></v-btn>
             </template>
             <v-list>
               <v-list-item v-for="(item, i) in appBarMenuItems" :key="i" :to="item.path">
@@ -169,12 +169,25 @@
 import { socket } from '@/socket'
 import { useRoute } from 'vue-router'
 import { ref, computed, onMounted, onBeforeUnmount, provide } from 'vue'
+import {
+  mdiAlert,
+  mdiBellOutline,
+  mdiCheckCircleOutline,
+  mdiCog,
+  mdiDotsVertical,
+  mdiLanConnect,
+  mdiLanDisconnect,
+  mdiPause,
+  mdiPlay,
+  mdiViewDashboard,
+  mdiViewDashboardOutline,
+} from '@mdi/js'
 
 const route = useRoute()
 const appBarTitle = computed(() => route.meta.title)
 const appBarMenuItems = [
-  { name: 'Dashboard', icon: 'mdi-view-dashboard-outline', path: '/' },
-  { name: 'Settings', icon: 'mdi-cog', path: '/settings' },
+  { name: 'Dashboard', icon: mdiViewDashboardOutline, path: '/' },
+  { name: 'Settings', icon: mdiCog, path: '/settings' },
 ]
 const runningState = ref({
   pending: false,

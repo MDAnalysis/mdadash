@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@mdi/font": "^7.4.47",
+    "@mdi/js": "^7.4.47",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^4.1.7",
     "@vitest/eslint-plugin": "^1.6.16",

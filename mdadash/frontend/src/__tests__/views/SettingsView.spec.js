@@ -3,6 +3,7 @@ import { expect, describe, it } from 'vitest'
 import * as components from 'vuetify/components'
 import { ref } from 'vue'
 import SettingsView from '@/views/SettingsView.vue'
+import { mdiDelete, mdiPlus } from '@mdi/js'
 
 const { VBtn } = components
 
@@ -70,13 +71,13 @@ describe('SettingsView.vue', () => {
     }
     // add kwarg
     const addKwargBtn = wrapper.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-plus')
+      return btn.html().includes(mdiPlus)
     })
     expect(addKwargBtn).toBeDefined()
     await addKwargBtn.trigger('click')
     // remove kwarg
     const removeKwargBtn = wrapper.findAllComponents(VBtn).find((btn) => {
-      return btn.html().includes('mdi-delete')
+      return btn.html().includes(mdiDelete)
     })
     expect(removeKwargBtn).toBeDefined()
     await removeKwargBtn.trigger('click')
