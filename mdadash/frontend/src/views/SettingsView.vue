@@ -1,11 +1,56 @@
 <template>
   <v-container>
+    <!-- Dashboard Configuration -->
+    <v-card id="dashboard-configuration" class="mb-6" elevation="1">
+      <v-form>
+        <v-card-item
+          title="Dashboard Configuration"
+          subtitle="Configuration settings for the dashboard"
+          class="cursor-pointer"
+          @click="isDCExpanded = !isDCExpanded"
+        >
+          <template v-slot:prepend>
+            <v-icon :icon="mdiViewDashboard" color="primary" />
+          </template>
+          <template v-slot:append>
+            <v-btn :icon="isDCExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+          </template>
+        </v-card-item>
+        <v-expand-transition>
+          <div v-show="isDCExpanded">
+            <v-divider />
+            <v-card-text class="pa-4">
+              <v-switch v-model="settings.dashboard_config.show_session_info" color="primary">
+                <template v-slot:label>
+                  <div class="d-flex flex-column">
+                    <div>Show Session Info</div>
+                    <div class="text-caption text-grey">Show session info card in dashboard</div>
+                  </div>
+                </template>
+              </v-switch>
+
+              <v-switch v-model="settings.dashboard_config.show_energies" color="primary">
+                <template v-slot:label>
+                  <div class="d-flex flex-column">
+                    <div>Show Energies</div>
+                    <div class="text-caption text-grey">
+                      Show energies card (when available) in dashboard
+                    </div>
+                  </div>
+                </template>
+              </v-switch>
+            </v-card-text>
+          </div>
+        </v-expand-transition>
+      </v-form>
+    </v-card>
+
     <!-- Universe Configuration -->
-    <v-card class="mb-6" elevation="1">
+    <v-card id="universe-configuration" class="mb-6" elevation="1">
       <v-form :disabled="runningState.connected">
         <v-card-item
           title="Universe Configuration"
-          subtitle="Configuration values for the universe"
+          subtitle="Configuration settings for the universe"
           class="cursor-pointer"
           @click="isUCExpanded = !isUCExpanded"
         >
@@ -167,12 +212,20 @@
 <script setup>
 import { ref, inject, watch } from 'vue'
 import { socket } from '@/socket'
-import { mdiChevronUp, mdiChevronDown, mdiDelete, mdiEarth, mdiPlus } from '@mdi/js'
+import {
+  mdiViewDashboard,
+  mdiChevronUp,
+  mdiChevronDown,
+  mdiDelete,
+  mdiEarth,
+  mdiPlus,
+} from '@mdi/js'
 
 const runningState = inject('runningState')
 const settings = inject('settings')
 const origSettings = inject('origSettings')
 
+const isDCExpanded = ref(true)
 const isUCExpanded = ref(true)
 
 const addKwarg = () => {

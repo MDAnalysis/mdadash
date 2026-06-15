@@ -44,6 +44,8 @@ class KernelManager:
         self._is_running = False
         self.comm_id = uuid.uuid4().hex
         self.listen_task = None
+        self._sessioninfo = None
+        self._last_tsdata = None
 
     async def start(self) -> None:
         """Start the async kernel"""
@@ -108,7 +110,12 @@ class KernelManager:
                 ),
             },
         }
+        self._last_tsdata = timestep_info
         await self.sio.emit("timestepInfo", timestep_info)
+
+    async def _emit_sessioninfo(self, sessioninfo):
+        self._sessioninfo = sessioninfo
+        await self.sio.emit("sessionInfo", sessioninfo)
 
     # pylint: disable=too-many-branches
     async def _listen_iopub_channel(self):
@@ -130,6 +137,8 @@ class KernelManager:
                     data = msg["content"]["data"]
                     if "tsinfo" in data:
                         await self._emit_tsdata(data["tsinfo"])
+                    elif "sessioninfo" in data:
+                        await self._emit_sessioninfo(data["sessioninfo"])
                     elif resolve_future:
                         future.set_result(data)
                         continue
@@ -365,6 +374,12 @@ class KernelManager:
         if response["status"] == "ok":
             self.sm.running_state["running"] = True
         return response
+
+    async def emit_last_known_values(self) -> None:
+        if self._last_tsdata is not None:
+            await self.sio.emit("timestepInfo", self._last_tsdata)
+        if self._sessioninfo is not None:
+            await self.sio.emit("sessionInfo", self._sessioninfo)
 
     async def get_available_widgets(self) -> dict:
         """Get list of available widgets

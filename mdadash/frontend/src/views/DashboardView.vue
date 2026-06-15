@@ -1,7 +1,32 @@
 <template>
   <v-container class="bg-grey-lighten-5">
+    <!-- Session Info -->
+    <v-card
+      class="mb-6"
+      elevation="1"
+      v-show="settings.dashboard_config?.show_session_info && Object.keys(sessionInfo).length > 0"
+    >
+      <v-card-item title="Session Info">
+        <v-card-text class="pt-2 pb-2 cursor-default">
+          <v-card-text class="d-flex flex-wrap ga-2 pa-0">
+            <v-chip v-for="item in sessionInfoItems" :key="item.label" variant="outlined" label>
+              <v-icon start :color="sessionInfo[item.key] ? 'success' : 'error'">
+                {{ sessionInfo[item.key] ? mdiCheck : mdiClose }}
+              </v-icon>
+              {{ item.label }}
+            </v-chip>
+          </v-card-text>
+        </v-card-text>
+      </v-card-item>
+    </v-card>
+
     <!-- Energies Card -->
-    <v-card class="mb-6" elevation="1" v-show="timestepInfo.energies['temperature']">
+    <v-card
+      id="energies"
+      class="mb-6"
+      elevation="1"
+      v-show="settings.dashboard_config?.show_energies && sessionInfo.energies"
+    >
       <v-card-item
         title="Energies"
         subtitle="Live simulation energies"
@@ -236,7 +261,19 @@ import {
   mdiPencil,
   mdiTrendingDown,
   mdiTrendingUp,
+  mdiCheck,
+  mdiClose,
 } from '@mdi/js'
+
+const sessionInfoItems = [
+  { label: 'Time', key: 'time' },
+  { label: 'Energies', key: 'energies' },
+  { label: 'Box', key: 'box' },
+  { label: 'Coordinates', key: 'positions' },
+  { label: 'Wrapped', key: 'wrapped_coords' },
+  { label: 'Velocities', key: 'velocities' },
+  { label: 'Forces', key: 'forces' },
+]
 
 const energies = [
   { label: 'Absolute temperature', key: 'temperature', units: 'K', trend: 1 },
@@ -258,6 +295,8 @@ const widgetMenuItems = [
 
 const isEnergiesExpanded = ref(true)
 const timestepInfo = inject('timestepInfo')
+const sessionInfo = inject('sessionInfo')
+const settings = inject('settings')
 const layoutWidgets = ref([])
 const selectedLayoutWidgets = ref([])
 const isAddWidgetOpen = ref(false)

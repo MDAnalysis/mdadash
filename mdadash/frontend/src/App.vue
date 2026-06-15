@@ -238,7 +238,10 @@ const timestepInfo = ref({
   energies: {},
 })
 
+const sessionInfo = ref({})
+
 const settings = ref({
+  dashboard_config: {},
   universe_configs: [{}],
 })
 const origSettings = ref(null)
@@ -251,6 +254,9 @@ onMounted(() => {
       alert('ERROR: ' + data.message)
     }
   })
+  socket.on('sessionInfo', (data) => {
+    sessionInfo.value = data
+  })
   socket.on('timestepInfo', (data) => {
     timestepInfo.value = data
   })
@@ -262,11 +268,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   socket.off('runningState')
+  socket.off('sessionInfo')
   socket.off('timestepInfo')
   socket.off('settings')
 })
 
 provide('runningState', runningState)
+provide('sessionInfo', sessionInfo)
 provide('timestepInfo', timestepInfo)
 provide('settings', settings)
 provide('origSettings', origSettings)

@@ -1,5 +1,5 @@
 import sys
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 
 import MDAnalysis as mda
 import pytest
@@ -11,7 +11,7 @@ from mdadash.backend.main import app, km, sio, sm, start_server
 from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
-from .utils import run_task_until_done
+from .utils import run_task_until_done, sio_event_emitted
 
 sio.emit = AsyncMock()
 
@@ -266,7 +266,23 @@ async def test_widget_run(_client, imd_server):
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
     uuid1 = response.get("uuid", None)
+    # check if instance is created
     assert uuid1 is not None
+    # check if layout is sent out
+    sio.emit.assert_awaited_with(
+        "widgets:layout",
+        [
+            {
+                "x": 0,
+                "y": 0,
+                "w": 12,
+                "h": 14,
+                "i": ANY,
+                "name": "Absolute Temperature",
+                "description": "",
+            }
+        ],
+    )
     # connect to simulation
     sm.universe_configs[0].update(
         {
@@ -282,3 +298,9 @@ async def test_widget_run(_client, imd_server):
     handler = sio.handlers["/"]["resume_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
+    sio.emit.assert_awaited_with(
+        "runningState",
+        {"pending": False, "connected": True, "running": True, "message": ""},
+    )
+    # check for widget output
+    await sio_event_emitted(sio, "widgets:output")

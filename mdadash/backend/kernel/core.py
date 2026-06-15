@@ -3,6 +3,7 @@ Kernel core where MDAnalysis code runs
 """
 
 import asyncio
+from dataclasses import asdict
 
 import comm
 import MDAnalysis as mda
@@ -161,6 +162,7 @@ class UniverseManager:
                 )
                 if uid == 0:
                     self._send_tsdata(u)
+                    self._send_sessioninfo(u)
                 self._universes[uid] = u
             # save universe step config
             self._universes_step = [uc.get("step", 1) for uc in universe_configs]
@@ -181,6 +183,12 @@ class UniverseManager:
                     "tsdata": u.trajectory.ts.data,
                 }
             }
+        )
+
+    def _send_sessioninfo(self, u: mda.Universe):
+        # pylint: disable=protected-access
+        self._comm_handler.send(
+            {"sessioninfo": asdict(u.trajectory._imdclient.get_imdsessioninfo())}
         )
 
     def disconnect_from_simulations(self, _data: dict) -> None:

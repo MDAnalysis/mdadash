@@ -49,6 +49,10 @@ class StateManager:
                 "message": "",
             },
             "settings": {
+                "dashboard_config": {
+                    "show_session_info": True,
+                    "show_energies": True,
+                },
                 "universe_configs": [
                     {
                         "topology": None,

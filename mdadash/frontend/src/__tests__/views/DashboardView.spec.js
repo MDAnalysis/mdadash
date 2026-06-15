@@ -23,6 +23,24 @@ const timestepInfo = {
   },
 }
 
+const settings = {
+  dashboard_config: {
+    show_session_info: true,
+    show_energies: true,
+  },
+}
+
+const sessionInfo = {
+  time: true,
+  energies: false,
+}
+
+const allProvides = {
+  timestepInfo,
+  sessionInfo,
+  settings,
+}
+
 const widgetsList = [
   { name: 'name1', description: 'desc1' },
   { name: 'name2', description: 'desc2' },
@@ -72,9 +90,7 @@ describe('DashboardView.vue', () => {
   it('mounts and unmounts', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(socket.on).toHaveBeenCalledWith('widgets:layout', expect.any(Function))
@@ -87,23 +103,20 @@ describe('DashboardView.vue', () => {
   it('has energies card', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
-    const vCardItems = wrapper.findAllComponents({ name: 'VCardItem' })
-    const firstCardItem = vCardItems[0]
-    await firstCardItem.trigger('click')
+    const energiesCard = wrapper.find('#energies')
+    const energiesCardItem = energiesCard.findComponent({ name: 'VCardItem' })
+    expect(energiesCardItem).toBeDefined()
+    await energiesCardItem.trigger('click')
   })
 
   it('test add widget', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
@@ -142,9 +155,7 @@ describe('DashboardView.vue', () => {
   it('test add widget search', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
@@ -173,9 +184,7 @@ describe('DashboardView.vue', () => {
   it('test grid filtering', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
@@ -199,9 +208,7 @@ describe('DashboardView.vue', () => {
   it('test layout change', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
@@ -232,9 +239,7 @@ describe('DashboardView.vue', () => {
   it('test widget outputs', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
@@ -258,9 +263,7 @@ describe('DashboardView.vue', () => {
   it('test widget actions', async () => {
     const wrapper = mount(DashboardView, {
       global: {
-        provide: {
-          timestepInfo,
-        },
+        provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)

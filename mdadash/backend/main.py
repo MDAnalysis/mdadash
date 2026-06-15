@@ -56,6 +56,7 @@ async def read_favicon():
 @sio.on("connect")
 async def connect(_sid, _env):
     await emit_running_state()
+    await km.emit_last_known_values()
     await emit_settings()
     await emit_layout()
 

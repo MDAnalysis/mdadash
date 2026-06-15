@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added basic widget execution framework and energy widgets (PR #8)
+- Added support to display imdclient session info (PR #9)
 
 ### Fixed
 
