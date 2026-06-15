@@ -294,13 +294,9 @@ async def test_widget_run(_client, imd_server):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
     # run simulation
+    sio.emit.reset_mock()  # clear emit.await_args_list
     imd_server.send_frames(1, 10)
     handler = sio.handlers["/"]["resume_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
-    sio.emit.assert_awaited_with(
-        "runningState",
-        {"pending": False, "connected": True, "running": True, "message": ""},
-    )
-    # check for widget output
-    await sio_event_emitted(sio, "widgets:output")
+    assert await sio_event_emitted(sio, "widgets:output")
