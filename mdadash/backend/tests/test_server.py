@@ -283,17 +283,6 @@ async def _test_input_changes(uuid, inputs, status="ok"):
 
 
 async def test_widget_runs(_client, imd_server):
-    # connect to simulation
-    sm.universe_configs[0].update(
-        {
-            "topology": str(TPR),
-            "trajectory": f"imd://localhost:{imd_server.port}",
-        }
-    )
-    handler = sio.handlers["/"]["connect_to_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-
     # add widget
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
@@ -321,6 +310,20 @@ async def test_widget_runs(_client, imd_server):
         (i for i in response["inputs"] if i.get("attribute") == "maxlen"), None
     )
     assert maxlen["value"] == 10
+
+    # connect to simulation
+    # widgets can be added even when the dashboard is not connected
+    # however, validations which require a universe (like selection phrases)
+    # will need the universe to be set, which happens only after connect
+    sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": f"imd://localhost:{imd_server.port}",
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
 
     # add widget with invalid input
     handler = sio.handlers["/"]["widgets:add_widget"]
