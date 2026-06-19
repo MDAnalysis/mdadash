@@ -7,6 +7,7 @@ import logging
 import queue
 import sys
 import uuid
+from typing import Any
 
 import socketio
 from jupyter_client import AsyncKernelManager
@@ -16,7 +17,6 @@ from ..state.manager import StateManager
 logger = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-instance-attributes
 class KernelManager:
     """Kernel Manager
 
@@ -114,8 +114,16 @@ class KernelManager:
         await self.sio.emit("timestepInfo", timestep_info)
 
     async def _emit_sessioninfo(self, sessioninfo):
+        """Internal: Emit imdclient session info"""
         self._sessioninfo = sessioninfo
         await self.sio.emit("sessionInfo", sessioninfo)
+
+    async def _emit_last_known_values(self, sid=None) -> None:
+        """Internal: Emit last saved values"""
+        if self._last_tsdata is not None:
+            await self.sio.emit("timestepInfo", self._last_tsdata, to=sid)
+        if self._sessioninfo is not None:
+            await self.sio.emit("sessionInfo", self._sessioninfo, to=sid)
 
     # pylint: disable=too-many-branches
     async def _listen_iopub_channel(self):
@@ -375,12 +383,6 @@ class KernelManager:
             self.sm.running_state["running"] = True
         return response
 
-    async def emit_last_known_values(self) -> None:
-        if self._last_tsdata is not None:
-            await self.sio.emit("timestepInfo", self._last_tsdata)
-        if self._sessioninfo is not None:
-            await self.sio.emit("sessionInfo", self._sessioninfo)
-
     async def get_available_widgets(self) -> dict:
         """Get list of available widgets
 
@@ -394,11 +396,14 @@ class KernelManager:
             "widgets:get_available_widgets", {}
         )
 
-    async def add_widget_instance(self, widget_name: str) -> dict:
+    async def add_widget_instance(self, uid: int, widget_name: str) -> dict:
         """Add widget instance
 
         Parameters
         ----------
+        uid: int
+            Universe ID (index into universes array)
+
         widget_name: str
             Widget name to create an instance for
 
@@ -415,7 +420,7 @@ class KernelManager:
 
         """
         return await self.send_message_await_response(
-            "widgets:add_instance", {"name": widget_name}
+            "widgets:add_instance", {"uid": uid, "name": widget_name}
         )
 
     async def remove_widget_instance(self, widget_uuid: str) -> dict:
@@ -441,3 +446,75 @@ class KernelManager:
         return await self.send_message_await_response(
             "widgets:remove_instance", {"uuid": widget_uuid}
         )
+
+    async def _get_widget_inputs(self, widget_uuid: str) -> list:
+        """Internal: Get widget inputs from kernel core"""
+        return await self.send_message_await_response(
+            "widget:get_inputs", {"uuid": widget_uuid}
+        )
+
+    async def get_widget_details(self, widget_uuid: str) -> dict:
+        """Get widget details
+
+        Get the widget name, description and inputs
+
+        Parameters
+        ----------
+        widget_uuid: str
+            UUID of the widget instance
+
+        Returns
+        -------
+        response: dict
+            Response dict containing name, desc and inputs
+
+        """
+        widget = next(
+            (w for w in self.sm.widgets_layout if w.get("i") == widget_uuid), None
+        )
+        response = await self._get_widget_inputs(widget_uuid)
+        return {
+            "uuid": widget_uuid,
+            "name": widget.get("name"),
+            "description": widget.get("description"),
+            "inputs": response["inputs"],
+        }
+
+    async def set_widget_input(
+        self, widget_uuid: str, attribute: str, value: Any
+    ) -> dict:
+        """Set widget input
+
+        Set the widget input value for given attribute
+
+        Parameters
+        ----------
+        widget_uuid: str
+            UUID of the widget instance
+
+        attribute: str
+            The attribtue to set in the instance
+
+        value: Any
+            The value to set for the above attribute
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+        """
+        response = await self.send_message_await_response(
+            "widget:set_input",
+            {
+                "uuid": widget_uuid,
+                "attribute": attribute,
+                "value": value,
+            },
+        )
+        details = await self.get_widget_details(widget_uuid)
+        await self.sio.emit("widget:details", details)
+        return response

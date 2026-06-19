@@ -176,7 +176,7 @@ rm -rf mdadash.egg-info dist && python -m build
 To verify the created wheel in an isolated environment:
 
 ```sh
-uv run --refresh --with path.to.whl mdadash <options>
+uv run --no-project --refresh --with path.to.whl mdadash <options>
 ```
 
 To check the created distribution:

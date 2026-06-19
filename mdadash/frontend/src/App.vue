@@ -157,7 +157,7 @@
     <!-- Main content -->
     <v-main class="bg-grey-lighten-5">
       <router-view v-slot="{ Component }">
-        <keep-alive>
+        <keep-alive :exclude="['WidgetView']">
           <component :is="Component" />
         </keep-alive>
       </router-view>
@@ -238,10 +238,10 @@ const timestepInfo = ref({
   energies: {},
 })
 
-const sessionInfo = ref({})
-
 const settings = ref({
-  dashboard_config: {},
+  dashboard_config: {
+    ui_request_timeout: 5000,
+  },
   universe_configs: [{}],
 })
 const origSettings = ref(null)
@@ -254,9 +254,6 @@ onMounted(() => {
       alert('ERROR: ' + data.message)
     }
   })
-  socket.on('sessionInfo', (data) => {
-    sessionInfo.value = data
-  })
   socket.on('timestepInfo', (data) => {
     timestepInfo.value = data
   })
@@ -268,13 +265,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   socket.off('runningState')
-  socket.off('sessionInfo')
   socket.off('timestepInfo')
   socket.off('settings')
 })
 
 provide('runningState', runningState)
-provide('sessionInfo', sessionInfo)
 provide('timestepInfo', timestepInfo)
 provide('settings', settings)
 provide('origSettings', origSettings)

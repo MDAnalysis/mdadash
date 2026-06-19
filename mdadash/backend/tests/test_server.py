@@ -205,7 +205,7 @@ async def test_widget_registration():
     class _TestWidget4(WidgetBase):
         name = "TestWidget4"
 
-        def run(self, u: mda.Universe):
+        def run(self):
             pass
 
     # test duplicate widget name registraion exception
@@ -214,8 +214,16 @@ async def test_widget_registration():
         class _TestWidget5(WidgetBase):
             name = "TestWidget4"
 
-            def run(self, u: mda.Universe):
+            def run(self):
                 pass
+
+
+async def test_dashboard_activated(_client):
+    # test dashboard activated response
+    sio.emit.reset_mock()
+    handler = sio.handlers["/"]["dashboard:activated"]
+    await run_task_until_done(handler("_sid"))
+    sio.emit.assert_awaited_with("widgets:layout", ANY, to="_sid")
 
 
 async def test_get_available_widgets(_client):
@@ -228,7 +236,7 @@ async def test_get_available_widgets(_client):
 async def test_add_remove_widgets(_client):
     # test add unknown widget
     handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", "Invalid Widget", ""))
+    response = await run_task_until_done(handler("_sid", 0, "Invalid Widget", ""))
     uuid = response.get("uuid", None)
     assert uuid is None
     # test remove invalid widget
@@ -237,12 +245,12 @@ async def test_add_remove_widgets(_client):
     assert response["status"] == "error"
     # add widget 1
     handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
+    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
     uuid1 = response.get("uuid", None)
     assert uuid1 is not None
     # add widget 2
     handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
+    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
     uuid2 = response.get("uuid", None)
     assert uuid2 is not None
     # remove widget 1
@@ -261,28 +269,101 @@ async def test_update_layout(_client):
     assert response == []
 
 
-async def test_widget_run(_client, imd_server):
-    # add widget 1
+async def _test_input_changes(uuid, inputs, status="ok"):
+    for i in inputs:
+        handler = sio.handlers["/"]["widget:input_change"]
+        attribute, value = i
+        response = await run_task_until_done(
+            handler(
+                "_sid",
+                {"uuid": uuid, "attribute": attribute, "value": value},
+            )
+        )
+        assert response["status"] == status
+
+
+async def test_widget_runs(_client, imd_server):
+    # add widget
     handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", "Absolute Temperature", ""))
-    uuid1 = response.get("uuid", None)
+    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
+    uuid = response.get("uuid", None)
     # check if instance is created
-    assert uuid1 is not None
-    # check if layout is sent out
-    sio.emit.assert_awaited_with(
-        "widgets:layout",
-        [
-            {
-                "x": 0,
-                "y": 0,
-                "w": 12,
-                "h": 14,
-                "i": ANY,
-                "name": "Absolute Temperature",
-                "description": "",
-            }
-        ],
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("maxlen", 10),
+        ("x_type", "time"),
+    ]
+    await _test_input_changes(uuid, inputs)
+    # test name / desc changes
+    sio.emit.reset_mock()
+    handler = sio.handlers["/"]["widget:name_desc_change"]
+    response = await run_task_until_done(
+        handler("_sid", {"uuid": uuid, "name": "name1", "description": "desc1"})
     )
+    sio.emit.assert_awaited_with("widget:details", ANY)
+    # test input changes in widget details
+    handler = sio.handlers["/"]["widget:get_details"]
+    response = await run_task_until_done(handler("_sid", uuid))
+    assert response["uuid"] == uuid
+    maxlen = next(
+        (i for i in response["inputs"] if i.get("attribute") == "maxlen"), None
+    )
+    assert maxlen["value"] == 10
+
+    # add widget with invalid input
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test invalid input change
+    inputs = [
+        ("selection", "invalid"),
+    ]
+    await _test_input_changes(uuid, inputs, "error")
+    # test valid input change
+    inputs = [
+        ("selection", "resid 1"),
+    ]
+    await _test_input_changes(uuid, inputs)
+    # retain invalid input to skip run for this widget
+    inputs = [
+        ("selection", "invalid"),
+    ]
+    await _test_input_changes(uuid, inputs, "error")
+
+    # add widget
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("selection", "protein"),
+        ("maxlen", 10),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+
+    # add widget
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "COMDistance", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("selection1", "resid 1"),
+        ("selection2", "resid 2"),
+        ("maxlen", 10),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+
     # connect to simulation
     sm.universe_configs[0].update(
         {
@@ -293,10 +374,13 @@ async def test_widget_run(_client, imd_server):
     handler = sio.handlers["/"]["connect_to_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
+
     # run simulation
     sio.emit.reset_mock()  # clear emit.await_args_list
     imd_server.send_frames(1, 10)
     handler = sio.handlers["/"]["resume_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
-    assert await sio_event_emitted(sio, "widgets:output")
+
+    # check that 3 widget outputs emitted
+    assert await sio_event_emitted(sio, "widgets:output", n=3)

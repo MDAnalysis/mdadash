@@ -5,7 +5,6 @@ Widgets for various simulation energies
 from collections import deque
 
 import matplotlib.pyplot as plt
-import MDAnalysis as mda
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -17,21 +16,73 @@ class EnergyWidgetBase:
     data_key = ""
     y_label = "Energy ( kJ / mol )"
 
-    def __init__(self):
-        self._steps = deque(maxlen=100)
-        self._values = deque(maxlen=100)
+    _inputs = [
+        {
+            "attribute": "maxlen",
+            "name": "Max values",
+            "description": "Max values to show in plot",
+            "type": "int",
+        },
+        {
+            "attribute": "title",
+            "name": "Title",
+            "description": "Title for the plot",
+            "type": "str",
+        },
+        {
+            "attribute": "x_type",
+            "name": "X-axis",
+            "type": "toggle",
+            "options": [
+                {"name": "Step", "value": "step"},
+                {"name": "Time", "value": "time"},
+            ],
+        },
+    ]
 
-    def run(self, u: mda.Universe):
-        ts = u.trajectory.ts
+    def __init__(self):
+        super().__init__()
+        self.title = self.name
+        self.maxlen = 100
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self.x_type = "step"
+        self.x_values = self.steps
+        self.x_label = "Step"
+
+    def _set_x_values(self):
+        """Set the values for the x-axis"""
+        if self.x_type == "step":
+            self.x_label = "Step"
+            self.x_values = self.steps
+        else:
+            self.x_label = "Time (ps)"
+            self.x_values = self.times
+
+    def on_input_change(self, attribute, _old_value, new_value):
+        """on_input_change handler"""
+        if attribute == "maxlen":
+            self.steps = deque(maxlen=new_value)
+            self.times = deque(maxlen=new_value)
+            self.y_values = deque(maxlen=new_value)
+            self._set_x_values()
+        elif attribute == "x_type":
+            self._set_x_values()
+
+    def run(self):
+        """run handler"""
+        ts = getattr(self, "u").trajectory.ts
         if self.data_key not in ts.data:
             return  # pragma no cover
-        self._values.append(ts.data[self.data_key])
-        self._steps.append(ts.data["step"])
+        self.steps.append(ts.data["step"])
+        self.times.append(ts.data["time"])
+        self.y_values.append(ts.data[self.data_key])
         # create plot
-        plt.plot(self._steps, self._values)
+        plt.plot(self.x_values, self.y_values)
         plt.ylabel(self.y_label)
-        plt.xlabel("Step")
-        plt.title(self.name, y=1.05)
+        plt.xlabel(self.x_label)
+        plt.title(self.title, y=1.05)
         plt.grid(True)
         plt.show()
 

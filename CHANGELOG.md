@@ -32,6 +32,7 @@ The rules for this file:
 - Added basic widget execution framework and energy widgets (PR #8)
 - Reduce package size by moving away from mdi/font to mdi/js (PR #9)
 - Added support to display imdclient session info (PR #10)
+- Added widget inputs support (PR #11)
 
 ### Fixed
 

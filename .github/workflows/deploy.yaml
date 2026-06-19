@@ -48,6 +48,13 @@ jobs:
           echo "twine check $WHL"
           twine check $WHL
 
+      - name: Install from wheel and verify
+        run: |
+          WHL=$(ls -t1 dist/mdadash-*.whl | head -n 1)
+          python -m pip uninstall -y mdadash || true
+          python -m pip install $WHL
+          mdadash -h
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

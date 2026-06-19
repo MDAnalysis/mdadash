@@ -196,7 +196,11 @@
           @moved="layoutUpdate"
           @resized="layoutUpdate"
         >
-          <v-card class="mb-6 h-100 d-flex flex-column" elevation="2">
+          <v-card
+            class="mb-6 h-100 d-flex flex-column"
+            elevation="2"
+            @dblclick="widgetFunction(item, { title: 'Edit' })"
+          >
             <v-card-item :title="item.name" :subtitle="item.description">
               <template v-slot:append>
                 <v-menu>
@@ -249,8 +253,9 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { ref, inject, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, inject, nextTick, onActivated, onDeactivated } from 'vue'
 import { GridLayout, GridItem } from 'grid-layout-plus'
+import { useRouter } from 'vue-router'
 import {
   mdiChartTimelineVariant,
   mdiChevronDown,
@@ -264,6 +269,8 @@ import {
   mdiCheck,
   mdiClose,
 } from '@mdi/js'
+
+const router = useRouter()
 
 const sessionInfoItems = [
   { label: 'Time', key: 'time' },
@@ -295,8 +302,8 @@ const widgetMenuItems = [
 
 const isEnergiesExpanded = ref(true)
 const timestepInfo = inject('timestepInfo')
-const sessionInfo = inject('sessionInfo')
 const settings = inject('settings')
+const sessionInfo = ref({})
 const layoutWidgets = ref([])
 const selectedLayoutWidgets = ref([])
 const isAddWidgetOpen = ref(false)
@@ -315,9 +322,15 @@ function updateDisplayedLayoutWidgets(value) {
   displayedLayoutWidgets = value
 }
 
-const onAddWidgetSelected = (obj) => {
+const onAddWidgetSelected = async (obj) => {
   // Add widget on the server side
-  socket.emit('widgets:add_widget', obj.name, obj.description)
+  const response = await socket
+    .timeout(settings.value.dashboard_config.ui_request_timeout)
+    .emitWithAck('widgets:add_widget', 0, obj.name, obj.description)
+  router.push({
+    path: '/widget',
+    query: { uuid: response.uuid },
+  })
 }
 
 const onWidgetsGridFilter = () => {
@@ -354,7 +367,9 @@ async function handleAddWidgetClick(isOpen) {
   if (!isOpen) return
   try {
     // Get list of available widgets
-    const response = await socket.timeout(5000).emitWithAck('widgets:get_available_widgets')
+    const response = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout)
+      .emitWithAck('widgets:get_available_widgets')
     addWidgetItems.value = response['widgets']
   } catch (error) {
     // v8 ignore next
@@ -379,6 +394,11 @@ function widgetFunction(item, action) {
   // Handle widget actions
   if (action['title'] == 'Delete') {
     socket.emit('widgets:remove_widget', item.i)
+  } else if (action['title'] == 'Edit') {
+    router.push({
+      path: '/widget',
+      query: { uuid: item.i },
+    })
   }
 }
 
@@ -389,7 +409,11 @@ function layoutUpdate() {
   }
 }
 
-onMounted(() => {
+onActivated(() => {
+  socket.emit('dashboard:activated')
+  socket.on('sessionInfo', (data) => {
+    sessionInfo.value = data
+  })
   socket.on('widgets:layout', async (data) => {
     // Update layoutWidgets only if it changed
     if (JSON.stringify(data) !== JSON.stringify(layoutWidgets.value)) {
@@ -407,7 +431,8 @@ onMounted(() => {
   })
 })
 
-onBeforeUnmount(() => {
+onDeactivated(() => {
+  socket.off('sessionInfo')
   socket.off('widgets:layout')
   socket.off('widgets:output')
 })

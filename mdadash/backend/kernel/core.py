@@ -95,6 +95,8 @@ class UniverseManager:
         self._iter_loop_resumed.clear()
         self._wm = _wm
         self._comm_handler = _comm_handler
+        self._connected = False
+        self._running = False
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -164,12 +166,15 @@ class UniverseManager:
                     self._send_tsdata(u)
                     self._send_sessioninfo(u)
                 self._universes[uid] = u
+                # set universe for the widget instances with this uid
+                self._wm._set_universe(uid, u)
             # save universe step config
             self._universes_step = [uc.get("step", 1) for uc in universe_configs]
             # start iter loop for trajectories
             self._iter_loop_resumed.clear()
             self._iter_loop_running = True
             self._iter_loop_task = asyncio.create_task(self._iter_loop())
+            self._connected = True
             self._comm_handler.send({"status": "ok"})
         except Exception as e:  # pylint: disable=broad-exception-caught
             self._comm_handler.send({"status": "error", "message": str(e)})
@@ -186,7 +191,6 @@ class UniverseManager:
         )
 
     def _send_sessioninfo(self, u: mda.Universe):
-        # pylint: disable=protected-access
         self._comm_handler.send(
             {"sessioninfo": asdict(u.trajectory._imdclient.get_imdsessioninfo())}
         )
@@ -197,16 +201,22 @@ class UniverseManager:
         self._iter_loop_task.cancel()
         for u in self._universes:
             u.trajectory.close()
+        self._connected = False
+        self._wm._invoke_lifecycle_method("post_disconnect")
         self._comm_handler.send({"status": "ok"})
 
     def pause_simulations(self, _data: dict) -> None:
         """Pause MD simulations"""
         self._iter_loop_resumed.clear()
+        self._running = False
+        self._wm._invoke_lifecycle_method("post_pause")
         self._comm_handler.send({"status": "ok"})
 
     def resume_simulations(self, _data: dict) -> None:
         """Resume MD simulations"""
+        self._wm._invoke_lifecycle_method("pre_resume")
         self._iter_loop_resumed.set()
+        self._running = True
         self._comm_handler.send({"status": "ok"})
 
     def _trajectory_next(self, u, step):
@@ -216,7 +226,6 @@ class UniverseManager:
             #   with support for 'Transmission rate' packet
             # Burn the timesteps until we reach the desired step
             # Don't use next() to avoid unnecessary transformations
-            # pylint: disable=protected-access
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
         except (EOFError, IOError):  # pragma: no cover
@@ -239,8 +248,9 @@ class UniverseManager:
                         if uid == 0:
                             self._send_tsdata(u)
                         # run widgets for this timestep
-                        self._wm.run_widgets(u)
-                    except StopIteration as e:  # pragma: no cover
+                        self._wm.run_widgets(uid)
+                    # pylint: disable=broad-exception-caught
+                    except Exception as e:  # pragma: no cover
                         print(e)
                     await asyncio.sleep(0)
         except asyncio.CancelledError:
@@ -256,7 +266,10 @@ class WidgetsComm:
 
     """
 
-    def __init__(self, _wm: WidgetManager, _comm_handler: CommHandler):
+    def __init__(
+        self, _um: UniverseManager, _wm: WidgetManager, _comm_handler: CommHandler
+    ):
+        self._um = _um
         self._wm = _wm
         self._comm_handler = _comm_handler
 
@@ -274,9 +287,13 @@ class WidgetsComm:
 
     def add_instance(self, data: dict) -> dict:
         """Add widget instance based on registered widget name"""
+        uid = data.get("uid")
         widget_name = data.get("name", None)
-        uuid = self._wm.add_widget_instance(widget_name)
+        uuid = self._wm.add_widget_instance(uid, widget_name)
         if uuid is not None:
+            if self._um._connected:
+                # set the universe for the new widget instance
+                self._wm._set_universe(uid, self._um._universes[uid], uuid)
             self._comm_handler.send({"status": "ok", "uuid": uuid})
         else:
             self._comm_handler.send(
@@ -299,6 +316,17 @@ class WidgetsComm:
                 }
             )
 
+    def get_inputs(self, data: dict) -> list:
+        """Get the inputs for a widget instance"""
+        self._comm_handler.send(
+            {"status": "ok", "inputs": self._wm.get_inputs(data["uuid"])}
+        )
+
+    def set_input(self, data: dict) -> list:
+        """Set an input for a widget instance"""
+        ret = self._wm.set_input(data["uuid"], data["attribute"], data["value"])
+        self._comm_handler.send({"status": "ok" if ret else "error"})
+
 
 def init_n_universes(data: dict) -> None:
     """Initialize `n` universes in :class:`UniverseManager`"""
@@ -308,7 +336,7 @@ def init_n_universes(data: dict) -> None:
 wm = WidgetManager()
 comm_handler = CommHandler()
 um = UniverseManager(wm, comm_handler)
-widgets_comm = WidgetsComm(wm, comm_handler)
+widgets_comm = WidgetsComm(um, wm, comm_handler)
 
 # register handlers
 comm_handler.register_handler("init_n_universes", init_n_universes)
@@ -323,3 +351,5 @@ comm_handler.register_handler(
 )
 comm_handler.register_handler("widgets:add_instance", widgets_comm.add_instance)
 comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
+comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
+comm_handler.register_handler("widget:set_input", widgets_comm.set_input)

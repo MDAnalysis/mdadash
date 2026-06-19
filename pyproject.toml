@@ -68,8 +68,10 @@ source = "https://github.com/MDAnalysis/mdadash"
 packages = [
     "mdadash",
     "mdadash.backend",
-    "mdadash.backend.state",
+    "mdadash.backend.analyses",
     "mdadash.backend.kernel",
+    "mdadash.backend.state",
+    "mdadash.backend.widgets",
 ]
 include-package-data = false
 

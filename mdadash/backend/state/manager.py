@@ -52,6 +52,7 @@ class StateManager:
                 "dashboard_config": {
                     "show_session_info": True,
                     "show_energies": True,
+                    "ui_request_timeout": 5000,
                 },
                 "universe_configs": [
                     {

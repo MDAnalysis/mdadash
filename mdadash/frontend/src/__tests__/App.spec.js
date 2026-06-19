@@ -45,13 +45,11 @@ describe('App', () => {
       },
     })
     expect(socket.on).toHaveBeenCalledWith('runningState', expect.any(Function))
-    expect(socket.on).toHaveBeenCalledWith('sessionInfo', expect.any(Function))
     expect(socket.on).toHaveBeenCalledWith('timestepInfo', expect.any(Function))
     expect(socket.on).toHaveBeenCalledWith('settings', expect.any(Function))
     // unmount
     wrapper.unmount()
     expect(socket.off).toHaveBeenCalledWith('runningState')
-    expect(socket.off).toHaveBeenCalledWith('sessionInfo')
     expect(socket.off).toHaveBeenCalledWith('timestepInfo')
     expect(socket.off).toHaveBeenCalledWith('settings')
   })
@@ -80,7 +78,6 @@ describe('App', () => {
       running: false,
       message: 'ok',
     })
-    await socketListeners['sessionInfo']({})
     await socketListeners['timestepInfo']({ energies: {} })
     await socketListeners['settings']({ universe_configs: [{}] })
     // click resume button

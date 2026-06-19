@@ -54,11 +54,10 @@ async def read_favicon():
 
 
 @sio.on("connect")
-async def connect(_sid, _env):
-    await emit_running_state()
-    await km.emit_last_known_values()
-    await emit_settings()
-    await emit_layout()
+async def connect(sid, _env):
+    await emit_running_state(sid)
+    await km._emit_last_known_values(sid)
+    await emit_settings(sid)
 
 
 @sio.on("disconnect")
@@ -66,12 +65,12 @@ async def disconnect(_sid):
     pass
 
 
-async def emit_running_state():
-    await sio.emit("runningState", sm.running_state)
+async def emit_running_state(sid=None):
+    await sio.emit("runningState", sm.running_state, to=sid)
 
 
-async def emit_settings():
-    await sio.emit("settings", sm.settings)
+async def emit_settings(sid=None):
+    await sio.emit("settings", sm.settings, to=sid)
 
 
 @asynccontextmanager
@@ -128,8 +127,8 @@ async def get_available_widgets(_sid):
     return await km.get_available_widgets()
 
 
-async def emit_layout():
-    await sio.emit("widgets:layout", sm.widgets_layout)
+async def emit_layout(sid=None):
+    await sio.emit("widgets:layout", sm.widgets_layout, to=sid)
 
 
 @sio.on("widgets:update_layout")
@@ -151,8 +150,8 @@ async def remove_widget(_sid, uuid):
 
 
 @sio.on("widgets:add_widget")
-async def add_widget(_sid, name, description):
-    response = await km.add_widget_instance(name)
+async def add_widget(_sid, uid, name, description):
+    response = await km.add_widget_instance(uid, name)
     if response["status"] == "ok":
         sm.widgets_layout.append(
             {
@@ -167,6 +166,34 @@ async def add_widget(_sid, name, description):
         )
         await emit_layout()
     return response
+
+
+@sio.on("dashboard:activated")
+async def dashboard_activated(sid=None):
+    await km._emit_last_known_values(sid)
+    await emit_layout(sid)
+
+
+@sio.on("widget:get_details")
+async def widget_get_details(_sid, uuid):
+    return await km.get_widget_details(uuid)
+
+
+@sio.on("widget:name_desc_change")
+async def widget_name_desc_change(_sid, data):
+    uuid = data["uuid"]
+    widget = next((w for w in sm.widgets_layout if w.get("i") == uuid), None)
+    if widget is not None:
+        widget["name"] = data["name"]
+        widget["description"] = data["description"]
+        await emit_layout()
+    details = await km.get_widget_details(uuid)
+    await sio.emit("widget:details", details)
+
+
+@sio.on("widget:input_change")
+async def widget_input_change(_sid, data):
+    return await km.set_widget_input(data["uuid"], data["attribute"], data["value"])
 
 
 # Note: This catchall should be at the end of all API definitions

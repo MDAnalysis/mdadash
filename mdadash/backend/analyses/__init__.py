@@ -2,8 +2,10 @@
 Module that has all the analyses widgets
 """
 
-from . import energies
+from . import com_distance, energies, rog
 
 __all__ = [
     "energies",
+    "com_distance",
+    "rog",
 ]
