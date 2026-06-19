@@ -283,6 +283,17 @@ async def _test_input_changes(uuid, inputs, status="ok"):
 
 
 async def test_widget_runs(_client, imd_server):
+    # connect to simulation
+    sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": f"imd://localhost:{imd_server.port}",
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+
     # add widget
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
@@ -363,17 +374,6 @@ async def test_widget_runs(_client, imd_server):
         ("updating", True),
     ]
     await _test_input_changes(uuid, inputs)
-
-    # connect to simulation
-    sm.universe_configs[0].update(
-        {
-            "topology": str(TPR),
-            "trajectory": f"imd://localhost:{imd_server.port}",
-        }
-    )
-    handler = sio.handlers["/"]["connect_to_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
 
     # run simulation
     sio.emit.reset_mock()  # clear emit.await_args_list
