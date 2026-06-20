@@ -366,4 +366,32 @@ describe('DashboardView.vue', () => {
     // check remove widget sent to server
     expect(socket.emit).toHaveBeenCalledWith('widgets:remove_widget', 'uuid1')
   })
+
+  it('test display presets', async () => {
+    const wrapper = mount(KeepAliveDashboardView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.findComponent(DashboardView).exists()).toBe(true)
+    const dashboard = wrapper.findComponent(DashboardView)
+    expect(dashboard.exists()).toBe(true)
+    // create test layout
+    dashboard.vm.layoutWidgets = widgetsLayout
+    dashboard.vm.displayedLayoutWidgets = ref(widgetsLayout)
+    await flushPromises()
+    // check preset values
+    let components = dashboard.findAllComponents({ name: 'VSelect' })
+    const gridPresetSelect = components[0]
+    gridPresetSelect.vm.$slots.item({ item: dashboard.vm.gridPresetIconItems })
+    expect(gridPresetSelect).toBeDefined()
+    await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col1)
+    expect(dashboard.vm.gridEditable).toBe(false)
+    await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col2)
+    expect(dashboard.vm.gridEditable).toBe(false)
+    await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col3)
+    expect(dashboard.vm.gridEditable).toBe(false)
+    await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.editable)
+    expect(dashboard.vm.gridEditable).toBe(true)
+  })
 })
