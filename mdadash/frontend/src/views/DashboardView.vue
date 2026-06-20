@@ -81,6 +81,39 @@
 
     <!-- Filter Widgets and Add Widget -->
     <div class="d-flex align-center gap-4 mb-4">
+      <div>
+        <v-select
+          id="grid-preset"
+          width="56"
+          class="custom-v-select-field-height"
+          v-model="gridPresetIcon"
+          :items="gridPresetIconItems"
+          item-value="icon"
+          variant="solo"
+          hide-details
+          menu-icon=""
+          @update:model-value="handleGridPresetChange"
+          v-tooltip="{ text: 'Arrange grid', location: 'left' }"
+        >
+          <template #selection>
+            <v-icon :icon="gridPresetIcon" size="large"></v-icon>
+          </template>
+          <template #item="{ props, item }">
+            <div
+              v-bind="props"
+              class="v-list-item v-list-item--link d-flex justify-center align-center py-2 px-3"
+            >
+              <v-icon :icon="item.icon"></v-icon>
+              <!-- v8 ignore start -->
+              <v-tooltip activator="parent">
+                {{ item.desc }}
+              </v-tooltip>
+              <!-- v8 ignore stop -->
+            </div>
+            <v-divider v-if="item.name != 'col3'"></v-divider>
+          </template>
+        </v-select>
+      </div>
       <!-- Filter Widgets -->
       <v-sheet elevation="1" width="100%" rounded>
         <v-autocomplete
@@ -180,8 +213,8 @@
         @update:layout="updateDisplayedLayoutWidgets"
         :key="widgetsGridKey"
         :row-height="30"
-        :is-draggable="true"
-        :is-resizable="true"
+        :is-draggable="gridEditable"
+        :is-resizable="gridEditable"
         :responsive="false"
         @selectstart.prevent
       >
@@ -253,7 +286,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { ref, inject, nextTick, onActivated, onDeactivated } from 'vue'
+import { computed, ref, inject, nextTick, onActivated, onDeactivated, h } from 'vue'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useRouter } from 'vue-router'
 import {
@@ -269,6 +302,53 @@ import {
   mdiCheck,
   mdiClose,
 } from '@mdi/js'
+
+const gridPresetIcons = {
+  editable: () =>
+    h('svg', { viewBox: '0 0 24 24' }, [
+      h('path', {
+        d: 'M4 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5ZM14 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5ZM4 16a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3ZM14 13a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-6Z',
+        fill: 'none',
+        stroke: '#000000',
+        'stroke-width': 2,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      }),
+    ]),
+  col1: () =>
+    h('svg', { viewBox: '0 0 24 24' }, [
+      h('path', {
+        d: 'M6 5C6 4.44772 6.44772 4 7 4H17C17.5523 4 18 4.44772 18 5V19C18 19.5523 17.5523 20 17 20H7C6.44772 20 6 19.5523 6 19V5Z',
+        fill: 'none',
+        stroke: '#000000',
+        'stroke-width': 2,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      }),
+    ]),
+  col2: () =>
+    h('svg', { viewBox: '0 0 24 24' }, [
+      h('path', {
+        d: 'M8,2 C9.65685425,2 11,3.34314575 11,5 L11,19 C11,20.6568542 9.65685425,22 8,22 L5,22 C3.34314575,22 2,20.6568542 2,19 L2,5 C2,3.34314575 3.34314575,2 5,2 L8,2 Z M19,2 C20.6568542,2 22,3.34314575 22,5 L22,19 C22,20.6568542 20.6568542,22 19,22 L16,22 C14.3431458,22 13,20.6568542 13,19 L13,5 C13,3.34314575 14.3431458,2 16,2 L19,2 Z M8,4 L5,4 C4.44771525,4 4,4.44771525 4,5 L4,19 C4,19.5522847 4.44771525,20 5,20 L8,20 C8.55228475,20 9,19.5522847 9,19 L9,5 C9,4.44771525 8.55228475,4 8,4 Z M19,4 L16,4 C15.4477153,4 15,4.44771525 15,5 L15,19 C15,19.5522847 15.4477153,20 16,20 L19,20 C19.5522847,20 20,19.5522847 20,19 L20,5 C20,4.44771525 19.5522847,4 19,4 Z',
+        fill: '#000000',
+      }),
+    ]),
+  col3: () =>
+    h('svg', { viewBox: '0 0 24 24' }, [
+      h('path', {
+        d: 'M6.23694 3.0004C7.20344 3.0004 7.98694 3.7839 7.98694 4.7504V19.2504C7.98694 20.2169 7.20344 21.0004 6.23694 21.0004H3.73694C2.77044 21.0004 1.98694 20.2169 1.98694 19.2504V4.7504C1.98694 3.83223 2.69405 3.07921 3.59341 3.0062L3.73694 3.0004H6.23694ZM20.263 3.0004C21.2295 3.0004 22.013 3.7839 22.013 4.7504V19.2504C22.013 20.2169 21.2295 21.0004 20.263 21.0004H17.763C16.7965 21.0004 16.013 20.2169 16.013 19.2504V4.7504C16.013 3.7839 16.7965 3.0004 17.763 3.0004H20.263ZM13.2369 2.99957C14.2034 2.99957 14.9869 3.78307 14.9869 4.74957V19.2496C14.9869 20.2161 14.2034 20.9996 13.2369 20.9996H10.7369C9.77044 20.9996 8.98694 20.2161 8.98694 19.2496V4.74957C8.98694 3.78307 9.77044 2.99957 10.7369 2.99957H13.2369ZM6.23694 4.5004H3.73694L3.67962 4.50701C3.56917 4.53292 3.48694 4.63206 3.48694 4.7504V19.2504C3.48694 19.3885 3.59887 19.5004 3.73694 19.5004H6.23694C6.37501 19.5004 6.48694 19.3885 6.48694 19.2504V4.7504C6.48694 4.61233 6.37501 4.5004 6.23694 4.5004ZM20.263 4.5004H17.763C17.6249 4.5004 17.513 4.61233 17.513 4.7504V19.2504C17.513 19.3885 17.6249 19.5004 17.763 19.5004H20.263C20.4011 19.5004 20.513 19.3885 20.513 19.2504V4.7504C20.513 4.61233 20.4011 4.5004 20.263 4.5004ZM13.2369 4.49957H10.7369C10.5989 4.49957 10.4869 4.6115 10.4869 4.74957V19.2496C10.4869 19.3876 10.5989 19.4996 10.7369 19.4996H13.2369C13.375 19.4996 13.4869 19.3876 13.4869 19.2496V4.74957C13.4869 4.6115 13.375 4.49957 13.2369 4.49957Z',
+        fill: '#000000',
+      }),
+    ]),
+}
+const gridPresetIcon = ref(gridPresetIcons.editable)
+const gridPresetIconItems = ref([
+  { name: 'editable', icon: gridPresetIcons.editable, desc: 'Default' },
+  { name: 'col1', icon: gridPresetIcons.col1, desc: 'One column' },
+  { name: 'col2', icon: gridPresetIcons.col2, desc: 'Two columns' },
+  { name: 'col3', icon: gridPresetIcons.col3, desc: 'Three columns' },
+])
+const gridEditable = ref(true)
 
 const router = useRouter()
 
@@ -314,6 +394,45 @@ const widgetsGridKey = ref(0)
 const widgetOutputs = ref({})
 var displayedLayoutWidgets = ref([...layoutWidgets.value])
 
+const displayedLayoutWidgetsByPosition = computed(() => {
+  return [...displayedLayoutWidgets.value].sort((a, b) => {
+    if (a.y !== b.y) {
+      return a.y - b.y
+    }
+    return a.x - b.x
+  })
+})
+
+const handleGridPresetChange = (newPreset) => {
+  let x = () => 0
+  let w = 12
+  let h = 14
+  if (newPreset === gridPresetIcons.editable) {
+    if (selectedLayoutWidgets.value.length == 0) {
+      gridEditable.value = true
+      displayedLayoutWidgets = ref([...layoutWidgets.value])
+      return
+    }
+  } else if (newPreset === gridPresetIcons.col2) {
+    x = (index) => (index % 2) * 6
+    w = 6
+    h = 11
+  } else if (newPreset === gridPresetIcons.col3) {
+    x = (index) => (index % 3) * 4
+    w = 4
+    h = 9
+  }
+  gridEditable.value = false
+  displayedLayoutWidgets.value = displayedLayoutWidgetsByPosition.value.map((item, index) => ({
+    ...item,
+    x: x(index),
+    y: 0,
+    w: w,
+    h: h,
+  }))
+  widgetsGridKey.value++
+}
+
 function setAddWidgetMenuState(value) {
   isAddWidgetOpen.value = value
 }
@@ -342,6 +461,7 @@ const onWidgetsGridFilter = () => {
       .filter((item) => selectedLayoutWidgets.value.includes(item.i))
       .map((item) => ({ ...item, x: 0, y: 0, w: 12, h: 14 }))
   }
+  handleGridPresetChange(gridPresetIcon.value)
   widgetsGridKey.value++
 }
 
@@ -421,6 +541,7 @@ onActivated(() => {
       // v8 ignore next
       if (selectedLayoutWidgets.value.length == 0) {
         displayedLayoutWidgets = ref([...layoutWidgets.value])
+        handleGridPresetChange(gridPresetIcon.value)
         widgetsGridKey.value++
       }
     }
@@ -438,4 +559,19 @@ onDeactivated(() => {
 })
 </script>
 
-<style scoped></style>
+<style scoped>
+/* These are required to force v-select height to 56px */
+.custom-v-select-field-height :deep(.v-field) {
+  --v-input-control-height: 56px !important;
+  min-height: 56px !important;
+  height: 56px !important;
+}
+
+.custom-v-select-field-height :deep(.v-field__input) {
+  min-height: 56px !important;
+  height: 56px !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  align-items: center;
+}
+</style>
