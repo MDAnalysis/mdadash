@@ -161,7 +161,11 @@ class WidgetManager:
         if hasattr(widget, method):
             handler = getattr(widget, method)
             if callable(handler):
-                handler()
+                try:
+                    handler()
+                # pylint: disable=broad-exception-caught
+                except Exception as e:  # pragma: no cover
+                    print(e)
 
     def _set_widget_universe(
         self, widget: WidgetBase, uid: int, u: mda.Universe
