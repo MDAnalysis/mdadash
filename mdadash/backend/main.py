@@ -153,14 +153,35 @@ async def remove_widget(_sid, uuid):
 async def add_widget(_sid, uid, name, description):
     response = await km.add_widget_instance(uid, name)
     if response["status"] == "ok":
+        max_y = max(((w["y"] + w["h"]) for w in sm.widgets_layout), default=0)
         sm.widgets_layout.append(
             {
                 "x": 0,
-                "y": 0,
+                "y": max_y,
                 "w": 12,
                 "h": 14,
                 "i": response["uuid"],
                 "name": name,
+                "description": description,
+            }
+        )
+        await emit_layout()
+    return response
+
+
+@sio.on("widgets:duplicate_widget")
+async def duplicate_widget(_sid, uid, uuid, name, description):
+    response = await km.duplicate_widget_instance(uid, uuid)
+    if response["status"] == "ok":
+        max_y = max(((w["y"] + w["h"]) for w in sm.widgets_layout), default=0)
+        sm.widgets_layout.append(
+            {
+                "x": 0,
+                "y": max_y,
+                "w": 12,
+                "h": 14,
+                "i": response["uuid"],
+                "name": f"Copy of {name}",
                 "description": description,
             }
         )

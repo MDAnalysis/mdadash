@@ -360,7 +360,24 @@ describe('DashboardView.vue', () => {
     // click on edit
     components[0].trigger('click')
     // click on duplicate
+    mockEmitWithAck.mockResolvedValueOnce({ uuid: 'uuid2' })
     components[1].trigger('click')
+    await nextTick()
+    expect(mockTimeout).toHaveBeenCalledWith(5000)
+    expect(mockEmitWithAck).toHaveBeenCalledWith(
+      'widgets:duplicate_widget',
+      0,
+      'uuid1',
+      'name1',
+      'desc1',
+    )
+    // check page moves to widget view
+    expect(mockPush).toHaveBeenCalledWith({
+      path: '/widget',
+      query: {
+        uuid: 'uuid2',
+      },
+    })
     // click on the delete action
     components[2].trigger('click')
     // check remove widget sent to server

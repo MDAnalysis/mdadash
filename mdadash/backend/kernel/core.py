@@ -303,6 +303,15 @@ class WidgetsComm:
                 }
             )
 
+    def duplicate_instance(self, data: dict) -> None:
+        """Duplicate widget instance based on instance uuid"""
+        uid = data.get("uid")
+        new_uuid = self._wm.duplicate_widget_instance(uid, data.get("uuid"))
+        if self._um._connected:
+            # set the universe for the new widget instance
+            self._wm._set_universe(uid, self._um._universes[uid], new_uuid)
+        self._comm_handler.send({"status": "ok", "uuid": new_uuid})
+
     def remove_instance(self, data: dict) -> dict:
         """Remove widget instance based on uuid"""
         uuid = self._wm.delete_widget_instance(data.get("uuid", None))
@@ -350,6 +359,9 @@ comm_handler.register_handler(
     "widgets:get_available_widgets", widgets_comm.get_available_widgets
 )
 comm_handler.register_handler("widgets:add_instance", widgets_comm.add_instance)
+comm_handler.register_handler(
+    "widgets:duplicate_instance", widgets_comm.duplicate_instance
+)
 comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
 comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
 comm_handler.register_handler("widget:set_input", widgets_comm.set_input)
