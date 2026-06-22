@@ -61,8 +61,10 @@
                   @change="(e) => handleInputChange(input)"
                   @blur="input.error && handleInputChange(input)"
                   @click="input.type === 'toggle' && handleInputChange(input)"
+                  @update:model-value="input.type === 'select' && handleInputChange(input)"
                   :rules="addRules(input.validations)"
                   :error-messages="input.error"
+                  :items="input.items || []"
                 >
                   <template v-if="input.type === 'toggle'" #default>
                     <v-btn v-for="opt in input.options" :key="opt.value" :value="opt.value">
@@ -112,15 +114,7 @@ import { socket } from '@/socket'
 import { useRoute } from 'vue-router'
 import { ref, onMounted, onBeforeUnmount, inject } from 'vue'
 import { mdiChevronDown, mdiChevronUp } from '@mdi/js'
-import {
-  VTextField,
-  VSelect,
-  VCheckbox,
-  VNumberInput,
-  VSwitch,
-  VSlider,
-  VBtnToggle,
-} from 'vuetify/components'
+import { VTextField, VSelect, VNumberInput, VSwitch, VBtnToggle } from 'vuetify/components'
 
 const route = useRoute()
 const uuid = route.query.uuid
@@ -134,20 +128,18 @@ const isLoading = ref(false)
 const componentMap = {
   str: VTextField,
   int: VNumberInput,
-  bool: VCheckbox,
-  switch: VSwitch,
+  float: VTextField,
+  bool: VSwitch,
   select: VSelect,
-  slider: VSlider,
   toggle: VBtnToggle,
 }
 
 const propsMap = {
   str: {},
   int: {},
-  bool: {},
-  switch: { density: 'compact', color: 'primary' },
+  float: { type: 'number', hideSpinButtons: true },
+  bool: { density: 'compact', color: 'primary' },
   select: {},
-  slider: {},
   toggle: { mandatory: 'true', color: 'primary', class: 'd-flex align-center', rounded: '1' },
 }
 

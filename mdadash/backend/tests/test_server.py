@@ -314,7 +314,7 @@ async def test_widget_runs(_client, imd_server):
     assert uuid is not None
     # test input changes
     inputs = [
-        ("maxlen", 10),
+        ("maxlen", -1),
         ("x_type", "time"),
     ]
     await _test_input_changes(uuid, inputs)
@@ -332,7 +332,7 @@ async def test_widget_runs(_client, imd_server):
     maxlen = next(
         (i for i in response["inputs"] if i.get("attribute") == "maxlen"), None
     )
-    assert maxlen["value"] == 10
+    assert maxlen["value"] == 100
 
     # connect to simulation
     # widgets can be added even when the dashboard is not connected
@@ -379,7 +379,7 @@ async def test_widget_runs(_client, imd_server):
     # test input changes
     inputs = [
         ("selection", "protein"),
-        ("maxlen", 10),
+        ("maxlen", -1),
         ("x_type", "time"),
         ("updating", True),
     ]
@@ -395,7 +395,7 @@ async def test_widget_runs(_client, imd_server):
     inputs = [
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
-        ("maxlen", 10),
+        ("maxlen", -1),
         ("x_type", "time"),
         ("updating", True),
     ]

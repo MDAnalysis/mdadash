@@ -104,7 +104,7 @@
                 label="buffer_size"
                 variant="outlined"
                 v-model="settings.universe_configs[0].buffer_size"
-                control-variant="default"
+                control-variant="hidden"
                 hint="IMDFrameBuffer will be filled with as many IMDFrame fit in buffer_size bytes [10MB]"
                 persistent-hint
               ></v-number-input>
@@ -117,6 +117,9 @@
                 control-variant="default"
                 hint="Timeout for the socket in seconds [5]"
                 persistent-hint
+                :min="0"
+                :max="30"
+                :step="1"
               ></v-number-input>
 
               <v-select
@@ -148,7 +151,7 @@
                 label="Total simulation steps"
                 variant="outlined"
                 v-model="settings.universe_configs[0].total_steps"
-                control-variant="default"
+                control-variant="hidden"
                 hint="Configuring this will enable showing % completion"
                 persistent-hint
               ></v-number-input>

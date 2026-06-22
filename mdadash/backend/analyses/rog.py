@@ -19,8 +19,18 @@ class ROG(WidgetBase):
 
     name = "ROG"
     description = "Radii of Gyration of a selection"
+    _analysis_mode = "per-frame"
 
     _inputs = [
+        {
+            "attribute": "_analysis_mode",
+            "name": "Analysis mode",
+            "description": "The mode to run this analysis widget",
+            "type": "select",
+            "items": [
+                "per-frame",
+            ],
+        },
         {
             "attribute": "selection",
             "name": "Selection",
@@ -32,13 +42,13 @@ class ROG(WidgetBase):
             "attribute": "periodic",
             "name": "Periodic",
             "description": "Select with periodic boundary conditions",
-            "type": "switch",
+            "type": "bool",
         },
         {
             "attribute": "updating",
             "name": "Updating",
             "description": "Update selection during each timestep",
-            "type": "switch",
+            "type": "bool",
         },
         {
             "attribute": "custom_title",
@@ -65,7 +75,8 @@ class ROG(WidgetBase):
 
     def __init__(self):
         super().__init__()
-        self.maxlen = 100
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
@@ -99,10 +110,12 @@ class ROG(WidgetBase):
         """post_connect handler"""
         self._update_selection()
 
-    def on_input_change(self, attribute, _old_value, _new_value):
+    def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
         reset_plot = False
         if attribute == "maxlen":
+            if new_value < 0:
+                self.maxlen = self.default_maxlen
             reset_plot = True
         elif attribute == "x_type":
             self._set_x_values()

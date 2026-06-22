@@ -43,7 +43,8 @@ class EnergyWidgetBase:
     def __init__(self):
         super().__init__()
         self.title = self.name
-        self.maxlen = 100
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
@@ -63,9 +64,11 @@ class EnergyWidgetBase:
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
         if attribute == "maxlen":
-            self.steps = deque(maxlen=new_value)
-            self.times = deque(maxlen=new_value)
-            self.y_values = deque(maxlen=new_value)
+            if new_value < 0:
+                self.maxlen = self.default_maxlen
+            self.steps = deque(maxlen=self.maxlen)
+            self.times = deque(maxlen=self.maxlen)
+            self.y_values = deque(maxlen=self.maxlen)
             self._set_x_values()
         elif attribute == "x_type":
             self._set_x_values()

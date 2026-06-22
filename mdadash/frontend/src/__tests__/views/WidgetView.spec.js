@@ -59,6 +59,13 @@ const widgetDetails = {
       ],
       value: 'step',
     },
+    {
+      attribute: '_analysis_mode',
+      name: 'Analysis mode',
+      description: 'The mode to run this analysis widget',
+      type: 'select',
+      items: ['per-frame', 'batch'],
+    },
   ],
 }
 
@@ -193,6 +200,9 @@ describe('WidgetView.vue', () => {
       attribute: 'x_type',
       value: 'step',
     })
+    // check select from dropdown
+    const mode = wrapper.findComponent('[data-attribute="_analysis_mode"]')
+    await mode.vm.$emit('update:modelValue', 'batch')
     // check invalid input update
     const maxlen = wrapper.find('[data-attribute="maxlen"]')
     maxlen.find('input').setValue(100)

@@ -39,13 +39,13 @@ class COMDistance(WidgetBase):
             "attribute": "periodic",
             "name": "Periodic",
             "description": "Select with periodic boundary conditions",
-            "type": "switch",
+            "type": "bool",
         },
         {
             "attribute": "updating",
             "name": "Updating",
             "description": "Update selection during each timestep",
-            "type": "switch",
+            "type": "bool",
         },
         {
             "attribute": "custom_title",
@@ -63,12 +63,12 @@ class COMDistance(WidgetBase):
             "attribute": "max_distance",
             "name": "Max distance",
             "description": "Max distance for alert check",
-            "type": "int",
+            "type": "float",
         },
         {
             "attribute": "max_distance_alert",
             "name": "Alert if distance > 'Max distance'",
-            "type": "switch",
+            "type": "bool",
         },
         {
             "attribute": "x_type",
@@ -83,7 +83,8 @@ class COMDistance(WidgetBase):
 
     def __init__(self):
         super().__init__()
-        self.maxlen = 100
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
@@ -95,7 +96,7 @@ class COMDistance(WidgetBase):
         self.ag2 = None
         self.title = "Distance between COMs"
         self.custom_title = None
-        self.max_distance = 5
+        self.max_distance = 5.0
         self.max_distance_alert = False
         self.x_type = "step"
         self.x_values = self.steps
@@ -130,6 +131,8 @@ class COMDistance(WidgetBase):
         """on_input_change handler"""
         reset_plot = False
         if attribute == "maxlen":
+            if new_value < 0:
+                self.maxlen = self.default_maxlen
             reset_plot = True
         elif attribute == "x_type":
             self._set_x_values()
