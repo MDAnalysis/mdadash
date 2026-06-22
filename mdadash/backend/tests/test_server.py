@@ -263,6 +263,29 @@ async def test_add_remove_widgets(_client):
     assert response["status"] == "ok"
 
 
+async def test_duplicate_widgets(_client):
+    # add a widget
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
+    uuid1 = response.get("uuid", None)
+    assert uuid1 is not None
+    # duplicate the widget
+    handler = sio.handlers["/"]["widgets:duplicate_widget"]
+    response = await run_task_until_done(
+        handler("_sid", 0, uuid1, "Absolute Temperature", "")
+    )
+    uuid2 = response.get("uuid", None)
+    assert uuid2 is not None
+    # remove the original widget
+    handler = sio.handlers["/"]["widgets:remove_widget"]
+    response = await run_task_until_done(handler("_sid", uuid1))
+    assert response["status"] == "ok"
+    # remove the duplicate widget
+    handler = sio.handlers["/"]["widgets:remove_widget"]
+    response = await run_task_until_done(handler("_sid", uuid2))
+    assert response["status"] == "ok"
+
+
 async def test_update_layout(_client):
     handler = sio.handlers["/"]["widgets:update_layout"]
     response = await run_task_until_done(handler("_sid", []))

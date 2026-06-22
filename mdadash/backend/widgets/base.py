@@ -218,10 +218,45 @@ class WidgetManager:
             return uuid
         return None
 
+    def duplicate_widget_instance(self, uid: int, uuid: str) -> str | None:
+        """Duplicate widget instance
+
+        Duplicate widget instance based on existing instance uuid
+
+        Parameters
+        ----------
+        uid: int
+            Universe ID (index into universes array)
+
+        uuid: str
+            The uuid of the instance to be duplicated
+
+        Returns
+        -------
+        uuid of new instance created
+
+        """
+        # get existing instance
+        instance = self.instances[uuid]
+        # duplicate instance
+        widget_class = instance.__class__
+        new_instance = widget_class()
+        setattr(new_instance, "uid", uid)
+        # set inputs for new instance
+        inputs = instance._get_inputs()
+        for _input in inputs:
+            attribute = _input["attribute"]
+            value = _input["value"]
+            setattr(new_instance, attribute, value)
+        # add new instance to instances list
+        new_uuid = str(uuid1())
+        self.instances[new_uuid] = instance
+        return new_uuid
+
     def delete_widget_instance(self, uuid: str) -> str | None:
         """Remove widget instance
 
-        Remove widget instanced based on uuid returned during
+        Remove widget instance based on uuid returned during
         the instance creation using :meth:`add_widget_instance`
 
         Parameters

@@ -423,6 +423,33 @@ class KernelManager:
             "widgets:add_instance", {"uid": uid, "name": widget_name}
         )
 
+    async def duplicate_widget_instance(self, uid: int, widget_uuid: str) -> dict:
+        """Duplicate widget instance
+
+        Parameters
+        ----------
+        uid: int
+            Universe ID (index into universes array)
+
+        widget_uuid: str
+            UUID of the widget instance to be duplicated
+
+        Returns
+        -------
+        response: dict
+            Response dict indicating status. This has the following keys:
+
+            status
+                String indication status: 'ok' or 'error'
+
+            message
+                An error message string when status is 'error'
+
+        """
+        return await self.send_message_await_response(
+            "widgets:duplicate_instance", {"uid": uid, "uuid": widget_uuid}
+        )
+
     async def remove_widget_instance(self, widget_uuid: str) -> dict:
         """Remove widget instance
 
