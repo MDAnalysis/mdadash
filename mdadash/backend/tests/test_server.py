@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from imdclient.tests.server import InThreadIMDServer
 from imdclient.tests.utils import create_default_imdsinfo_v3
 
+from mdadash.backend.kernel.core import BufferedTrajectory
 from mdadash.backend.main import app, km, sio, sm, start_server
 from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
@@ -87,7 +88,7 @@ async def test_simulation_connectivity(_client, imd_server):
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
-            "kwargs": [["arg1", "value1"]],
+            "kwargs": [["arg1", "value1"], ["bool1", "true"], ["bool2", "false"]],
             "step": 2,
         }
     )
@@ -168,7 +169,7 @@ async def test_socketio_connect_disconnect():
 
 
 async def test_update_settings():
-    # connect
+    # update settings
     handler = sio.handlers["/"]["update:settings"]
     settings = sm.settings.copy()
     await run_task_until_done(handler("_sid", settings))
@@ -176,6 +177,12 @@ async def test_update_settings():
     assert settings is not sm.settings
     assert settings is not sm.state["settings"]
     # assert values are same
+    assert settings == sm.settings
+    # update n_jobs
+    settings["dashboard_config"]["n_jobs"] = 5
+    handler = sio.handlers["/"]["update:settings"]
+    await run_task_until_done(handler("_sid", settings))
+    # assert values are updated
     assert settings == sm.settings
 
 
@@ -198,23 +205,37 @@ async def test_widget_registration():
     # test widget class without run method
     with pytest.raises(ValueError, match="run method not found in class"):
 
-        class _TestWidget3(WidgetBase):
+        class _TestWidget3a(WidgetBase):
             name = "TestWidget3"
 
-    # test correct registration
-    class _TestWidget4(WidgetBase):
-        name = "TestWidget4"
+    # test widget class without valid run method
+    with pytest.raises(ValueError, match="run method not found in class"):
 
-        def run(self):
+        class _TestWidget3b(WidgetBase):
+            name = "TestWidget3"
+            run_per_frame = None  # not a callable
+
+    # test correct registration - per-frame
+    class _TestWidget4a(WidgetBase):
+        name = "TestWidget4a"
+
+        def run_per_frame(self):
+            pass
+
+    # test correct registration - batch
+    class _TestWidget4b(WidgetBase):
+        name = "TestWidget4b"
+
+        def run_batch(self, batch_size):
             pass
 
     # test duplicate widget name registraion exception
     with pytest.raises(ValueError, match="already registered"):
 
         class _TestWidget5(WidgetBase):
-            name = "TestWidget4"
+            name = "TestWidget4a"
 
-            def run(self):
+            def run_per_frame(self):
                 pass
 
 
@@ -305,8 +326,19 @@ async def _test_input_changes(uuid, inputs, status="ok"):
         assert response["status"] == status
 
 
+def test_buffered_trajectory():
+    u = mda.Universe(TPR, XTC)
+    u.trajectory = BufferedTrajectory(u.trajectory, 10)
+    with pytest.raises(ValueError, match="index should be <= 0"):
+        _ = u.trajectory[1]
+    with pytest.raises(ValueError, match="Out of range of buffer"):
+        _ = u.trajectory[-10]
+    assert "_buffer" not in dir(u.trajectory)
+
+
+# pylint: disable=too-many-statements
 async def test_widget_runs(_client, imd_server):
-    # add widget
+    # add widget - Absolute Temperature
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
     uuid = response.get("uuid", None)
@@ -342,6 +374,7 @@ async def test_widget_runs(_client, imd_server):
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
+            "batch_size": 1,
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]
@@ -370,7 +403,7 @@ async def test_widget_runs(_client, imd_server):
     ]
     await _test_input_changes(uuid, inputs, "error")
 
-    # add widget
+    # add widget - ROG - serial - per-frame
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
     uuid = response.get("uuid", None)
@@ -385,7 +418,56 @@ async def test_widget_runs(_client, imd_server):
     ]
     await _test_input_changes(uuid, inputs)
 
-    # add widget
+    # add widget - ROG - serial - batch
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("selection", "protein"),
+        ("maxlen", -1),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+
+    # add widget - ROG - parallel - per-frame
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("_run_mode", "parallel"),
+        ("selection", "protein"),
+        ("maxlen", -1),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+
+    # add widget - ROG - parallel - batch
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
+    uuid = response.get("uuid", None)
+    # check if instance is created
+    assert uuid is not None
+    # test input changes
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+        ("selection", "protein"),
+        ("maxlen", -1),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+
+    # add widget - COMDistance
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "COMDistance", ""))
     uuid = response.get("uuid", None)
@@ -409,4 +491,4 @@ async def test_widget_runs(_client, imd_server):
     assert response["status"] == "ok"
 
     # check that 3 widget outputs emitted
-    assert await sio_event_emitted(sio, "widgets:output", n=3)
+    assert await sio_event_emitted(sio, "widgets:output", n=6)

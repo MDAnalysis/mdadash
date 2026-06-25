@@ -5,7 +5,8 @@ Distance between two center-of-masses
 from collections import deque
 
 import matplotlib.pyplot as plt
-import numpy as np
+from MDAnalysis.exceptions import NoDataError
+from MDAnalysis.lib.distances import calc_bonds
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -150,11 +151,16 @@ class COMDistance(WidgetBase):
             self.y_values = deque(maxlen=self.maxlen)
             self._set_x_values()
 
-    def run(self):
-        """run handler"""
-        com1 = self.ag1.center_of_mass()
-        com2 = self.ag2.center_of_mass()
-        self.y_values.append(np.linalg.norm(com1 - com2))
+    def run_per_frame(self):
+        """per-frame run handler"""
+        try:
+            com1 = self.ag1.center_of_mass(unwrap=True)
+            com2 = self.ag2.center_of_mass(unwrap=True)
+        except NoDataError:  # pragma: no cover
+            # unwrap can fail if there is no bonds info
+            com1 = self.ag1.center_of_mass()
+            com2 = self.ag2.center_of_mass()
+        self.y_values.append(calc_bonds(com1, com2, box=self.u.dimensions))
         self.steps.append(self.u.trajectory.ts.data["step"])
         self.times.append(self.u.trajectory.ts.data["time"])
         plt.plot(self.x_values, self.y_values)

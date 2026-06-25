@@ -2,13 +2,16 @@
 Base Class for Widgets and Widget Manager
 """
 
-from abc import ABC, abstractmethod
+import inspect
+from abc import ABC
 from contextlib import contextmanager
+from threading import Thread
 from typing import Any
 from uuid import uuid1
 
 import IPython
 import MDAnalysis as mda
+from joblib import Parallel
 
 
 class WidgetBase(ABC):
@@ -18,6 +21,9 @@ class WidgetBase(ABC):
 
     """
 
+    _run_frequency = "per-frame"
+    _run_mode = "serial"
+
     def __init_subclass__(cls, **kwargs):
         """Register any derived class with the WidgetManager"""
         super().__init_subclass__(**kwargs)
@@ -26,6 +32,7 @@ class WidgetBase(ABC):
     def __init__(self):
         self.uid = None
         self.u = None
+        self.uuid = None
         self._input_errors = {}
 
     def _set_universe(self, u: mda.Universe):
@@ -49,35 +56,35 @@ class WidgetBase(ABC):
             if attribute in self._input_errors:
                 del self._input_errors[attribute]
 
-    def post_connect(self):
+    def post_connect(self) -> None:
         """post_connect handler
 
         This handler is called after connecting to the simulation
 
         """
 
-    def post_disconnect(self):
+    def post_disconnect(self) -> None:
         """post_disconnect handler
 
         This handler is called after disconnection from simulation
 
         """
 
-    def post_pause(self):
+    def post_pause(self) -> None:
         """post_pause handler
 
         This handler is called after user pauses trajectory iteration
 
         """
 
-    def pre_resume(self):
+    def pre_resume(self) -> None:
         """pre_resume handler
 
         This handler is called after user resumes trajectory iteration
 
         """
 
-    def on_input_change(self, attribute: str, old_value: Any, new_value: Any):
+    def on_input_change(self, attribute: str, old_value: Any, new_value: Any) -> None:
         """on_input_change handler
 
         This handler is called after a widget input has changed.
@@ -97,9 +104,62 @@ class WidgetBase(ABC):
 
         """
 
-    @abstractmethod
-    def run(self):
-        """Run method that derived classes implement"""
+    def run_per_frame(self) -> None:
+        """run_per_frame handler
+
+        This handler is called during every trajectory iteration if the run
+        frequency is set to `per-frame` (`_run_frequency='per-frame'`). The
+        trajectory timestep is the current frame.
+
+        """
+
+    def run_batch(self, batch_size: int) -> None:
+        """run_batch handler
+
+        This handler is called every time a new batch of timesteps is full
+        and ready to be run if the run frequency is set to `batch`
+        (`_run_frequency='batch'`).
+
+        Parameters
+        ----------
+        batch_size: int
+            The batch size, which indicates the number of buffered timesteps
+            available in the buffer is passed
+
+        """
+
+    def get_parallel_job(self, batch_size: int) -> Any:
+        """get_parallel_job handler
+
+        This handler is called if the run mode is set to `parallel`
+        (`_run_mode='parallel'`) to get the parallel job to run.
+
+        Parameters
+        ----------
+        batch_size: int
+            The configured batch size to use in the parallel jobs
+            if their run frequency is `batch`
+
+        Returns
+        -------
+        job: Any
+            A joblib's delayed function
+
+        """
+
+    def apply_parallel_results(self, values: Any) -> None:
+        """apply_parallel_results handler
+
+        This handler is called with the results of the parallel job
+        execution. This is invoked when the run mode is set to `parallel`
+        (`_run_mode='parallel'`) after the parallel job completes.
+
+        Parameters
+        ----------
+        values: Any
+            The results returned by the parallel job run
+
+        """
 
 
 class WidgetManager:
@@ -113,7 +173,8 @@ class WidgetManager:
     _instances = {}
 
     def __init__(self):
-        pass
+        self.n_jobs = 2
+        self._patch_IMDReader()
 
     @property
     def classes(self):
@@ -148,7 +209,22 @@ class WidgetManager:
             raise ValueError(f"{widget_class} is not a widget class")
         if not hasattr(widget_class, "name"):
             raise ValueError("name not specified in widget class")
-        if widget_class.run.__qualname__ == "WidgetBase.run":
+        # check for one of the run methods to exist with correct params
+        run_methods = {
+            "run_per_frame": 1,
+            "run_batch": 2,
+        }
+        has_valid_run_method = False
+        for run_method, n_params in run_methods.items():
+            method = getattr(widget_class, run_method)
+            if method == getattr(WidgetBase, run_method):
+                continue
+            if not callable(method):
+                continue
+            signature = inspect.signature(method)
+            has_valid_run_method = len(signature.parameters.values()) == n_params
+            break
+        if not has_valid_run_method:
             raise ValueError("run method not found in class")
         # TODO: add more validations
 
@@ -214,6 +290,7 @@ class WidgetManager:
             uuid = str(uuid1())
             instance = widget_class()
             setattr(instance, "uid", uid)
+            setattr(instance, "uuid", uuid)
             self.instances[uuid] = instance
             return uuid
         return None
@@ -250,7 +327,8 @@ class WidgetManager:
             setattr(new_instance, attribute, value)
         # add new instance to instances list
         new_uuid = str(uuid1())
-        self.instances[new_uuid] = instance
+        setattr(new_instance, "uuid", new_uuid)
+        self.instances[new_uuid] = new_instance
         return new_uuid
 
     def delete_widget_instance(self, uuid: str) -> str | None:
@@ -324,7 +402,42 @@ class WidgetManager:
             widget._set_input_state(attribute, str(e))
         return False
 
-    def run_widgets(self, uid: int) -> None:
+    def update_n_jobs(self, data: dict) -> None:
+        """Update n_jobs for joblib.Parallel"""
+        self.n_jobs = data["n_jobs"]
+
+    def _patch_IMDReader(self):
+        """Internal: Patch `IMDReader` to make it serializable"""
+        # pylint: disable=import-outside-toplevel
+        from MDAnalysis.coordinates.IMD import IMDReader
+
+        def custom_getstate(self):
+            state = self.__dict__.copy()
+            del state["_imdclient"]
+            return state
+
+        def custom_setstate(self, state):
+            self.__dict__.update(state)
+            self._imdclient = None
+
+        IMDReader.__setstate__ = custom_setstate
+        IMDReader.__getstate__ = custom_getstate
+
+    def _run_parallel_jobs(self, parallel_widgets, batch_size, parallel_results):
+        """Internal: Run parallel jobs using joblib.Parallel"""
+        parallel_jobs = []
+        for widget in parallel_widgets:
+            parallel_jobs.append(widget.get_parallel_job(batch_size))
+        try:
+            results = Parallel(n_jobs=self.n_jobs, initializer=self._patch_IMDReader)(
+                parallel_jobs
+            )
+            parallel_results.extend(results)
+        # pylint: disable=broad-exception-caught
+        except Exception as e:  # pragma: no cover
+            print(f"parallel run failed with '{e}'")
+
+    def run_widgets(self, uid: int, batch_ready: bool, batch_size: int) -> None:
         """Run widget instances
 
         Parameters
@@ -332,16 +445,55 @@ class WidgetManager:
         uid: int
             Universe ID (index into universes array)
 
+        batch_ready: bool
+            Flag indicating if a batch of timesteps is full
+
+        batch_size: int
+            Size of the batch
+
         """
-        for uuid, widget in self.instances.items():
+        # collect widgets that need to be run
+        parallel_widgets = []
+        serial_widgets = []
+        for widget in self.instances.values():
             # only run widget if there are no input errors
-            if widget.uid == uid and not widget._input_errors:
-                with _widget_uuid_in_metadata(uuid):
-                    try:
-                        widget.run()
-                    # pylint: disable=broad-exception-caught
-                    except Exception as e:  # pragma no cover
-                        print(f"{uuid} run failed with '{e}'")
+            if widget.uid != uid or widget._input_errors:
+                continue
+            if widget._run_mode == "parallel":
+                if widget._run_frequency == "per-frame" or batch_ready:
+                    parallel_widgets.append(widget)
+            else:
+                serial_widgets.append(widget)
+        # run parallel widgets in separate thread
+        if parallel_widgets:
+            parallel_results = []
+            parallel_thread = Thread(
+                target=self._run_parallel_jobs,
+                args=(
+                    parallel_widgets,
+                    batch_size,
+                    parallel_results,
+                ),
+            )
+            parallel_thread.start()
+        # run serial widgets
+        for widget in serial_widgets:
+            with _widget_uuid_in_metadata(widget.uuid):
+                try:
+                    if widget._run_frequency == "per-frame":
+                        widget.run_per_frame()
+                    elif batch_ready:
+                        widget.run_batch(batch_size)
+                # pylint: disable=broad-exception-caught
+                except Exception as e:  # pragma: no cover
+                    print(f"{widget.uuid} serial run failed with '{e}'")
+        # apply parallel results back
+        if parallel_widgets:
+            # wait for all parallel jobs to be done
+            parallel_thread.join()
+            for i, widget in enumerate(parallel_widgets):
+                with _widget_uuid_in_metadata(widget.uuid):
+                    widget.apply_parallel_results(parallel_results[i])
 
 
 @contextmanager

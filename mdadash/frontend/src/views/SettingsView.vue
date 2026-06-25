@@ -39,6 +39,21 @@
                   </div>
                 </template>
               </v-switch>
+
+              <v-number-input
+                class="mb-4"
+                label="Parallel jobs"
+                variant="outlined"
+                v-model="settings.dashboard_config.n_jobs"
+                control-variant="hidden"
+                hint="Number of parallel jobs ('n_jobs' param of joblib.Parallel call)"
+                :rules="[(v) => v != 0 || 'n_jobs cannot be 0']"
+                @blur="
+                  settings.dashboard_config.n_jobs =
+                    settings.dashboard_config.n_jobs == 0 ? 2 : settings.dashboard_config.n_jobs
+                "
+                persistent-hint
+              ></v-number-input>
             </v-card-text>
           </div>
         </v-expand-transition>
@@ -147,7 +162,18 @@
               ></v-number-input>
 
               <v-number-input
-                class="mb-0"
+                class="mb-4"
+                label="Batch size"
+                variant="outlined"
+                v-model="settings.universe_configs[0].batch_size"
+                :min="1"
+                control-variant="hidden"
+                hint="Number of timesteps to batch for a batch run"
+                persistent-hint
+              ></v-number-input>
+
+              <v-number-input
+                class="mb-4"
                 label="Total simulation steps"
                 variant="outlined"
                 v-model="settings.universe_configs[0].total_steps"

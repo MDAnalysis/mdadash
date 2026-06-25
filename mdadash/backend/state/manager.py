@@ -52,6 +52,7 @@ class StateManager:
                 "dashboard_config": {
                     "show_session_info": True,
                     "show_energies": True,
+                    "n_jobs": 2,
                     "ui_request_timeout": 5000,
                 },
                 "universe_configs": [
@@ -64,6 +65,7 @@ class StateManager:
                         "continue_after_disconnect": None,
                         "step": 1,
                         "total_steps": None,
+                        "batch_size": 10,
                         "kwargs": [],
                     },
                 ],
@@ -90,6 +92,11 @@ class StateManager:
     def settings(self, value: dict) -> None:
         """Setter for settings"""
         self._state["settings"] = value
+
+    @property
+    def dashboard_config(self) -> dict:
+        """Dashboard config dict"""
+        return self._state["settings"]["dashboard_config"]
 
     @property
     def universe_configs(self) -> dict:
