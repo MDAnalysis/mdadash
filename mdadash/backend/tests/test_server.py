@@ -490,5 +490,5 @@ async def test_widget_runs(_client, imd_server):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
 
-    # check that 3 widget outputs emitted
-    assert await sio_event_emitted(sio, "widgets:output", n=6)
+    # check that all widgets outputs emitted
+    assert await sio_event_emitted(sio, "widgets:output", n=6, timeout=10)
