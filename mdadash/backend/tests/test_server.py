@@ -326,6 +326,35 @@ async def _test_input_changes(uuid, inputs, status="ok"):
         assert response["status"] == status
 
 
+async def _connect_to_simulation(imd_server):
+    sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": f"imd://localhost:{imd_server.port}",
+            "batch_size": 1,
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+
+
+async def _run_simulation(imd_server):
+    sio.emit.reset_mock()  # clear emit.await_args_list
+    imd_server.send_frames(1, 10)
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+
+
+async def _add_widget(name):
+    handler = sio.handlers["/"]["widgets:add_widget"]
+    response = await run_task_until_done(handler("_sid", 0, name, ""))
+    uuid = response.get("uuid", None)
+    assert uuid is not None
+    return uuid
+
+
 def test_buffered_trajectory():
     u = mda.Universe(TPR, XTC)
     u.trajectory = BufferedTrajectory(u.trajectory, 10)
@@ -336,14 +365,8 @@ def test_buffered_trajectory():
     assert "_buffer" not in dir(u.trajectory)
 
 
-# pylint: disable=too-many-statements
-async def test_widget_runs(_client, imd_server):
-    # add widget - Absolute Temperature
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
+async def test_widget_input_changes(_client):
+    uuid = await _add_widget("Absolute Temperature")
     # test input changes
     inputs = [
         ("maxlen", -1),
@@ -366,27 +389,10 @@ async def test_widget_runs(_client, imd_server):
     )
     assert maxlen["value"] == 100
 
-    # connect to simulation
-    # widgets can be added even when the dashboard is not connected
-    # however, validations which require a universe (like selection phrases)
-    # will need the universe to be set, which happens only after connect
-    sm.universe_configs[0].update(
-        {
-            "topology": str(TPR),
-            "trajectory": f"imd://localhost:{imd_server.port}",
-            "batch_size": 1,
-        }
-    )
-    handler = sio.handlers["/"]["connect_to_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
 
-    # add widget with invalid input
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
+async def test_widget_invalid_inputs(_client, imd_server):
+    await _connect_to_simulation(imd_server)
+    uuid = await _add_widget("ROG")
     # test invalid input change
     inputs = [
         ("selection", "invalid"),
@@ -402,78 +408,19 @@ async def test_widget_runs(_client, imd_server):
         ("selection", "invalid"),
     ]
     await _test_input_changes(uuid, inputs, "error")
+    await _run_simulation(imd_server)
 
-    # add widget - ROG - serial - per-frame
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
-    # test input changes
-    inputs = [
-        ("selection", "protein"),
-        ("maxlen", -1),
-        ("x_type", "time"),
-        ("updating", True),
-    ]
-    await _test_input_changes(uuid, inputs)
 
-    # add widget - ROG - serial - batch
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
-    # test input changes
-    inputs = [
-        ("_run_frequency", "batch"),
-        ("selection", "protein"),
-        ("maxlen", -1),
-        ("x_type", "time"),
-        ("updating", True),
-    ]
-    await _test_input_changes(uuid, inputs)
+async def test_widget_run_energies(_client, imd_server):
+    await _add_widget("Absolute Temperature")
+    await _connect_to_simulation(imd_server)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
 
-    # add widget - ROG - parallel - per-frame
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
-    # test input changes
-    inputs = [
-        ("_run_mode", "parallel"),
-        ("selection", "protein"),
-        ("maxlen", -1),
-        ("x_type", "time"),
-        ("updating", True),
-    ]
-    await _test_input_changes(uuid, inputs)
 
-    # add widget - ROG - parallel - batch
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "ROG", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
-    # test input changes
-    inputs = [
-        ("_run_frequency", "batch"),
-        ("_run_mode", "parallel"),
-        ("selection", "protein"),
-        ("maxlen", -1),
-        ("x_type", "time"),
-        ("updating", True),
-    ]
-    await _test_input_changes(uuid, inputs)
-
-    # add widget - COMDistance
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "COMDistance", ""))
-    uuid = response.get("uuid", None)
-    # check if instance is created
-    assert uuid is not None
-    # test input changes
+async def test_widget_run_com_distance(_client, imd_server):
+    uuid = await _add_widget("COMDistance")
+    await _connect_to_simulation(imd_server)
     inputs = [
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
@@ -482,14 +429,53 @@ async def test_widget_runs(_client, imd_server):
         ("updating", True),
     ]
     await _test_input_changes(uuid, inputs)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
 
-    # run simulation
-    sio.emit.reset_mock()  # clear emit.await_args_list
-    imd_server.send_frames(1, 10)
-    handler = sio.handlers["/"]["resume_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
 
-    # check that all widgets outputs emitted
-    timeout = 30 if sys.platform == "win32" else 15
-    assert await sio_event_emitted(sio, "widgets:output", n=6, timeout=timeout)
+async def test_widget_run_rog_serial_per_frame(_client, imd_server):
+    await _connect_to_simulation(imd_server)
+    uuid = await _add_widget("ROG")
+    inputs = [
+        ("selection", "protein"),
+        ("maxlen", -1),
+        ("x_type", "time"),
+        ("updating", True),
+    ]
+    await _test_input_changes(uuid, inputs)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+
+
+async def test_widget_run_rog_serial_batch(_client, imd_server):
+    uuid = await _add_widget("ROG")
+    await _connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await _test_input_changes(uuid, inputs)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+
+
+async def test_widget_run_rog_parallel_per_frame(_client, imd_server):
+    uuid = await _add_widget("ROG")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await _test_input_changes(uuid, inputs)
+    await _connect_to_simulation(imd_server)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=10)
+
+
+async def test_widget_run_rog_parallel_batch(_client, imd_server):
+    uuid = await _add_widget("ROG")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await _test_input_changes(uuid, inputs)
+    await _connect_to_simulation(imd_server)
+    await _run_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=10)

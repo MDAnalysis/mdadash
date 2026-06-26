@@ -75,7 +75,7 @@ jobs:
 
       - name: Run backend tests
         run: |
-          pytest -n 2 -v --cov=mdadash --cov-report=xml --color=yes mdadash/backend/tests/
+          pytest -n 2 -v --disable-pytest-warnings --durations=10 --cov=mdadash --cov-report=xml --color=yes mdadash/backend/tests/
 
       - name: Upload backend coverage to codecov
         if: github.repository == 'MDAnalysis/mdadash' && github.event_name != 'schedule'
