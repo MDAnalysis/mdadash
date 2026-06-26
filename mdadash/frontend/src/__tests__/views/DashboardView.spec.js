@@ -11,15 +11,15 @@ const timestepInfo = {
   step: 1,
   done: 0,
   energies: {
-    temperature: 0,
-    total_energy: 0,
-    potential_energy: 0,
-    van_der_walls_energy: 0,
-    coulomb_energy: 0,
-    bonds_energy: 0,
-    angles_energy: 0,
-    dihedrals_energy: 0,
-    improper_dihedrals_energy: 0,
+    temperature: { value: 0, trend: 0 },
+    total_energy: { value: 0, trend: -1 },
+    potential_energy: { value: 0, trend: 1 },
+    van_der_walls_energy: { value: 0, trend: 0 },
+    coulomb_energy: { value: 0, trend: 0 },
+    bonds_energy: { value: 0, trend: 0 },
+    angles_energy: { value: 0, trend: 0 },
+    dihedrals_energy: { value: 0, trend: 0 },
+    improper_dihedrals_energy: { value: 0, trend: 0 },
   },
 }
 
@@ -281,11 +281,11 @@ describe('DashboardView.vue', () => {
     expect(dashboard.vm.displayedLayoutWidgets).toStrictEqual(widgetsLayout)
     // check updated layout sent to server
     dashboard.vm.layoutUpdate()
-    expect(socket.emit).toHaveBeenCalledWith('widgets:update_layout', widgetsLayout)
+    expect(mockEmit).toHaveBeenCalledWith('widgets:update_layout', widgetsLayout)
     // check layout update not sent when filtered
     dashboard.vm.selectedLayoutWidgets = ['uuid1']
     dashboard.vm.layoutUpdate()
-    expect(socket.emit).not.toHaveBeenCalledWith('widgets:update_layout')
+    expect(mockEmit).not.toHaveBeenCalledWith('widgets:update_layout')
     // trigger selectstart event and check it is prevented
     // this prevents text selection etc when resizing grid items
     const components = dashboard.findAllComponents({ name: 'GridLayout' })
@@ -381,7 +381,7 @@ describe('DashboardView.vue', () => {
     // click on the delete action
     components[2].trigger('click')
     // check remove widget sent to server
-    expect(socket.emit).toHaveBeenCalledWith('widgets:remove_widget', 'uuid1')
+    expect(mockEmit).toHaveBeenCalledWith('widgets:remove_widget', 'uuid1')
   })
 
   it('test display presets', async () => {
@@ -402,8 +402,14 @@ describe('DashboardView.vue', () => {
     const gridPresetSelect = components[0]
     gridPresetSelect.vm.$slots.item({ item: dashboard.vm.gridPresetIconItems })
     expect(gridPresetSelect).toBeDefined()
+    // col 1
     await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col1)
     expect(dashboard.vm.gridEditable).toBe(false)
+    // check save layout as default
+    dashboard.vm.saveLayoutAsDefault()
+    expect(dashboard.vm.gridEditable).toBe(true)
+    expect(mockEmit).toHaveBeenCalledWith('widgets:update_layout', expect.anything())
+    // rest of cols
     await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col2)
     expect(dashboard.vm.gridEditable).toBe(false)
     await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.col3)

@@ -57,18 +57,22 @@
                 <div class="text-medium-emphasis">{{ energy.label }}</div>
                 <v-fade-transition mode="out-in">
                   <div
-                    :key="timestepInfo.energies[energy.key]"
+                    :key="timestepInfo.energies?.[energy.key]?.value"
                     class="text-body-large font-weight-bold text-primary d-flex align-center"
                   >
-                    {{ timestepInfo.energies[energy.key]?.toFixed(2) ?? '-' }}
+                    {{ timestepInfo.energies?.[energy.key]?.value?.toFixed(2) ?? '-' }}
                     {{ 'units' in energy ? energy.units : 'kJ/mol' }}
                     <v-icon
-                      v-if="energy.trend"
-                      :color="energy.trend > 0 ? 'success' : 'error'"
+                      v-if="timestepInfo.energies?.[energy.key]?.trend"
+                      :color="timestepInfo.energies?.[energy.key]?.trend > 0 ? 'success' : 'error'"
                       size="small"
                       class="ms-2"
                     >
-                      {{ energy.trend > 0 ? mdiTrendingUp : mdiTrendingDown }}
+                      {{
+                        timestepInfo.energies?.[energy.key]?.trend > 0
+                          ? mdiTrendingUp
+                          : mdiTrendingDown
+                      }}
                     </v-icon>
                   </div>
                 </v-fade-transition>
@@ -94,6 +98,8 @@
           menu-icon=""
           @update:model-value="handleGridPresetChange"
           v-tooltip="{ text: 'Arrange grid', location: 'left' }"
+          :list-props="{ class: 'pb-1 pt-1' }"
+          :menu-props="{ closeOnContentClick: true }"
         >
           <template #selection>
             <v-icon :icon="gridPresetIcon" size="large"></v-icon>
@@ -112,8 +118,42 @@
             </div>
             <v-divider v-if="item.name != 'col3'"></v-divider>
           </template>
+          <!-- option to save layout as default -->
+          <template
+            v-slot:append-item
+            v-if="gridPresetIcon != gridPresetIcons.editable && selectedLayoutWidgets.length == 0"
+          >
+            <!-- v8 ignore start -->
+            <v-divider></v-divider>
+            <div class="pa-0">
+              <v-btn block variant="text" :ripple="false" @click="showSaveLayoutConfirm = true">
+                <v-icon :icon="mdiContentSaveOutline" density="none"></v-icon>
+                <v-tooltip activator="parent"> Save as Default </v-tooltip>
+              </v-btn>
+            </div>
+            <!-- v8 ignore stop -->
+          </template>
         </v-select>
       </div>
+
+      <!-- Save Layout Confirmation Dialog -->
+      <!-- v8 ignore start -->
+      <v-dialog v-model="showSaveLayoutConfirm" max-width="400">
+        <v-card :prepend-icon="mdiAlert" title="Confirm">
+          <v-card-text>Are you sure you want to overwrite the default layout?</v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <!-- Cancel Button -->
+            <v-btn color="error" variant="text" @click="showSaveLayoutConfirm = false"
+              >Cancel</v-btn
+            >
+            <!-- Confirm Button -->
+            <v-btn color="success" variant="elevated" @click="saveLayoutAsDefault"> Confirm </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+      <!-- v8 ignore stop -->
+
       <!-- Filter Widgets -->
       <v-sheet elevation="1" width="100%" rounded>
         <v-autocomplete
@@ -301,6 +341,8 @@ import {
   mdiTrendingUp,
   mdiCheck,
   mdiClose,
+  mdiContentSaveOutline,
+  mdiAlert,
 } from '@mdi/js'
 
 const gridPresetIcons = {
@@ -358,15 +400,15 @@ const sessionInfoItems = [
 ]
 
 const energies = [
-  { label: 'Absolute temperature', key: 'temperature', units: 'K', trend: 1 },
-  { label: 'Total energy', key: 'total_energy', trend: -1 },
-  { label: 'Potential energy', key: 'potential_energy', trend: 1 },
-  { label: 'Van der Waals energy', key: 'van_der_walls_energy', trend: 1 },
-  { label: 'Coulomb interaction energy', key: 'coulomb_energy', trend: 1 },
-  { label: 'Bonds energy', key: 'bonds_energy', trend: -1 },
-  { label: 'Angles energy', key: 'angles_energy', trend: 0 },
-  { label: 'Dihedrals energy', key: 'dihedrals_energy', trend: 1 },
-  { label: 'Improper dihedrals energy', key: 'improper_dihedrals_energy', trend: 1 },
+  { label: 'Absolute temperature', key: 'temperature', units: 'K' },
+  { label: 'Total energy', key: 'total_energy' },
+  { label: 'Potential energy', key: 'potential_energy' },
+  { label: 'Van der Waals energy', key: 'van_der_walls_energy' },
+  { label: 'Coulomb interaction energy', key: 'coulomb_energy' },
+  { label: 'Bonds energy', key: 'bonds_energy' },
+  { label: 'Angles energy', key: 'angles_energy' },
+  { label: 'Dihedrals energy', key: 'dihedrals_energy' },
+  { label: 'Improper dihedrals energy', key: 'improper_dihedrals_energy' },
 ]
 
 const widgetMenuItems = [
@@ -388,6 +430,7 @@ const addWidgetAutoCompleteRef = ref(null)
 const widgetsGridKey = ref(0)
 const widgetOutputs = ref({})
 var displayedLayoutWidgets = ref([...layoutWidgets.value])
+const showSaveLayoutConfirm = ref(false)
 
 const displayedLayoutWidgetsByPosition = computed(() => {
   return [...displayedLayoutWidgets.value].sort((a, b) => {
@@ -531,6 +574,13 @@ function layoutUpdate() {
   if (selectedLayoutWidgets.value.length == 0) {
     socket.emit('widgets:update_layout', displayedLayoutWidgets.value)
   }
+}
+
+function saveLayoutAsDefault() {
+  showSaveLayoutConfirm.value = false
+  gridPresetIcon.value = gridPresetIcons.editable
+  gridEditable.value = true
+  layoutUpdate()
 }
 
 onActivated(() => {

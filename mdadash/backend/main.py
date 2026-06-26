@@ -57,6 +57,7 @@ async def read_favicon():
 async def connect(sid, _env):
     await emit_running_state(sid)
     await km._emit_last_known_values(sid)
+    await emit_layout(sid)
     await emit_settings(sid)
 
 
