@@ -73,11 +73,11 @@ class EnergyWidgetBase:
         elif attribute == "x_type":
             self._set_x_values()
 
-    def run(self):
-        """run handler"""
+    def run_per_frame(self):
+        """per-frame run handler"""
         ts = getattr(self, "u").trajectory.ts
         if self.data_key not in ts.data:
-            return  # pragma no cover
+            return  # pragma: no cover
         self.steps.append(ts.data["step"])
         self.times.append(ts.data["time"])
         self.y_values.append(ts.data[self.data_key])

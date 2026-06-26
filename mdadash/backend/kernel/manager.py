@@ -128,18 +128,12 @@ class KernelManager:
     # pylint: disable=too-many-branches
     async def _listen_iopub_channel(self):
         """Internal: Listen on iopub channel"""
+        # pylint: disable=too-many-nested-blocks
         while self._is_running:
             try:
                 msg = await self.kc.iopub_channel.get_msg(timeout=0.1)
                 msg_type = msg["header"]["msg_type"]
                 content = msg["content"]
-                parent_id = msg.get("parent_header", {}).get("msg_id")
-                # check if a pending future can be resolved with msg
-                resolve_future = False
-                if parent_id and parent_id in self._pending_futures:
-                    future = self._pending_futures[parent_id]
-                    if not future.done():
-                        resolve_future = True
                 # handle different msg_type's
                 if msg_type == "comm_msg":
                     data = msg["content"]["data"]
@@ -147,13 +141,17 @@ class KernelManager:
                         await self._emit_tsdata(data["tsinfo"])
                     elif "sessioninfo" in data:
                         await self._emit_sessioninfo(data["sessioninfo"])
-                    elif resolve_future:
-                        future.set_result(data)
-                        continue
+                    else:
+                        parent_id = msg.get("parent_header", {}).get("msg_id")
+                        # check if a pending future can be resolved with msg
+                        resolve_future = False
+                        if parent_id and parent_id in self._pending_futures:
+                            future = self._pending_futures[parent_id]
+                            if not future.done():
+                                resolve_future = True
+                        if resolve_future:
+                            future.set_result(data)
                 elif msg_type == "stream":
-                    if resolve_future:
-                        future.set_result(msg["content"]["text"])
-                        continue
                     # redirect kernel stdout and stderr to this server output
                     if content["name"] == "stdout" or content["name"] == "stderr":
                         output = content["text"]
@@ -164,9 +162,6 @@ class KernelManager:
                 elif msg_type == "error":
                     # redirect kernel errors to server output
                     print(f"KERNEL (error): {content['ename']}: {content['evalue']}")
-                    if resolve_future:
-                        future.set_result(content["evalue"])
-                        continue
                 elif msg_type == "display_data":
                     if "metadata" in content and "widget_uuid" in content["metadata"]:
                         # send widget output to browser
@@ -288,15 +283,10 @@ class KernelManager:
             A string representation of the output of the code executed
 
         """
-        msg_id = self.kc.execute(code)
-        future = asyncio.get_running_loop().create_future()
-        self._pending_futures[msg_id] = future
-        try:
-            return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as e:  # pragma: no cover
-            raise TimeoutError("Timed out waiting for kernel execute response") from e
-        finally:
-            self._pending_futures.pop(msg_id, None)
+        response = await self.send_message_await_response(
+            "execute_code", {"code": code}, timeout
+        )
+        return response["output"]
 
     async def connect_to_simulations(self) -> dict:
         """Connect to the MD simulation
@@ -313,12 +303,20 @@ class KernelManager:
                 An error message string when status is 'error'
 
         """
-        response = await self.send_message_await_response(
-            "connect_to_simulations", self.sm.universe_configs
-        )
-        if response["status"] == "ok":
-            self.sm.running_state["connected"] = True
-            self.sm.running_state["running"] = False
+        try:
+            response = await self.send_message_await_response(
+                "connect_to_simulations",
+                self.sm.universe_configs,
+                timeout=20,
+            )
+            if response["status"] == "ok":
+                self.sm.running_state["connected"] = True
+                self.sm.running_state["running"] = False
+        except TimeoutError:  # pragma: no cover
+            response = {
+                "status": "error",
+                "message": "Timeout connecting to simulation",
+            }
         return response
 
     async def disconnect_from_simulations(self) -> dict:
@@ -497,13 +495,13 @@ class KernelManager:
 
         """
         widget = next(
-            (w for w in self.sm.widgets_layout if w.get("i") == widget_uuid), None
+            (w for w in self.sm.widgets_layout if w["i"] == widget_uuid), None
         )
         response = await self._get_widget_inputs(widget_uuid)
         return {
             "uuid": widget_uuid,
-            "name": widget.get("name"),
-            "description": widget.get("description"),
+            "name": widget["name"],
+            "description": widget["description"],
             "inputs": response["inputs"],
         }
 
@@ -545,3 +543,14 @@ class KernelManager:
         details = await self.get_widget_details(widget_uuid)
         await self.sio.emit("widget:details", details)
         return response
+
+    async def update_n_jobs(self, n_jobs: int) -> None:
+        """Update n_jobs for joblib.Parallel
+
+        Parameters
+        ----------
+        n_jobs: int
+            Number of parallel jobs
+
+        """
+        await self.send_message("update_n_jobs", {"n_jobs": n_jobs})

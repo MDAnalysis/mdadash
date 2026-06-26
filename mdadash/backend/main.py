@@ -118,6 +118,9 @@ async def resume_simulations(_sid):
 
 @sio.on("update:settings")
 async def update_settings(_sid, settings):
+    n_jobs = settings["dashboard_config"]["n_jobs"]
+    if sm.dashboard_config["n_jobs"] != n_jobs:
+        await km.update_n_jobs(n_jobs)
     sm.settings = copy.deepcopy(settings)
     await emit_settings()
 
@@ -144,7 +147,7 @@ async def remove_widget(_sid, uuid):
     if len(sm.widgets_layout) == 1:
         sm.widgets_layout.clear()
     else:
-        sm.widgets_layout[:] = [w for w in sm.widgets_layout if w.get("i") != uuid]
+        sm.widgets_layout[:] = [w for w in sm.widgets_layout if w["i"] != uuid]
     await emit_layout()
     return response
 
@@ -203,7 +206,7 @@ async def widget_get_details(_sid, uuid):
 @sio.on("widget:name_desc_change")
 async def widget_name_desc_change(_sid, data):
     uuid = data["uuid"]
-    widget = next((w for w in sm.widgets_layout if w.get("i") == uuid), None)
+    widget = next((w for w in sm.widgets_layout if w["i"] == uuid), None)
     if widget is not None:
         widget["name"] = data["name"]
         widget["description"] = data["description"]

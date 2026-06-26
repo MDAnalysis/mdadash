@@ -2,13 +2,59 @@
 Kernel core where MDAnalysis code runs
 """
 
+import ast
 import asyncio
+import copy
+from collections import deque
 from dataclasses import asdict
 
 import comm
+import IPython
 import MDAnalysis as mda
 
 from mdadash.backend.widgets.base import WidgetManager
+
+
+class BufferedTrajectory:
+    """Buffered Trajectory
+
+    This class is a wrapper for the trajectory reader and provides
+    buffered access to the last n timesteps.
+
+    `trajectory[index]` can be used to access individual frames. Index values
+    should be <= 0. `trajectory[0]` indicates the current frame, `trajectory[-1]`
+    indicates the previous frame and so on till the configured batch size.
+
+    """
+
+    def __init__(self, trajectory: mda.Universe.trajectory, batch_size: int):
+        self._trajectory = trajectory
+        self._batch_size = batch_size
+        self._buffer = deque(maxlen=batch_size)
+        self._buffer.append(trajectory.ts.copy())
+        BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
+
+    def __getitem__(self, index):
+        if index > 0:
+            raise ValueError("index should be <= 0")
+        if index <= -1 * self._batch_size:
+            raise ValueError("Out of range of buffer")
+        ts = self._buffer[index - 1]
+        self._trajectory.ts = ts
+        return ts
+
+    def __getattr__(self, name):
+        wrapped = object.__getattribute__(self, "_trajectory")
+        return getattr(wrapped, name)
+
+    def __dir__(self):
+        return list(set(dir(super().__dir__()) + dir(self._trajectory)))
+
+    def next(self):
+        """Iterate next frame and copy timestep into buffer"""
+        ts = self._trajectory.next()
+        self._buffer.append(ts.copy())
+        return ts
 
 
 class CommHandler:
@@ -88,7 +134,7 @@ class UniverseManager:
 
     def __init__(self, _wm: WidgetManager, _comm_handler: CommHandler):
         self._universes = []
-        self._universes_step = []
+        self._universe_configs = []
         self._iter_loop_task = None
         self._iter_loop_running = False
         self._iter_loop_resumed = asyncio.Event()
@@ -124,7 +170,18 @@ class UniverseManager:
 
         """
         self._universes = [None] * n
-        self._universes_step = [1] * n
+        self._universe_configs = [{}] * n
+
+    def _cast_value(self, value: str):
+        """Internal: Infer and cast value to correct type"""
+        if value.lower() == "true":
+            return True
+        if value.lower() == "false":
+            return False
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return value
 
     def connect_to_simulations(self, universe_configs: list[dict]) -> None:
         """Connect to MD simulations
@@ -137,11 +194,12 @@ class UniverseManager:
             imdclient params, user-defined kwargs etc
 
         """
+        self._disconnect_from_simulations()
         try:
             for uid, config in enumerate(universe_configs):
                 kwargs = {}
-                topology = config.get("topology")
-                trajectory = config.get("trajectory")
+                topology = config["topology"]
+                trajectory = config["trajectory"]
                 for key, value in config.items():
                     if key in (
                         "topology",
@@ -155,12 +213,16 @@ class UniverseManager:
                         kwargs[key] = value
                 for name, value in config["kwargs"]:
                     if name.strip():
-                        kwargs[name] = value
+                        kwargs[name] = self._cast_value(value)
                 # create universe
                 u = mda.Universe(
                     topology,
                     trajectory,
                     **kwargs,
+                )
+                u.trajectory = BufferedTrajectory(
+                    u.trajectory,
+                    config["batch_size"],
                 )
                 if uid == 0:
                     self._send_tsdata(u)
@@ -168,8 +230,8 @@ class UniverseManager:
                 self._universes[uid] = u
                 # set universe for the widget instances with this uid
                 self._wm._set_universe(uid, u)
-            # save universe step config
-            self._universes_step = [uc.get("step", 1) for uc in universe_configs]
+            # save universe configs
+            self._universe_configs = copy.deepcopy(universe_configs)
             # start iter loop for trajectories
             self._iter_loop_resumed.clear()
             self._iter_loop_running = True
@@ -177,6 +239,7 @@ class UniverseManager:
             self._connected = True
             self._comm_handler.send({"status": "ok"})
         except Exception as e:  # pylint: disable=broad-exception-caught
+            print(e)
             self._comm_handler.send({"status": "error", "message": str(e)})
 
     def _send_tsdata(self, u: mda.Universe):
@@ -195,13 +258,22 @@ class UniverseManager:
             {"sessioninfo": asdict(u.trajectory._imdclient.get_imdsessioninfo())}
         )
 
+    def _disconnect_from_simulations(self):
+        self._iter_loop_running = False
+        if self._iter_loop_task is not None:
+            self._iter_loop_task.cancel()
+            self._iter_loop_task = None
+        for u in self._universes:
+            try:
+                u.trajectory.close()
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+        self._connected = False
+        self._running = False
+
     def disconnect_from_simulations(self, _data: dict) -> None:
         """Disconnect from MD simulations"""
-        self._iter_loop_running = False
-        self._iter_loop_task.cancel()
-        for u in self._universes:
-            u.trajectory.close()
-        self._connected = False
+        self._disconnect_from_simulations()
         self._wm._invoke_lifecycle_method("post_disconnect")
         self._comm_handler.send({"status": "ok"})
 
@@ -238,17 +310,22 @@ class UniverseManager:
             while self._iter_loop_running:
                 await self._iter_loop_resumed.wait()
                 for uid, u in enumerate(self._universes):
+                    step = self._universe_configs[uid]["step"]
+                    batch_size = self._universe_configs[uid]["batch_size"]
                     try:
                         # iterate in thread to not block on a network call here
                         await asyncio.to_thread(
                             self._trajectory_next,
                             u,
-                            self._universes_step[uid],
+                            step,
                         )
                         if uid == 0:
                             self._send_tsdata(u)
                         # run widgets for this timestep
-                        self._wm.run_widgets(uid)
+                        batch_ready = (u.trajectory._frame + step) % (
+                            step * batch_size
+                        ) == 0
+                        self._wm.run_widgets(uid, batch_ready, batch_size)
                     # pylint: disable=broad-exception-caught
                     except Exception as e:  # pragma: no cover
                         print(e)
@@ -287,8 +364,8 @@ class WidgetsComm:
 
     def add_instance(self, data: dict) -> dict:
         """Add widget instance based on registered widget name"""
-        uid = data.get("uid")
-        widget_name = data.get("name", None)
+        uid = data["uid"]
+        widget_name = data["name"]
         uuid = self._wm.add_widget_instance(uid, widget_name)
         if uuid is not None:
             if self._um._connected:
@@ -305,8 +382,8 @@ class WidgetsComm:
 
     def duplicate_instance(self, data: dict) -> None:
         """Duplicate widget instance based on instance uuid"""
-        uid = data.get("uid")
-        new_uuid = self._wm.duplicate_widget_instance(uid, data.get("uuid"))
+        uid = data["uid"]
+        new_uuid = self._wm.duplicate_widget_instance(uid, data["uuid"])
         if self._um._connected:
             # set the universe for the new widget instance
             self._wm._set_universe(uid, self._um._universes[uid], new_uuid)
@@ -314,7 +391,7 @@ class WidgetsComm:
 
     def remove_instance(self, data: dict) -> dict:
         """Remove widget instance based on uuid"""
-        uuid = self._wm.delete_widget_instance(data.get("uuid", None))
+        uuid = self._wm.delete_widget_instance(data["uuid"])
         if uuid is not None:
             self._comm_handler.send({"status": "ok"})
         else:
@@ -339,7 +416,17 @@ class WidgetsComm:
 
 def init_n_universes(data: dict) -> None:
     """Initialize `n` universes in :class:`UniverseManager`"""
-    um.init_n_universes(data.get("n"))
+    um.init_n_universes(data["n"])
+
+
+def execute_code(data: dict) -> dict:
+    """Execute code in this kernel"""
+    with IPython.utils.capture.capture_output() as output:
+        result = IPython.get_ipython().run_cell(data["code"])
+        if result.success:
+            comm_handler.send({"output": output.stdout})
+        else:
+            comm_handler.send({"output": str(result.error_in_exec)})
 
 
 wm = WidgetManager()
@@ -365,3 +452,5 @@ comm_handler.register_handler(
 comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
 comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
 comm_handler.register_handler("widget:set_input", widgets_comm.set_input)
+comm_handler.register_handler("execute_code", execute_code)
+comm_handler.register_handler("update_n_jobs", wm.update_n_jobs)

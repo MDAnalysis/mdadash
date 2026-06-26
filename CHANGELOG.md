@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added support to duplicate widgets (PR #13)
+- Added support for batching and parallelization (PR #15)
 
 ### Fixed
 

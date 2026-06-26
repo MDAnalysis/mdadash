@@ -13,6 +13,7 @@ const settings = ref({
   dashboard_config: {
     show_session_info: true,
     show_energies: true,
+    n_jobs: 2,
   },
   universe_configs: [
     {
@@ -62,6 +63,7 @@ describe('SettingsView.vue', () => {
     expect(form.exists()).toBe(true)
     const dataMap = {
       VSwitch: true,
+      VNumberInput: 2,
     }
     const keys = Object.keys(dataMap)
     for (const name of keys) {
@@ -70,6 +72,18 @@ describe('SettingsView.vue', () => {
         await input.setValue(dataMap[name])
       }
     }
+    // update n_jobs
+    const inputs = form.findAllComponents({ name: 'VNumberInput' })
+    const n_jobs = inputs[0]
+    expect(n_jobs).toBeDefined()
+    n_jobs.setValue(0)
+    n_jobs.trigger('blur')
+    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(2)
+    n_jobs.setValue(3)
+    n_jobs.trigger('blur')
+    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(3)
+    n_jobs.setValue(0)
+    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(0)
   })
 
   it('update and test universe config values', async () => {

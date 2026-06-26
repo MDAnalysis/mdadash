@@ -6,6 +6,7 @@ from collections import deque
 
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import delayed
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -19,16 +20,26 @@ class ROG(WidgetBase):
 
     name = "ROG"
     description = "Radii of Gyration of a selection"
-    _analysis_mode = "per-frame"
 
     _inputs = [
         {
-            "attribute": "_analysis_mode",
-            "name": "Analysis mode",
-            "description": "The mode to run this analysis widget",
+            "attribute": "_run_frequency",
+            "name": "Run frequency",
+            "description": "The frequency with which the widget is run",
             "type": "select",
             "items": [
                 "per-frame",
+                "batch",
+            ],
+        },
+        {
+            "attribute": "_run_mode",
+            "name": "Run mode",
+            "description": "The mode in which the widget is run",
+            "type": "select",
+            "items": [
+                "serial",
+                "parallel",
             ],
         },
         {
@@ -130,9 +141,8 @@ class ROG(WidgetBase):
             self.y_values = deque(maxlen=self.maxlen)
             self._set_x_values()
 
-    # pylint: disable=too-many-locals
-    def run(self):
-        """run handler"""
+    def _compute_rog_per_frame(self):
+        """Compute ROG values for current frame"""
         masses = self.ag.masses
         total_mass = np.sum(masses)
         coordinates = self.ag.positions
@@ -149,10 +159,30 @@ class ROG(WidgetBase):
         rog_sq = np.sum(masses * sq_rs, axis=1) / total_mass
         # square root
         rog = np.sqrt(rog_sq)
+        return (
+            self.u.trajectory.ts.data["step"],
+            self.u.trajectory.ts.data["time"],
+            rog,
+        )
+
+    def _compute_rog_batch(self, batch_size):
+        """Compute ROG values for current batch"""
+        values = []
+        for i in range(batch_size):
+            _ = self.u.trajectory[1 - batch_size + i]
+            values.append(self._compute_rog_per_frame())
+        return values
+
+    def _create_plot(self, values):
+        """Append ROG values and create plot"""
+        if isinstance(values, tuple):
+            values = [values]
         # update plot points
-        self.y_values.append(rog)
-        self.steps.append(self.u.trajectory.ts.data["step"])
-        self.times.append(self.u.trajectory.ts.data["time"])
+        for value in values:
+            (steps, times, rog) = value
+            self.steps.append(steps)
+            self.times.append(times)
+            self.y_values.append(rog)
         # create plot
         data = np.array(self.y_values)
         labels = ["all", "x-axis", "y-axis", "z-axis"]
@@ -164,3 +194,21 @@ class ROG(WidgetBase):
         plt.title(self.custom_title if self.custom_title else self.title)
         plt.grid(True)
         plt.show()
+
+    def run_per_frame(self):
+        """per-frame run handler"""
+        self._create_plot(self._compute_rog_per_frame())
+
+    def run_batch(self, batch_size):
+        """batch run handler"""
+        self._create_plot(self._compute_rog_batch(batch_size))
+
+    def get_parallel_job(self, batch_size):
+        """get parallel job handler"""
+        if self._run_frequency == "batch":
+            return delayed(self._compute_rog_batch)(batch_size)
+        return delayed(self._compute_rog_per_frame)()
+
+    def apply_parallel_results(self, values):
+        """apply parallel results handler"""
+        self._create_plot(values)
