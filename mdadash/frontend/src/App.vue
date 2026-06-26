@@ -162,6 +162,21 @@
         </keep-alive>
       </router-view>
     </v-main>
+
+    <v-overlay
+      :model-value="!socketConnected"
+      class="align-center justify-center"
+      persistent
+      opacity="0.75"
+    >
+      <!-- v8 ignore start -->
+      <div class="text-center text-white">
+        <v-icon :icon="mdiAlert" color="error" size="64"></v-icon>
+        <h2>Disconnected</h2>
+        <p class="opacity-70">Reconnecting to the dashboard server...</p>
+      </div>
+      <!-- v8 ignore stop -->
+    </v-overlay>
   </v-app>
 </template>
 
@@ -234,9 +249,7 @@ const stickyBarColor = computed(() => {
   return 'green-lighten-5'
 })
 
-const timestepInfo = ref({
-  energies: {},
-})
+const timestepInfo = ref({})
 
 const settings = ref({
   dashboard_config: {
@@ -246,7 +259,16 @@ const settings = ref({
 })
 const origSettings = ref(null)
 
+const socketConnected = ref(false)
+
 onMounted(() => {
+  socket.on('connect', () => {
+    socketConnected.value = true
+  })
+
+  socket.on('disconnect', () => {
+    socketConnected.value = false
+  })
   socket.on('runningState', (data) => {
     runningState.value = data
     if (data.message) {
@@ -264,6 +286,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  socket.off('connect')
+  socket.off('disconnect')
   socket.off('runningState')
   socket.off('timestepInfo')
   socket.off('settings')

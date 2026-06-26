@@ -13,6 +13,7 @@ import socketio
 from jupyter_client import AsyncKernelManager
 
 from ..state.manager import StateManager
+from .utils import EMATrend
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,18 @@ class KernelManager:
         self.listen_task = None
         self._sessioninfo = None
         self._last_tsdata = None
+        self._energy_keys = [
+            "temperature",
+            "total_energy",
+            "potential_energy",
+            "van_der_walls_energy",
+            "coulomb_energy",
+            "bonds_energy",
+            "angles_energy",
+            "dihedrals_energy",
+            "improper_dihedrals_energy",
+        ]
+        self._energy_trends = {}
 
     async def start(self) -> None:
         """Start the async kernel"""
@@ -85,30 +98,31 @@ class KernelManager:
             self._listen_shell_channel(),
         )
 
+    def _get_energy_trend(self, key, value):
+        """Internal: Update and get trend for energy value"""
+        if key not in self._energy_trends:
+            self._energy_trends[key] = EMATrend()
+        return self._energy_trends[key].update(value)
+
     async def _emit_tsdata(self, tsinfo):
         """Internal: Emit timestep data"""
         tsdata = tsinfo["tsdata"]
         step = tsdata.get("step", None)
         total_steps = self.sm.universe_configs[0].get("total_steps", None)
         done = (step / total_steps) * 100 if step and total_steps else None
+        energies = {}
+        if tsdata.get("temperature") is not None:
+            for key in self._energy_keys:
+                energies[key] = {
+                    "value": tsdata.get(key),
+                    "trend": self._get_energy_trend(key, tsdata.get(key)),
+                }
         timestep_info = {
             "frame": tsinfo.get("frame", None),
             "time": tsdata.get("time", None),
             "step": step,
             "done": done,
-            "energies": {
-                "temperature": tsdata.get("temperature", None),
-                "total_energy": tsdata.get("total_energy", None),
-                "potential_energy": tsdata.get("potential_energy", None),
-                "van_der_walls_energy": tsdata.get("van_der_walls_energy", None),
-                "coulomb_energy": tsdata.get("coulomb_energy", None),
-                "bonds_energy": tsdata.get("bonds_energy", None),
-                "angles_energy": tsdata.get("angles_energy", None),
-                "dihedrals_energy": tsdata.get("dihedrals_energy", None),
-                "improper_dihedrals_energy": tsdata.get(
-                    "improper_dihedrals_energy", None
-                ),
-            },
+            "energies": energies,
         }
         self._last_tsdata = timestep_info
         await self.sio.emit("timestepInfo", timestep_info)

@@ -44,11 +44,15 @@ describe('App', () => {
         plugins: [router],
       },
     })
+    expect(socket.on).toHaveBeenCalledWith('connect', expect.any(Function))
+    expect(socket.on).toHaveBeenCalledWith('disconnect', expect.any(Function))
     expect(socket.on).toHaveBeenCalledWith('runningState', expect.any(Function))
     expect(socket.on).toHaveBeenCalledWith('timestepInfo', expect.any(Function))
     expect(socket.on).toHaveBeenCalledWith('settings', expect.any(Function))
     // unmount
     wrapper.unmount()
+    expect(socket.off).toHaveBeenCalledWith('connect')
+    expect(socket.off).toHaveBeenCalledWith('disconnect')
     expect(socket.off).toHaveBeenCalledWith('runningState')
     expect(socket.off).toHaveBeenCalledWith('timestepInfo')
     expect(socket.off).toHaveBeenCalledWith('settings')
@@ -63,6 +67,11 @@ describe('App', () => {
     expect(wrapper.exists()).toBe(true)
     const appBar = wrapper.findComponent(VAppBar)
     expect(appBar.exists()).toBe(true)
+    // test dashboard server connectivity
+    await socketListeners['connect']({})
+    expect(wrapper.vm.socketConnected).toStrictEqual(true)
+    await socketListeners['disconnect']({})
+    expect(wrapper.vm.socketConnected).toStrictEqual(false)
     // click connect button
     const connectBtn = appBar.findAllComponents(VBtn).find((btn) => {
       return btn.html().includes(mdiLanConnect)

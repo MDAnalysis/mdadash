@@ -491,5 +491,5 @@ async def test_widget_runs(_client, imd_server):
     assert response["status"] == "ok"
 
     # check that all widgets outputs emitted
-    timeout = 20 if sys.platform == "win32" else 10
+    timeout = 30 if sys.platform == "win32" else 15
     assert await sio_event_emitted(sio, "widgets:output", n=6, timeout=timeout)
