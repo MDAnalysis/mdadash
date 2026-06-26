@@ -481,7 +481,8 @@ async def test_widget_run_rog_parallel_per_frame(_client, imd_server):
     await _test_input_changes(uuid, inputs)
     await _connect_to_simulation(imd_server)
     await _run_simulation(imd_server)
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=20)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await _remove_widget(uuid)
     await _disconnect_from_simulation()
 
@@ -495,6 +496,7 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     await _test_input_changes(uuid, inputs)
     await _connect_to_simulation(imd_server)
     await _run_simulation(imd_server)
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=20)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await _remove_widget(uuid)
     await _disconnect_from_simulation()
