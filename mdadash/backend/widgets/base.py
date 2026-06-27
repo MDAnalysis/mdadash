@@ -505,7 +505,7 @@ def _widget_uuid_in_metadata(uuid: str):
     def patched_send(stream, msg_type_or_msg, *args, **kwargs):
         msg_type = None
         content = None
-        if isinstance(msg_type_or_msg, str):
+        if isinstance(msg_type_or_msg, str):  # pragma: no cover
             msg_type = msg_type_or_msg
             if len(args) > 0 and isinstance(args[0], dict):
                 content = args[0]

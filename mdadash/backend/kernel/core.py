@@ -300,9 +300,9 @@ class UniverseManager:
             # Don't use next() to avoid unnecessary transformations
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
-        except (EOFError, IOError):  # pragma: no cover
-            raise StopIteration from None
-        return u.trajectory.next()
+            u.trajectory.next()
+        except (EOFError, IOError, StopIteration):  # pragma: no cover
+            pass
 
     async def _iter_loop(self):
         """Internal: Iteration loop for trajectories"""
