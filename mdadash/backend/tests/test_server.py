@@ -12,7 +12,17 @@ from mdadash.backend.main import app, km, sio, sm, start_server
 from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
-from .utils import run_task_until_done, sio_event_emitted
+from .utils import (
+    add_widget,
+    check_input_changes,
+    connect_to_simulation,
+    disconnect_from_simulation,
+    pause_simulation,
+    remove_widget,
+    resume_simulation,
+    run_task_until_done,
+    sio_event_emitted,
+)
 
 sio.emit = AsyncMock()
 
@@ -97,18 +107,11 @@ async def test_simulation_connectivity(_client, imd_server):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
     # test resume
-    imd_server.send_frames(1, 10)
-    handler = sio.handlers["/"]["resume_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
+    await resume_simulation(imd_server)
     # test pause
-    handler = sio.handlers["/"]["pause_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
+    await pause_simulation()
     # test disconnect
-    handler = sio.handlers["/"]["disconnect_from_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
+    await disconnect_from_simulation()
 
 
 async def test_km_unregistered_msg_type(_client):
@@ -120,7 +123,7 @@ async def test_km_unregistered_msg_type(_client):
 
 
 async def test_kernel_universe_access(_client, imd_server):
-    await _connect_to_simulation(imd_server)
+    await connect_to_simulation(imd_server)
     # check universe manager access in kernel
     code = """
 from mdadash.backend.kernel.core import um
@@ -149,7 +152,8 @@ print(x)
     assert response == "name 'x' is not defined"
 
 
-async def test_socketio_connect_disconnect():
+async def test_socketio_connect_disconnect(imd_server):
+    await connect_to_simulation(imd_server)
     # connect
     handler = sio.handlers["/"]["connect"]
     response = await run_task_until_done(handler("_sid", {}))
@@ -158,6 +162,8 @@ async def test_socketio_connect_disconnect():
     handler = sio.handlers["/"]["disconnect"]
     response = await run_task_until_done(handler("_sid"))
     assert response is None
+    await resume_simulation(imd_server)
+    await disconnect_from_simulation()
 
 
 async def test_update_settings(_client):
@@ -276,7 +282,8 @@ async def test_add_remove_widgets(_client):
     assert response["status"] == "ok"
 
 
-async def test_duplicate_widgets(_client):
+async def test_duplicate_widgets(_client, imd_server):
+    await connect_to_simulation(imd_server)
     # add a widget
     handler = sio.handlers["/"]["widgets:add_widget"]
     response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
@@ -297,66 +304,14 @@ async def test_duplicate_widgets(_client):
     handler = sio.handlers["/"]["widgets:remove_widget"]
     response = await run_task_until_done(handler("_sid", uuid2))
     assert response["status"] == "ok"
+    await resume_simulation(imd_server)
+    await disconnect_from_simulation()
 
 
 async def test_update_layout(_client):
     handler = sio.handlers["/"]["widgets:update_layout"]
     response = await run_task_until_done(handler("_sid", []))
     assert response == []
-
-
-async def _test_input_changes(uuid, inputs, status="ok"):
-    for i in inputs:
-        handler = sio.handlers["/"]["widget:input_change"]
-        attribute, value = i
-        response = await run_task_until_done(
-            handler(
-                "_sid",
-                {"uuid": uuid, "attribute": attribute, "value": value},
-            )
-        )
-        assert response["status"] == status
-
-
-async def _connect_to_simulation(imd_server):
-    sm.universe_configs[0].update(
-        {
-            "topology": str(TPR),
-            "trajectory": f"imd://localhost:{imd_server.port}",
-            "batch_size": 1,
-        }
-    )
-    handler = sio.handlers["/"]["connect_to_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-
-
-async def _disconnect_from_simulation():
-    handler = sio.handlers["/"]["disconnect_from_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-
-
-async def _run_simulation(imd_server):
-    sio.emit.reset_mock()  # clear emit.await_args_list
-    imd_server.send_frames(1, 10)
-    handler = sio.handlers["/"]["resume_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-
-
-async def _add_widget(name):
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, name, ""))
-    uuid = response.get("uuid", None)
-    assert uuid is not None
-    return uuid
-
-
-async def _remove_widget(uuid):
-    handler = sio.handlers["/"]["widgets:remove_widget"]
-    response = await run_task_until_done(handler("_sid", uuid))
-    assert response["status"] == "ok"
 
 
 def test_buffered_trajectory():
@@ -370,13 +325,13 @@ def test_buffered_trajectory():
 
 
 async def test_widget_input_changes(_client):
-    uuid = await _add_widget("Absolute Temperature")
+    uuid = await add_widget("Absolute Temperature")
     # test input changes
     inputs = [
         ("maxlen", -1),
         ("x_type", "time"),
     ]
-    await _test_input_changes(uuid, inputs)
+    await check_input_changes(uuid, inputs)
     # test name / desc changes
     sio.emit.reset_mock()
     handler = sio.handlers["/"]["widget:name_desc_change"]
@@ -392,44 +347,44 @@ async def test_widget_input_changes(_client):
         (i for i in response["inputs"] if i.get("attribute") == "maxlen"), None
     )
     assert maxlen["value"] == 100
-    await _remove_widget(uuid)
+    await remove_widget(uuid)
 
 
 async def test_widget_invalid_inputs(_client, imd_server):
-    await _connect_to_simulation(imd_server)
-    uuid = await _add_widget("ROG")
+    await connect_to_simulation(imd_server)
+    uuid = await add_widget("ROG")
     # test invalid input change
     inputs = [
         ("selection", "invalid"),
     ]
-    await _test_input_changes(uuid, inputs, "error")
+    await check_input_changes(uuid, inputs, "error")
     # test valid input change
     inputs = [
         ("selection", "resid 1"),
     ]
-    await _test_input_changes(uuid, inputs)
+    await check_input_changes(uuid, inputs)
     # retain invalid input to skip run for this widget
     inputs = [
         ("selection", "invalid"),
     ]
-    await _test_input_changes(uuid, inputs, "error")
-    await _run_simulation(imd_server)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await check_input_changes(uuid, inputs, "error")
+    await resume_simulation(imd_server)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_energies(_client, imd_server):
-    uuid = await _add_widget("Absolute Temperature")
-    await _connect_to_simulation(imd_server)
-    await _run_simulation(imd_server)
+    uuid = await add_widget("Absolute Temperature")
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_com_distance(_client, imd_server):
-    uuid = await _add_widget("COMDistance")
-    await _connect_to_simulation(imd_server)
+    uuid = await add_widget("COMDistance")
+    await connect_to_simulation(imd_server)
     inputs = [
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
@@ -437,66 +392,66 @@ async def test_widget_run_com_distance(_client, imd_server):
         ("x_type", "time"),
         ("updating", True),
     ]
-    await _test_input_changes(uuid, inputs)
-    await _run_simulation(imd_server)
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_rog_serial_per_frame(_client, imd_server):
-    await _connect_to_simulation(imd_server)
-    uuid = await _add_widget("ROG")
+    await connect_to_simulation(imd_server)
+    uuid = await add_widget("ROG")
     inputs = [
         ("selection", "protein"),
         ("maxlen", -1),
         ("x_type", "time"),
         ("updating", True),
     ]
-    await _test_input_changes(uuid, inputs)
-    await _run_simulation(imd_server)
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_rog_serial_batch(_client, imd_server):
-    uuid = await _add_widget("ROG")
-    await _connect_to_simulation(imd_server)
+    uuid = await add_widget("ROG")
+    await connect_to_simulation(imd_server)
     inputs = [
         ("_run_frequency", "batch"),
     ]
-    await _test_input_changes(uuid, inputs)
-    await _run_simulation(imd_server)
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_rog_parallel_per_frame(_client, imd_server):
-    uuid = await _add_widget("ROG")
+    uuid = await add_widget("ROG")
     inputs = [
         ("_run_mode", "parallel"),
     ]
-    await _test_input_changes(uuid, inputs)
-    await _connect_to_simulation(imd_server)
-    await _run_simulation(imd_server)
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
 
 
 async def test_widget_run_rog_parallel_batch(_client, imd_server):
-    uuid = await _add_widget("ROG")
+    uuid = await add_widget("ROG")
     inputs = [
         ("_run_frequency", "batch"),
         ("_run_mode", "parallel"),
     ]
-    await _test_input_changes(uuid, inputs)
-    await _connect_to_simulation(imd_server)
-    await _run_simulation(imd_server)
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await _remove_widget(uuid)
-    await _disconnect_from_simulation()
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
