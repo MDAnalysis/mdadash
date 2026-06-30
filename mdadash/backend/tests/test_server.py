@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import tempfile
 from unittest.mock import ANY, AsyncMock
@@ -472,13 +473,19 @@ def test_state_load():
     sm = StateManager("")
     assert sm.state is not None
     # test with invalid (emtpy) file
-    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        pass
+    try:
         sm = StateManager(temp_file.name)
         assert sm.state is not None
+    finally:
+        os.unlink(temp_file.name)
     # test with valid json file
-    with tempfile.NamedTemporaryFile(mode="w+", delete=True) as temp_file:
+    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
         json.dump({}, temp_file)
         temp_file.flush()
-        temp_file.seek(0)
+    try:
         sm = StateManager(temp_file.name)
         assert sm.state is not None
+    finally:
+        os.unlink(temp_file.name)
