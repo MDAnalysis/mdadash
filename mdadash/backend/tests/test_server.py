@@ -1,7 +1,5 @@
 import json
-import os
 import sys
-import tempfile
 from unittest.mock import ANY, AsyncMock
 
 import MDAnalysis as mda
@@ -468,24 +466,17 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
-def test_state_load():
+def test_state_load(tmp_path):
     # test with no state file
     sm = StateManager("")
     assert sm.state is not None
     # test with invalid (emtpy) file
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        pass
-    try:
-        sm = StateManager(temp_file.name)
-        assert sm.state is not None
-    finally:
-        os.unlink(temp_file.name)
+    temp_file = tmp_path / "mdadash1.state.json"
+    sm = StateManager(temp_file.name)
+    assert sm.state is not None
     # test with valid json file
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
-        json.dump({}, temp_file)
-        temp_file.flush()
-    try:
-        sm = StateManager(temp_file.name)
-        assert sm.state is not None
-    finally:
-        os.unlink(temp_file.name)
+    temp_file = tmp_path / "mdadash2.state.json"
+    with open(temp_file, "w", encoding="utf-8") as f:
+        json.dump({}, f)
+    sm = StateManager(temp_file.name)
+    assert sm.state is not None
