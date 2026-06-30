@@ -2,6 +2,13 @@
 Manager that manages the dashboard state
 """
 
+import asyncio
+import json
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 class StateManager:
     """State Manager
@@ -35,25 +42,60 @@ class StateManager:
     settings: dict
         All the values used in the dashboard settings page
 
+    dashboard_config: dict
+        All the dashboard related config
+
     universe_configs: dict
         All the universe(s) related config
 
+    widgets_layout: dict
+        All the widgets layout info
+
+    widgets: dict
+        All the widget instances info
+
     """
 
-    def __init__(self):
+    def __init__(self, state_file: str):
+        self._state_file = Path(state_file) if state_file else None
+        self._state = None
+        self.load()
+
+    def _save(self):
+        """Internal: Write state to json file"""
+        if self._state_file is not None:
+            with open(self._state_file, "w", encoding="utf-8") as file:
+                json.dump(self.state, file, indent=4, sort_keys=True)
+
+    async def save(self):
+        """Save state"""
+        await asyncio.to_thread(self._save)
+
+    def load(self):
+        """Load state"""
+        running_state = {
+            "pending": False,
+            "connected": False,
+            "running": False,
+            "message": "",
+        }
+        if self._state_file is not None and self._state_file.is_file():
+            with open(self._state_file, "r", encoding="utf-8") as file:
+                try:
+                    self._state = json.load(file)
+                    self._state["running_state"] = running_state.copy()
+                    return
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse state file '%s'", self._state_file)
         self._state = {
-            "running_state": {
-                "pending": False,
-                "connected": False,
-                "running": False,
-                "message": "",
-            },
+            "version": 1,
+            "running_state": running_state.copy(),
             "settings": {
                 "dashboard_config": {
                     "show_session_info": True,
                     "show_energies": True,
                     "n_jobs": 2,
-                    "ui_request_timeout": 5000,
+                    "ui_request_timeout": 5,
                 },
                 "universe_configs": [
                     {
@@ -71,6 +113,7 @@ class StateManager:
                 ],
             },
             "widgets_layout": [],
+            "widgets": {},
         }
 
     @property
@@ -107,3 +150,8 @@ class StateManager:
     def widgets_layout(self) -> dict:
         """The widgets layout array of the dashboard"""
         return self._state["widgets_layout"]
+
+    @property
+    def widgets(self) -> dict:
+        """The widgets dict of the dashboard"""
+        return self._state["widgets"]

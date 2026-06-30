@@ -182,7 +182,7 @@ onMounted(async () => {
   isLoading.value = true
   try {
     const response = await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout)
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
       .emitWithAck('widget:get_details', uuid)
     if (response) {
       widgetDetails.value = response

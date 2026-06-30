@@ -2,7 +2,8 @@ import asyncio
 import time
 from unittest.mock import AsyncMock
 
-from mdadash.backend.main import sio, sm
+from mdadash.backend import main
+from mdadash.backend.main import sio
 from mdadash.backend.tests.data.files import TPR
 
 sio.emit = AsyncMock()
@@ -52,7 +53,7 @@ async def check_input_changes(uuid, inputs, status="ok"):
 
 
 async def connect_to_simulation(imd_server):
-    sm.universe_configs[0].update(
+    main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
@@ -92,6 +93,14 @@ async def add_widget(name):
     uuid = response.get("uuid", None)
     assert uuid is not None
     return uuid
+
+
+async def duplicate_widget(uuid1):
+    handler = sio.handlers["/"]["widgets:duplicate_widget"]
+    response = await run_task_until_done(handler("_sid", 0, uuid1, "Current Name", ""))
+    uuid2 = response.get("uuid", None)
+    assert uuid2 is not None
+    return uuid2
 
 
 async def remove_widget(uuid):

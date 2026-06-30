@@ -56,29 +56,38 @@ class WidgetBase(ABC):
             if attribute in self._input_errors:
                 del self._input_errors[attribute]
 
-    def post_connect(self) -> None:
-        """post_connect handler
+    def on_post_create(self) -> None:
+        """on_post_create handler
+
+        This handler is called after the widget instance is created
+        and after all the inputs are set.
+        (widget create, duplicate, re-create from state)
+
+        """
+
+    def on_post_connect(self) -> None:
+        """on_post_connect handler
 
         This handler is called after connecting to the simulation
 
         """
 
-    def post_disconnect(self) -> None:
-        """post_disconnect handler
+    def on_post_disconnect(self) -> None:
+        """on_post_disconnect handler
 
         This handler is called after disconnection from simulation
 
         """
 
-    def post_pause(self) -> None:
-        """post_pause handler
+    def on_post_pause(self) -> None:
+        """on_post_pause handler
 
         This handler is called after user pauses trajectory iteration
 
         """
 
-    def pre_resume(self) -> None:
-        """pre_resume handler
+    def on_pre_resume(self) -> None:
+        """on_pre_resume handler
 
         This handler is called after user resumes trajectory iteration
 
@@ -249,8 +258,8 @@ class WidgetManager:
         """Internal: Set the universe for instance"""
         if widget.uid == uid:
             widget._set_universe(u)
-            # invoke the post_connect handler
-            self._invoke_widget_lifecyle_method(widget, "post_connect")
+            # invoke the on_post_connect handler
+            self._invoke_widget_lifecyle_method(widget, "on_post_connect")
 
     def _set_universe(self, uid: int, u: mda.Universe, uuid: str = None) -> None:
         """Internal: Set the universe for all or given widget"""
@@ -266,7 +275,15 @@ class WidgetManager:
         for widget in self.instances.values():
             self._invoke_widget_lifecyle_method(widget, method)
 
-    def add_widget_instance(self, uid: int, widget_name: str) -> str | None:
+    def _get_inputs_state(self, inputs):
+        """Internal: Get all the input values and any errors"""
+        return [
+            {k: i[k] for k in ("attribute", "value", "error") if k in i} for i in inputs
+        ]
+
+    def add_widget_instance(
+        self, uid: int, widget_name: str
+    ) -> tuple[str, dict] | None:
         """Add widget instance
 
         Add a widget instance based on the widget name already
@@ -282,7 +299,7 @@ class WidgetManager:
 
         Returns
         -------
-        uuid of instance added or None
+        uuid of instance added and input details or None, None
 
         """
         if widget_name in self.classes:
@@ -292,10 +309,17 @@ class WidgetManager:
             setattr(instance, "uid", uid)
             setattr(instance, "uuid", uuid)
             self.instances[uuid] = instance
-            return uuid
-        return None
+            details = {
+                "uid": uid,
+                "class_name": widget_name,
+                "inputs": self._get_inputs_state(instance._get_inputs()),
+            }
+            # invoke the on_post_create handler
+            self._invoke_widget_lifecyle_method(instance, "on_post_create")
+            return uuid, details
+        return None, None
 
-    def duplicate_widget_instance(self, uid: int, uuid: str) -> str | None:
+    def duplicate_widget_instance(self, uid: int, uuid: str) -> tuple[str, dict]:
         """Duplicate widget instance
 
         Duplicate widget instance based on existing instance uuid
@@ -310,7 +334,7 @@ class WidgetManager:
 
         Returns
         -------
-        uuid of new instance created
+        uuid of new instance created and input details
 
         """
         # get existing instance
@@ -323,13 +347,47 @@ class WidgetManager:
         inputs = instance._get_inputs()
         for _input in inputs:
             attribute = _input["attribute"]
-            value = _input["value"]
-            setattr(new_instance, attribute, value)
+            setattr(new_instance, attribute, _input["value"])
+            if _input["error"] is not None:
+                new_instance._set_input_state(attribute, _input["error"])
         # add new instance to instances list
         new_uuid = str(uuid1())
         setattr(new_instance, "uuid", new_uuid)
         self.instances[new_uuid] = new_instance
-        return new_uuid
+        details = {
+            "uid": uid,
+            "class_name": widget_class.__name__,
+            "inputs": self._get_inputs_state(inputs),
+        }
+        # invoke the on_post_create handler
+        self._invoke_widget_lifecyle_method(new_instance, "on_post_create")
+        return new_uuid, details
+
+    def recreate_widget_instances(self, data: dict) -> None:
+        """Recreate widget instances
+
+        Recreate widget instances from state file
+
+        Parameters
+        ----------
+        data: dict
+            Data of the instances that need to be recreated
+
+        """
+        for widget_uuid, widget in data.items():
+            widget_class = self.classes[widget["class_name"]]
+            instance = widget_class()
+            setattr(instance, "uid", widget["uid"])
+            setattr(instance, "uuid", widget_uuid)
+            inputs = widget["inputs"]
+            for _input in inputs:
+                attribute = _input["attribute"]
+                setattr(instance, attribute, _input["value"])
+                if _input["error"] is not None:
+                    instance._set_input_state(attribute, _input["error"])
+            self.instances[widget_uuid] = instance
+            # invoke the on_post_create handler
+            self._invoke_widget_lifecyle_method(instance, "on_post_create")
 
     def delete_widget_instance(self, uuid: str) -> str | None:
         """Remove widget instance

@@ -117,8 +117,12 @@ class ROG(WidgetBase):
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
-    def post_connect(self):
-        """post_connect handler"""
+    def on_post_create(self):
+        """on_post_create handler"""
+        self._set_x_values()
+
+    def on_post_connect(self):
+        """on_post_connect handler"""
         self._update_selection()
 
     def on_input_change(self, attribute, _old_value, new_value):

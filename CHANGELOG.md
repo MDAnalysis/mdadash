@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added persistence support (PR #19)
+
 ### Fixed
 
 <!-- Bug fixes -->

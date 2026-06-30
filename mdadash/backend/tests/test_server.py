@@ -1,4 +1,6 @@
+import json
 import sys
+import tempfile
 from unittest.mock import ANY, AsyncMock
 
 import MDAnalysis as mda
@@ -7,8 +9,10 @@ from fastapi.testclient import TestClient
 from imdclient.tests.server import InThreadIMDServer
 from imdclient.tests.utils import create_default_imdsinfo_v3
 
+from mdadash.backend import main
 from mdadash.backend.kernel.core import BufferedTrajectory
-from mdadash.backend.main import app, km, sio, sm, start_server
+from mdadash.backend.main import MDADash, app, sio, start_server
+from mdadash.backend.state.manager import StateManager
 from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
@@ -17,6 +21,7 @@ from .utils import (
     check_input_changes,
     connect_to_simulation,
     disconnect_from_simulation,
+    duplicate_widget,
     pause_simulation,
     remove_widget,
     resume_simulation,
@@ -28,7 +33,10 @@ sio.emit = AsyncMock()
 
 
 @pytest.fixture(scope="session", name="_client")
-def client_fixture():
+def client_fixture(tmp_path_factory):
+    temp_dir = tmp_path_factory.mktemp("mdadash")
+    state_file = temp_dir / "mdadash.state.json"
+    main.mdadash = MDADash(sio, state_file)
     with TestClient(app) as client:
         yield client
 
@@ -94,7 +102,7 @@ async def test_simulation_connect_invalid_universe_config(_client):
 
 async def test_simulation_connectivity(_client, imd_server):
     # configure required config for universe
-    sm.universe_configs[0].update(
+    main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
@@ -117,7 +125,7 @@ async def test_simulation_connectivity(_client, imd_server):
 async def test_km_unregistered_msg_type(_client):
     # test unregistered msg handler
     response = await run_task_until_done(
-        km.send_message_await_response("unregistered_msg_type", {})
+        main.mdadash.km.send_message_await_response("unregistered_msg_type", {})
     )
     assert response["status"] == "error"
 
@@ -139,7 +147,7 @@ print(len(um), um[0].atoms.n_atoms)
 for u in um:
     print(u.atoms.n_atoms)
 """
-    response = await run_task_until_done(km.execute_code(code))
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
     assert response == "Invalid index 1 of 1 items\n1 47681\n47681\n"
 
 
@@ -148,7 +156,7 @@ async def test_kernel_execute_code_errors(_client):
     code = """
 print(x)
 """
-    response = await run_task_until_done(km.execute_code(code))
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
     assert response == "name 'x' is not defined"
 
 
@@ -169,19 +177,19 @@ async def test_socketio_connect_disconnect(imd_server):
 async def test_update_settings(_client):
     # update settings
     handler = sio.handlers["/"]["update:settings"]
-    settings = sm.settings.copy()
+    settings = main.mdadash.sm.settings.copy()
     await run_task_until_done(handler("_sid", settings))
     # assert the updated value is not a reference
-    assert settings is not sm.settings
-    assert settings is not sm.state["settings"]
+    assert settings is not main.mdadash.sm.settings
+    assert settings is not main.mdadash.sm.state["settings"]
     # assert values are same
-    assert settings == sm.settings
+    assert settings == main.mdadash.sm.settings
     # update n_jobs
     settings["dashboard_config"]["n_jobs"] = 5
     handler = sio.handlers["/"]["update:settings"]
     await run_task_until_done(handler("_sid", settings))
     # assert values are updated
-    assert settings == sm.settings
+    assert settings == main.mdadash.sm.settings
 
 
 async def test_widget_registration():
@@ -252,6 +260,22 @@ async def test_get_available_widgets(_client):
     assert response["widgets"]
 
 
+async def test_recreate_widget_instances(_client):
+    main.mdadash.sm.widgets.update(
+        {
+            "uuid": {
+                "uid": 0,
+                "class_name": "COMDistance",
+                "inputs": [
+                    {"attribute": "selection1", "value": "protein", "error": ""},
+                ],
+            },
+        },
+    )
+    await main.mdadash.km.recreate_widget_instances()
+    await remove_widget("uuid")
+
+
 async def test_add_remove_widgets(_client):
     # test add unknown widget
     handler = sio.handlers["/"]["widgets:add_widget"]
@@ -263,47 +287,33 @@ async def test_add_remove_widgets(_client):
     response = await run_task_until_done(handler("_sid", "invalid_uuid"))
     assert response["status"] == "error"
     # add widget 1
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
-    uuid1 = response.get("uuid", None)
-    assert uuid1 is not None
+    uuid1 = await add_widget("Absolute Temperature")
     # add widget 2
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
-    uuid2 = response.get("uuid", None)
-    assert uuid2 is not None
+    uuid2 = await add_widget("Total Energy")
     # remove widget 1
-    handler = sio.handlers["/"]["widgets:remove_widget"]
-    response = await run_task_until_done(handler("_sid", uuid1))
-    assert response["status"] == "ok"
+    await remove_widget(uuid1)
     # remove widget 2
-    handler = sio.handlers["/"]["widgets:remove_widget"]
-    response = await run_task_until_done(handler("_sid", uuid2))
-    assert response["status"] == "ok"
+    await remove_widget(uuid2)
 
 
 async def test_duplicate_widgets(_client, imd_server):
     await connect_to_simulation(imd_server)
     # add a widget
-    handler = sio.handlers["/"]["widgets:add_widget"]
-    response = await run_task_until_done(handler("_sid", 0, "Absolute Temperature", ""))
-    uuid1 = response.get("uuid", None)
-    assert uuid1 is not None
+    uuid1 = await add_widget("Absolute Temperature")
     # duplicate the widget
-    handler = sio.handlers["/"]["widgets:duplicate_widget"]
-    response = await run_task_until_done(
-        handler("_sid", 0, uuid1, "Absolute Temperature", "")
-    )
-    uuid2 = response.get("uuid", None)
-    assert uuid2 is not None
-    # remove the original widget
-    handler = sio.handlers["/"]["widgets:remove_widget"]
-    response = await run_task_until_done(handler("_sid", uuid1))
-    assert response["status"] == "ok"
-    # remove the duplicate widget
-    handler = sio.handlers["/"]["widgets:remove_widget"]
-    response = await run_task_until_done(handler("_sid", uuid2))
-    assert response["status"] == "ok"
+    uuid2 = await duplicate_widget(uuid1)
+    await remove_widget(uuid1)
+    await remove_widget(uuid2)
+    # add widget and set wrong inputs
+    uuid1 = await add_widget("ROG")
+    inputs = [
+        ("selection", "invalid"),
+    ]
+    await check_input_changes(uuid1, inputs, "error")
+    # duplicate the widget
+    uuid2 = await duplicate_widget(uuid1)
+    await remove_widget(uuid1)
+    await remove_widget(uuid2)
     await resume_simulation(imd_server)
     await disconnect_from_simulation()
 
@@ -455,3 +465,20 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
     await disconnect_from_simulation()
+
+
+def test_state_load():
+    # test with no state file
+    sm = StateManager("")
+    assert sm.state is not None
+    # test with invalid (emtpy) file
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        sm = StateManager(temp_file.name)
+        assert sm.state is not None
+    # test with valid json file
+    with tempfile.NamedTemporaryFile(mode="w+", delete=True) as temp_file:
+        json.dump({}, temp_file)
+        temp_file.flush()
+        temp_file.seek(0)
+        sm = StateManager(temp_file.name)
+        assert sm.state is not None

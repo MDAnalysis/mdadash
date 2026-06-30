@@ -103,16 +103,14 @@ class COMDistance(WidgetBase):
         self.x_values = self.steps
         self.x_label = "Step"
 
-    def _update_selections(self, s1=False, s2=False):
+    def _update_selections(self):
         """Update atom groups when selection phrases change"""
-        if s1:
-            self.ag1 = self.u.select_atoms(
-                self.selection1, periodic=self.periodic, updating=self.updating
-            )
-        if s2:
-            self.ag2 = self.u.select_atoms(
-                self.selection2, periodic=self.periodic, updating=self.updating
-            )
+        self.ag1 = self.u.select_atoms(
+            self.selection1, periodic=self.periodic, updating=self.updating
+        )
+        self.ag2 = self.u.select_atoms(
+            self.selection2, periodic=self.periodic, updating=self.updating
+        )
         self.title = f"{self.selection1} <-> {self.selection2}"
 
     def _set_x_values(self):
@@ -124,9 +122,13 @@ class COMDistance(WidgetBase):
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
-    def post_connect(self):
-        """post_connect handler"""
-        self._update_selections(s1=True, s2=True)
+    def on_post_create(self):
+        """on_post_create handler"""
+        self._set_x_values()
+
+    def on_post_connect(self):
+        """on_post_connect handler"""
+        self._update_selections()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
@@ -138,13 +140,13 @@ class COMDistance(WidgetBase):
         elif attribute == "x_type":
             self._set_x_values()
         elif attribute == "selection1":
-            self._update_selections(s1=True)
+            self._update_selections()
             reset_plot = True
         elif attribute == "selection2":
-            self._update_selections(s2=True)
+            self._update_selections()
             reset_plot = True
         elif attribute in ("periodic", "updating"):
-            self._update_selections(s1=True, s2=True)
+            self._update_selections()
         if reset_plot:
             self.steps = deque(maxlen=self.maxlen)
             self.times = deque(maxlen=self.maxlen)
