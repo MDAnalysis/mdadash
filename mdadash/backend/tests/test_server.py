@@ -472,11 +472,12 @@ def test_state_load(tmp_path):
     assert sm.state is not None
     # test with invalid (emtpy) file
     temp_file = tmp_path / "mdadash1.state.json"
-    sm = StateManager(temp_file.name)
+    temp_file.touch()
+    sm = StateManager(temp_file)
     assert sm.state is not None
     # test with valid json file
     temp_file = tmp_path / "mdadash2.state.json"
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump({}, f)
-    sm = StateManager(temp_file.name)
+    sm = StateManager(temp_file)
     assert sm.state is not None
