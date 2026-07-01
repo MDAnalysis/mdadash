@@ -340,9 +340,9 @@ async def test_update_layout(_client):
 def test_buffered_trajectory():
     u = mda.Universe(TPR, XTC)
     u.trajectory = BufferedTrajectory(u.trajectory, 10)
-    with pytest.raises(ValueError, match="index should be <= 0"):
-        _ = u.trajectory[1]
-    with pytest.raises(ValueError, match="Out of range of buffer"):
+    with pytest.raises(IndexError, match="deque index out of range"):
+        _ = u.trajectory[10]
+    with pytest.raises(IndexError, match="deque index out of range"):
         _ = u.trajectory[-10]
     assert "_buffer" not in dir(u.trajectory)
 

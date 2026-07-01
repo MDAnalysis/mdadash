@@ -173,7 +173,7 @@ class ROG(WidgetBase):
         """Compute ROG values for current batch"""
         values = []
         for i in range(batch_size):
-            _ = self.u.trajectory[1 - batch_size + i]
+            _ = self.u.trajectory[i]
             values.append(self._compute_rog_per_frame())
         return values
 
