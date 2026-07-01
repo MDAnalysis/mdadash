@@ -27,7 +27,7 @@ const settings = ref({
   dashboard_config: {
     show_session_info: true,
     show_energies: true,
-    ui_request_timeout: 5000,
+    ui_request_timeout: 5,
   },
 })
 

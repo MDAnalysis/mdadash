@@ -7,7 +7,7 @@ import WidgetView from '@/views/WidgetView.vue'
 
 const settings = ref({
   dashboard_config: {
-    ui_request_timeout: 5000,
+    ui_request_timeout: 5,
   },
 })
 

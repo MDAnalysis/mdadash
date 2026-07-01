@@ -79,6 +79,10 @@ class KernelManager:
         await self.send_message(
             "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
+        # re-create widget instances from state
+        response = await self.recreate_widget_instances()
+        if response["status"] != "ok":  # pragma: no cover
+            logger.error("Failed to recreate all instances from state file")
 
     async def stop(self) -> None:
         """Stop the async kernel"""
@@ -408,7 +412,9 @@ class KernelManager:
             "widgets:get_available_widgets", {}
         )
 
-    async def add_widget_instance(self, uid: int, widget_name: str) -> dict:
+    async def add_widget_instance(
+        self, uid: int, widget_name: str, description: str
+    ) -> dict:
         """Add widget instance
 
         Parameters
@@ -419,6 +425,9 @@ class KernelManager:
         widget_name: str
             Widget name to create an instance for
 
+        description: str
+            Description to use for the UI layout
+
         Returns
         -------
         response: dict
@@ -431,11 +440,33 @@ class KernelManager:
                 An error message string when status is 'error'
 
         """
-        return await self.send_message_await_response(
+        response = await self.send_message_await_response(
             "widgets:add_instance", {"uid": uid, "name": widget_name}
         )
+        if response["status"] == "ok":
+            widget_uuid = response["uuid"]
+            max_y = max(((w["y"] + w["h"]) for w in self.sm.widgets_layout), default=0)
+            self.sm.widgets_layout.append(
+                {
+                    "x": 0,
+                    "y": max_y,
+                    "w": 12,
+                    "h": 14,
+                    "i": widget_uuid,
+                    "name": widget_name,
+                    "description": description,
+                }
+            )
+            # save the input details in the state manager
+            self.sm.widgets[widget_uuid] = response["details"].copy()
+            await self.sm.save()
+            # remove 'details' as it is not needed for UI
+            del response["details"]
+        return response
 
-    async def duplicate_widget_instance(self, uid: int, widget_uuid: str) -> dict:
+    async def duplicate_widget_instance(
+        self, uid: int, widget_uuid: str, name: str, description: str
+    ) -> dict:
         """Duplicate widget instance
 
         Parameters
@@ -446,6 +477,12 @@ class KernelManager:
         widget_uuid: str
             UUID of the widget instance to be duplicated
 
+        name: str
+            Name to use for UI layout
+
+        description: str
+            Description to use for UI layout
+
         Returns
         -------
         response: dict
@@ -458,9 +495,29 @@ class KernelManager:
                 An error message string when status is 'error'
 
         """
-        return await self.send_message_await_response(
+        response = await self.send_message_await_response(
             "widgets:duplicate_instance", {"uid": uid, "uuid": widget_uuid}
         )
+        if response["status"] == "ok":
+            widget_uuid = response["uuid"]
+            max_y = max(((w["y"] + w["h"]) for w in self.sm.widgets_layout), default=0)
+            self.sm.widgets_layout.append(
+                {
+                    "x": 0,
+                    "y": max_y,
+                    "w": 12,
+                    "h": 14,
+                    "i": widget_uuid,
+                    "name": f"Copy of {name}",
+                    "description": description,
+                }
+            )
+            # save the input details in the state manager
+            self.sm.widgets[widget_uuid] = response["details"].copy()
+            await self.sm.save()
+            # remove 'details' as it is not needed for UI
+            del response["details"]
+        return response
 
     async def remove_widget_instance(self, widget_uuid: str) -> dict:
         """Remove widget instance
@@ -482,9 +539,23 @@ class KernelManager:
                 An error message string when status is 'error'
 
         """
-        return await self.send_message_await_response(
+        response = await self.send_message_await_response(
             "widgets:remove_instance", {"uuid": widget_uuid}
         )
+        if len(self.sm.widgets_layout) == 1:
+            # clear both widgets layout and instances state
+            self.sm.widgets_layout.clear()
+            self.sm.widgets.clear()
+        else:
+            # remove widget from layout
+            self.sm.widgets_layout[:] = [
+                w for w in self.sm.widgets_layout if w["i"] != widget_uuid
+            ]
+            # remove widget from instances state
+            if widget_uuid in self.sm.widgets:
+                del self.sm.widgets[widget_uuid]
+        await self.sm.save()
+        return response
 
     async def _get_widget_inputs(self, widget_uuid: str) -> list:
         """Internal: Get widget inputs from kernel core"""
@@ -556,7 +627,19 @@ class KernelManager:
         )
         details = await self.get_widget_details(widget_uuid)
         await self.sio.emit("widget:details", details)
+        # save inputs state
+        self.sm.widgets[widget_uuid]["inputs"] = [
+            {k: i[k] for k in ("attribute", "value", "error") if k in i}
+            for i in details["inputs"]
+        ]
+        await self.sm.save()
         return response
+
+    async def recreate_widget_instances(self) -> None:
+        """Recreate widget instances from loaded state"""
+        return await self.send_message_await_response(
+            "widgets:recreate_instances", self.sm.widgets
+        )
 
     async def update_n_jobs(self, n_jobs: int) -> None:
         """Update n_jobs for joblib.Parallel

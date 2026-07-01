@@ -253,7 +253,7 @@ const timestepInfo = ref({})
 
 const settings = ref({
   dashboard_config: {
-    ui_request_timeout: 5000,
+    ui_request_timeout: 5,
   },
   universe_configs: [{}],
 })

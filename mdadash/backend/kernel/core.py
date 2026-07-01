@@ -274,19 +274,19 @@ class UniverseManager:
     def disconnect_from_simulations(self, _data: dict) -> None:
         """Disconnect from MD simulations"""
         self._disconnect_from_simulations()
-        self._wm._invoke_lifecycle_method("post_disconnect")
+        self._wm._invoke_lifecycle_method("on_post_disconnect")
         self._comm_handler.send({"status": "ok"})
 
     def pause_simulations(self, _data: dict) -> None:
         """Pause MD simulations"""
         self._iter_loop_resumed.clear()
         self._running = False
-        self._wm._invoke_lifecycle_method("post_pause")
+        self._wm._invoke_lifecycle_method("on_post_pause")
         self._comm_handler.send({"status": "ok"})
 
     def resume_simulations(self, _data: dict) -> None:
         """Resume MD simulations"""
-        self._wm._invoke_lifecycle_method("pre_resume")
+        self._wm._invoke_lifecycle_method("on_pre_resume")
         self._iter_loop_resumed.set()
         self._running = True
         self._comm_handler.send({"status": "ok"})
@@ -366,12 +366,18 @@ class WidgetsComm:
         """Add widget instance based on registered widget name"""
         uid = data["uid"]
         widget_name = data["name"]
-        uuid = self._wm.add_widget_instance(uid, widget_name)
+        uuid, details = self._wm.add_widget_instance(uid, widget_name)
         if uuid is not None:
             if self._um._connected:
                 # set the universe for the new widget instance
                 self._wm._set_universe(uid, self._um._universes[uid], uuid)
-            self._comm_handler.send({"status": "ok", "uuid": uuid})
+            self._comm_handler.send(
+                {
+                    "status": "ok",
+                    "uuid": uuid,
+                    "details": details,
+                }
+            )
         else:
             self._comm_handler.send(
                 {
@@ -383,11 +389,22 @@ class WidgetsComm:
     def duplicate_instance(self, data: dict) -> None:
         """Duplicate widget instance based on instance uuid"""
         uid = data["uid"]
-        new_uuid = self._wm.duplicate_widget_instance(uid, data["uuid"])
+        new_uuid, details = self._wm.duplicate_widget_instance(uid, data["uuid"])
         if self._um._connected:
             # set the universe for the new widget instance
             self._wm._set_universe(uid, self._um._universes[uid], new_uuid)
-        self._comm_handler.send({"status": "ok", "uuid": new_uuid})
+        self._comm_handler.send(
+            {
+                "status": "ok",
+                "uuid": new_uuid,
+                "details": details,
+            }
+        )
+
+    def recreate_instances(self, data: dict) -> dict:
+        """Recreate widget instances from state file"""
+        ret = self._wm.recreate_widget_instances(data)
+        self._comm_handler.send({"status": "ok" if ret else "error"})
 
     def remove_instance(self, data: dict) -> dict:
         """Remove widget instance based on uuid"""
@@ -448,6 +465,9 @@ comm_handler.register_handler(
 comm_handler.register_handler("widgets:add_instance", widgets_comm.add_instance)
 comm_handler.register_handler(
     "widgets:duplicate_instance", widgets_comm.duplicate_instance
+)
+comm_handler.register_handler(
+    "widgets:recreate_instances", widgets_comm.recreate_instances
 )
 comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
 comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)

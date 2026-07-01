@@ -61,6 +61,10 @@ class EnergyWidgetBase:
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
+    def on_post_create(self):
+        """on_post_create handler"""
+        self._set_x_values()
+
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
         if attribute == "maxlen":
