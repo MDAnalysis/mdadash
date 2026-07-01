@@ -22,8 +22,7 @@ class BufferedTrajectory:
     buffered access to the last n timesteps.
 
     `trajectory[index]` can be used to access individual frames. Index values
-    should be <= 0. `trajectory[0]` indicates the current frame, `trajectory[-1]`
-    indicates the previous frame and so on till the configured batch size.
+    can range from 0 to the configured batch size.
 
     """
 
@@ -35,11 +34,7 @@ class BufferedTrajectory:
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
 
     def __getitem__(self, index):
-        if index > 0:
-            raise ValueError("index should be <= 0")
-        if index <= -1 * self._batch_size:
-            raise ValueError("Out of range of buffer")
-        ts = self._buffer[index - 1]
+        ts = self._buffer[index]
         self._trajectory.ts = ts
         return ts
 
