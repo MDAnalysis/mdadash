@@ -206,10 +206,7 @@ class WidgetManager:
 
         """
         cls._validate_widget_class(widget_class)
-        widget_name = widget_class.name
-        if widget_name in cls._classes:
-            raise ValueError(f"Widget name '{widget_name}' already registered")
-        cls._classes[widget_name] = widget_class
+        cls._classes[widget_class.name] = widget_class
 
     @classmethod
     def _validate_widget_class(cls, widget_class: WidgetBase) -> None:
@@ -218,6 +215,9 @@ class WidgetManager:
             raise ValueError(f"{widget_class} is not a widget class")
         if not hasattr(widget_class, "name"):
             raise ValueError("name not specified in widget class")
+        widget_name = widget_class.name
+        if widget_name in cls._classes:
+            raise ValueError(f"Widget name '{widget_name}' already registered")
         # check for one of the run methods to exist with correct params
         run_methods = {
             "run_per_frame": 1,
@@ -356,7 +356,7 @@ class WidgetManager:
         self.instances[new_uuid] = new_instance
         details = {
             "uid": uid,
-            "class_name": widget_class.__name__,
+            "class_name": widget_class.name,
             "inputs": self._get_inputs_state(inputs),
         }
         # invoke the on_post_create handler
@@ -374,20 +374,26 @@ class WidgetManager:
             Data of the instances that need to be recreated
 
         """
+        ret = True
         for widget_uuid, widget in data.items():
-            widget_class = self.classes[widget["class_name"]]
-            instance = widget_class()
-            setattr(instance, "uid", widget["uid"])
-            setattr(instance, "uuid", widget_uuid)
-            inputs = widget["inputs"]
-            for _input in inputs:
-                attribute = _input["attribute"]
-                setattr(instance, attribute, _input["value"])
-                if _input["error"] is not None:
-                    instance._set_input_state(attribute, _input["error"])
-            self.instances[widget_uuid] = instance
-            # invoke the on_post_create handler
-            self._invoke_widget_lifecyle_method(instance, "on_post_create")
+            try:
+                widget_class = self.classes[widget["class_name"]]
+                instance = widget_class()
+                setattr(instance, "uid", widget["uid"])
+                setattr(instance, "uuid", widget_uuid)
+                inputs = widget["inputs"]
+                for _input in inputs:
+                    attribute = _input["attribute"]
+                    setattr(instance, attribute, _input["value"])
+                    if _input["error"] is not None:
+                        instance._set_input_state(attribute, _input["error"])
+                self.instances[widget_uuid] = instance
+                # invoke the on_post_create handler
+                self._invoke_widget_lifecyle_method(instance, "on_post_create")
+            except KeyError as e:
+                print(e)
+                ret = False
+        return ret
 
     def delete_widget_instance(self, uuid: str) -> str | None:
         """Remove widget instance

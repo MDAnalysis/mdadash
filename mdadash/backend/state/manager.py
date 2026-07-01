@@ -82,13 +82,17 @@ class StateManager:
         if self._state_file is not None and self._state_file.is_file():
             with open(self._state_file, "r", encoding="utf-8") as file:
                 try:
-                    self._state = json.load(file)
-                    self._state["running_state"] = running_state.copy()
-                    return
+                    state = json.load(file)
+                    if "app" in state and state["app"] == "mdadash":
+                        self._state = state
+                        self._state["running_state"] = running_state.copy()
+                        return
+                    logger.error("Invalid mdadash state file")
                 except json.JSONDecodeError:
                     logger.error("Failed to parse state file '%s'", self._state_file)
         self._state = {
             "version": 1,
+            "app": "mdadash",
             "running_state": running_state.copy(),
             "settings": {
                 "dashboard_config": {

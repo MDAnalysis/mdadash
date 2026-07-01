@@ -403,8 +403,8 @@ class WidgetsComm:
 
     def recreate_instances(self, data: dict) -> dict:
         """Recreate widget instances from state file"""
-        self._wm.recreate_widget_instances(data)
-        self._comm_handler.send({"status": "ok"})
+        ret = self._wm.recreate_widget_instances(data)
+        self._comm_handler.send({"status": "ok" if ret else "error"})
 
     def remove_instance(self, data: dict) -> dict:
         """Remove widget instance based on uuid"""

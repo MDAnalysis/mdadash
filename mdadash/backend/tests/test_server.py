@@ -65,6 +65,8 @@ def test_start_server(mocker):
             str(TPR),
             "--trajectory",
             "imd://localhost:1234",
+            "--state-file",
+            "",
         ],
     )
     # uvicorn.run is a blocking call, so we need to
@@ -260,6 +262,7 @@ async def test_get_available_widgets(_client):
 
 
 async def test_recreate_widget_instances(_client):
+    # test valid state
     main.mdadash.sm.widgets.update(
         {
             "uuid": {
@@ -271,8 +274,19 @@ async def test_recreate_widget_instances(_client):
             },
         },
     )
-    await main.mdadash.km.recreate_widget_instances()
+    response = await main.mdadash.km.recreate_widget_instances()
+    assert response["status"] == "ok"
     await remove_widget("uuid")
+    # test invalid state
+    main.mdadash.sm.widgets.update(
+        {
+            "uuid": {
+                "class_name": "InvalidClassName",
+            },
+        },
+    )
+    response = await main.mdadash.km.recreate_widget_instances()
+    assert response["status"] == "error"
 
 
 async def test_add_remove_widgets(_client):
@@ -475,9 +489,16 @@ def test_state_load(tmp_path):
     temp_file.touch()
     sm = StateManager(temp_file)
     assert sm.state is not None
-    # test with valid json file
+    # test with invalid json (no mdadash key) file
     temp_file = tmp_path / "mdadash2.state.json"
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump({}, f)
+    sm = StateManager(temp_file)
+    assert sm.state is not None
+    # test with valid json
+    state = {"app": "mdadash"}
+    temp_file = tmp_path / "mdadash3.state.json"
+    with open(temp_file, "w", encoding="utf-8") as f:
+        json.dump(state, f)
     sm = StateManager(temp_file)
     assert sm.state is not None

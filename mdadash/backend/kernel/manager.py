@@ -80,7 +80,9 @@ class KernelManager:
             "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
         # re-create widget instances from state
-        await self.recreate_widget_instances()
+        response = await self.recreate_widget_instances()
+        if response["status"] != "ok":  # pragma: no cover
+            logger.error("Failed to recreate all instances from state file")
 
     async def stop(self) -> None:
         """Stop the async kernel"""
@@ -635,7 +637,7 @@ class KernelManager:
 
     async def recreate_widget_instances(self) -> None:
         """Recreate widget instances from loaded state"""
-        await self.send_message_await_response(
+        return await self.send_message_await_response(
             "widgets:recreate_instances", self.sm.widgets
         )
 
