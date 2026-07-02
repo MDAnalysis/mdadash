@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added persistence support (PR #19)
+- Added support for MDA `AnalysisBase`-based classes (PR #21)
 
 ### Fixed
 

@@ -457,7 +457,7 @@ class WidgetManager:
         old_value = getattr(widget, attribute, value)
         old_type = type(old_value)
         # set input using the same existing type
-        setattr(widget, attribute, old_type(value))
+        setattr(widget, attribute, value if old_value is None else old_type(value))
         try:
             widget.on_input_change(attribute, old_value, value)
             widget._set_input_state(attribute)
