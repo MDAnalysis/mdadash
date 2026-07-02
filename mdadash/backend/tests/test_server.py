@@ -480,6 +480,63 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
+async def test_widget_run_dssp_serial_per_frame(_client, imd_server):
+    await connect_to_simulation(imd_server)
+    uuid = await add_widget("DSSP Analysis")
+    inputs = [
+        ("maxlen", -1),
+        ("custom_title", "Title"),
+        ("x_type", "time"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_dssp_serial_batch(_client, imd_server):
+    uuid = await add_widget("DSSP Analysis")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_dssp_parallel_per_frame(_client, imd_server):
+    uuid = await add_widget("DSSP Analysis")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_dssp_parallel_batch(_client, imd_server):
+    uuid = await add_widget("DSSP Analysis")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
 def test_state_load(tmp_path):
     # test with no state file
     sm = StateManager("")

@@ -5,14 +5,48 @@ Kernel core where MDAnalysis code runs
 import ast
 import asyncio
 import copy
+import numbers
 from collections import deque
 from dataclasses import asdict
 
 import comm
 import IPython
 import MDAnalysis as mda
+import numpy as np
+from MDAnalysis.coordinates.base import FrameIteratorAll, FrameIteratorBase, ProtoReader
 
 from mdadash.backend.widgets.base import WidgetManager
+
+
+class BufferFrameIteratorIndices(FrameIteratorBase):
+    """BufferFrameIteratorIndices
+
+    Iterable over the frames of a trajectory buffer listed as a sequence
+    of indices. This is very similar to `FrameIteratorIndices` in MDAnalysis,
+    but without `rewind()` and `__getitem__` as they aren't needed here.
+
+    """
+
+    def __init__(self, trajectory, frames):
+        super().__init__(trajectory)
+        self._frames = []
+        for frame in frames:
+            if not isinstance(frame, numbers.Integral):  # pragma: no cover
+                raise TypeError("Frames indices must be integers.")
+            frame = trajectory._apply_limits(frame)
+            self._frames.append(frame)
+        self._frames = tuple(self._frames)
+
+    def __len__(self):
+        return len(self.frames)
+
+    def __iter__(self):
+        for frame in self.frames:
+            yield self.trajectory[frame]
+
+    @property
+    def frames(self):
+        return self._frames
 
 
 class BufferedTrajectory:
@@ -33,10 +67,31 @@ class BufferedTrajectory:
         self._buffer.append(trajectory.ts.copy())
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
 
+    @property
+    def n_frames(self):
+        return len(self._buffer)
+
+    def __len__(self):
+        return len(self._buffer)
+
+    def check_slice_indices(self, start, stop, step):
+        return ProtoReader.check_slice_indices(self, start, stop, step)
+
+    def _apply_limits(self, frame):
+        if frame >= len(self._buffer):
+            frame = -1
+        return frame
+
     def __getitem__(self, index):
-        ts = self._buffer[index]
-        self._trajectory.ts = ts
-        return ts
+        if isinstance(index, numbers.Integral):
+            ts = self._buffer[index]
+            self._trajectory.ts = ts
+            return ts
+        if isinstance(index, slice):
+            return FrameIteratorAll(self)
+        if isinstance(index, (list, np.ndarray)):
+            return BufferFrameIteratorIndices(self, index)
+        raise TypeError("Unsupported trajectory indexing")  # pragma: no cover
 
     def __getattr__(self, name):
         wrapped = object.__getattribute__(self, "_trajectory")
