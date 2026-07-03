@@ -352,7 +352,7 @@ async def test_widget_input_changes(_client):
     # test input changes
     inputs = [
         ("maxlen", -1),
-        ("x_type", "time"),
+        ("x_type", "step"),
     ]
     await check_input_changes(uuid, inputs)
     # test name / desc changes
@@ -412,7 +412,7 @@ async def test_widget_run_com_distance(_client, imd_server):
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
         ("maxlen", -1),
-        ("x_type", "time"),
+        ("x_type", "step"),
         ("updating", True),
     ]
     await check_input_changes(uuid, inputs)
@@ -428,7 +428,7 @@ async def test_widget_run_rog_serial_per_frame(_client, imd_server):
     inputs = [
         ("selection", "protein"),
         ("maxlen", -1),
-        ("x_type", "time"),
+        ("x_type", "step"),
         ("updating", True),
     ]
     await check_input_changes(uuid, inputs)
@@ -486,7 +486,7 @@ async def test_widget_run_dssp_serial_per_frame(_client, imd_server):
     inputs = [
         ("maxlen", -1),
         ("custom_title", "Title"),
-        ("x_type", "time"),
+        ("x_type", "step"),
     ]
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)

@@ -2,6 +2,7 @@
 Radii of Gyration
 """
 
+import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ import numpy as np
 from joblib import delayed
 
 from mdadash.backend.widgets.base import WidgetBase
+
+logger = logging.getLogger(__name__)
 
 
 class ROG(WidgetBase):
@@ -78,28 +81,26 @@ class ROG(WidgetBase):
             "name": "X-axis",
             "type": "toggle",
             "options": [
-                {"name": "Step", "value": "step"},
                 {"name": "Time", "value": "time"},
+                {"name": "Step", "value": "step"},
             ],
         },
     ]
 
     def __init__(self):
         super().__init__()
-        self.default_maxlen = 100
-        self.maxlen = self.default_maxlen
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
         self.selection = "protein"
         self.periodic = True
         self.updating = False
         self.ag = None
         self.title = "Radii of Gyration"
         self.custom_title = None
-        self.x_type = "step"
-        self.x_values = self.steps
-        self.x_label = "Step"
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
+        self.x_type = "time"
+        self.x_label = None
+        self.x_values = None
+        self._reset_plot()
 
     def _update_selection(self):
         """Update atom groups when selection phrase changes"""
@@ -117,9 +118,15 @@ class ROG(WidgetBase):
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
+    def _reset_plot(self):
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._set_x_values()
+        self._reset_plot()
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -140,10 +147,7 @@ class ROG(WidgetBase):
         elif attribute in ("periodic", "updating"):
             self._update_selection()
         if reset_plot:
-            self.steps = deque(maxlen=self.maxlen)
-            self.times = deque(maxlen=self.maxlen)
-            self.y_values = deque(maxlen=self.maxlen)
-            self._set_x_values()
+            self._reset_plot()
 
     def _compute_per_frame(self):
         """Compute ROG values for current frame"""

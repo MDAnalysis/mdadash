@@ -2,11 +2,14 @@
 Widgets for various simulation energies
 """
 
+import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
 
 from mdadash.backend.widgets.base import WidgetBase
+
+logger = logging.getLogger(__name__)
 
 
 class EnergyWidgetBase:
@@ -34,8 +37,8 @@ class EnergyWidgetBase:
             "name": "X-axis",
             "type": "toggle",
             "options": [
-                {"name": "Step", "value": "step"},
                 {"name": "Time", "value": "time"},
+                {"name": "Step", "value": "step"},
             ],
         },
     ]
@@ -45,12 +48,10 @@ class EnergyWidgetBase:
         self.title = self.name
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
-        self.x_type = "step"
-        self.x_values = self.steps
-        self.x_label = "Step"
+        self.x_type = "time"
+        self.x_label = None
+        self.x_values = None
+        self._reset_plot()
 
     def _set_x_values(self):
         """Set the values for the x-axis"""
@@ -61,19 +62,22 @@ class EnergyWidgetBase:
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
+    def _reset_plot(self):
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._set_x_values()
+        self._reset_plot()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
-            self.steps = deque(maxlen=self.maxlen)
-            self.times = deque(maxlen=self.maxlen)
-            self.y_values = deque(maxlen=self.maxlen)
-            self._set_x_values()
+            self._reset_plot()
         elif attribute == "x_type":
             self._set_x_values()
 

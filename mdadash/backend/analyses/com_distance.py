@@ -2,6 +2,7 @@
 Distance between two center-of-masses
 """
 
+import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ from MDAnalysis.exceptions import NoDataError
 from MDAnalysis.lib.distances import calc_bonds
 
 from mdadash.backend.widgets.base import WidgetBase
+
+logger = logging.getLogger(__name__)
 
 
 class COMDistance(WidgetBase):
@@ -76,32 +79,30 @@ class COMDistance(WidgetBase):
             "name": "X-axis",
             "type": "toggle",
             "options": [
-                {"name": "Step", "value": "step"},
                 {"name": "Time", "value": "time"},
+                {"name": "Step", "value": "step"},
             ],
         },
     ]
 
     def __init__(self):
         super().__init__()
-        self.default_maxlen = 100
-        self.maxlen = self.default_maxlen
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
         self.selection1 = "protein"
         self.selection2 = "resid 1"
         self.periodic = True
         self.updating = False
         self.ag1 = None
         self.ag2 = None
-        self.title = "Distance between COMs"
-        self.custom_title = None
         self.max_distance = 5.0
         self.max_distance_alert = False
-        self.x_type = "step"
-        self.x_values = self.steps
-        self.x_label = "Step"
+        self.title = "Distance between COMs"
+        self.custom_title = None
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
+        self.x_type = "time"
+        self.x_label = None
+        self.x_values = None
+        self._reset_plot()
 
     def _update_selections(self):
         """Update atom groups when selection phrases change"""
@@ -122,9 +123,15 @@ class COMDistance(WidgetBase):
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
+    def _reset_plot(self):
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._set_x_values()
+        self._reset_plot()
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -148,10 +155,7 @@ class COMDistance(WidgetBase):
         elif attribute in ("periodic", "updating"):
             self._update_selections()
         if reset_plot:
-            self.steps = deque(maxlen=self.maxlen)
-            self.times = deque(maxlen=self.maxlen)
-            self.y_values = deque(maxlen=self.maxlen)
-            self._set_x_values()
+            self._reset_plot()
 
     def run_per_frame(self):
         """per-frame run handler"""

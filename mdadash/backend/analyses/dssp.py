@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -8,6 +9,8 @@ from matplotlib.patches import Patch
 from MDAnalysis.analysis.dssp import DSSP
 
 from mdadash.backend.widgets.base import WidgetBase
+
+logger = logging.getLogger(__name__)
 
 
 class DSSPAnalysis(WidgetBase):
@@ -52,23 +55,14 @@ class DSSPAnalysis(WidgetBase):
             "name": "X-axis",
             "type": "toggle",
             "options": [
-                {"name": "Step", "value": "step"},
                 {"name": "Time", "value": "time"},
+                {"name": "Step", "value": "step"},
             ],
         },
     ]
 
     def __init__(self):
         super().__init__()
-        self.default_maxlen = 100
-        self.maxlen = self.default_maxlen
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
-        self.custom_title = None
-        self.x_type = "step"
-        self.x_label = "Step"
-        self.x_values = self.steps
         self.dssp = None
         self.res_ids = None
         self.n_residues = None
@@ -76,6 +70,13 @@ class DSSPAnalysis(WidgetBase):
         self.labels = ["Helix (H)", "Sheet (E)", "Loop (-)"]
         self.colors = ["#ff6666", "#66b2ff", "#d9d9d9"]
         self.custom_cmap = ListedColormap(self.colors)
+        self.default_maxlen = 100
+        self.maxlen = self.default_maxlen
+        self.custom_title = None
+        self.x_type = "time"
+        self.x_label = None
+        self.x_values = None
+        self._reset_plot()
 
     def _set_x_values(self):
         """Set the values for the x-axis"""
@@ -86,9 +87,15 @@ class DSSPAnalysis(WidgetBase):
             self.x_label = "Time (ps)"
             self.x_values = self.times
 
+    def _reset_plot(self):
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._set_x_values()
+        self._reset_plot()
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -107,10 +114,7 @@ class DSSPAnalysis(WidgetBase):
         elif attribute == "x_type":
             self._set_x_values()
         if reset_plot:
-            self.steps = deque(maxlen=self.maxlen)
-            self.times = deque(maxlen=self.maxlen)
-            self.y_values = deque(maxlen=self.maxlen)
-            self._set_x_values()
+            self._reset_plot()
 
     def _compute_per_frame(self):
         """Compute values for current frame"""

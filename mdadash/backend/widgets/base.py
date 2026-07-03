@@ -3,6 +3,7 @@ Base Class for Widgets and Widget Manager
 """
 
 import inspect
+import logging
 from abc import ABC
 from contextlib import contextmanager
 from threading import Thread
@@ -12,6 +13,8 @@ from uuid import uuid1
 import IPython
 import MDAnalysis as mda
 from joblib import Parallel
+
+logger = logging.getLogger(__name__)
 
 
 class WidgetBase(ABC):
@@ -249,8 +252,12 @@ class WidgetManager:
                 try:
                     handler()
                 # pylint: disable=broad-exception-caught
-                except Exception as e:  # pragma: no cover
-                    print(e)
+                except Exception:  # pragma: no cover
+                    logger.exception(
+                        "Failed to invoke lifecycle method %s for widget %s",
+                        method,
+                        widget.uuid,
+                    )
 
     def _set_widget_universe(
         self, widget: WidgetBase, uid: int, u: mda.Universe
@@ -390,8 +397,8 @@ class WidgetManager:
                 self.instances[widget_uuid] = instance
                 # invoke the on_post_create handler
                 self._invoke_widget_lifecyle_method(instance, "on_post_create")
-            except KeyError as e:
-                print(e)
+            except KeyError:
+                logger.exception("Key error while recreating widget instances")
                 ret = False
         return ret
 
@@ -498,8 +505,8 @@ class WidgetManager:
             )
             parallel_results.extend(results)
         # pylint: disable=broad-exception-caught
-        except Exception as e:  # pragma: no cover
-            print(f"parallel run failed with '{e}'")
+        except Exception:  # pragma: no cover
+            logger.exception("Parallel run failed for jobs %s", parallel_jobs)
 
     def run_widgets(self, uid: int, batch_ready: bool, batch_size: int) -> None:
         """Run widget instances
@@ -549,8 +556,8 @@ class WidgetManager:
                     elif batch_ready:
                         widget.run_batch(batch_size)
                 # pylint: disable=broad-exception-caught
-                except Exception as e:  # pragma: no cover
-                    print(f"{widget.uuid} serial run failed with '{e}'")
+                except Exception:  # pragma: no cover
+                    logger.exception("Serial run failed for widget %s", widget.uuid)
         # apply parallel results back
         if parallel_widgets:
             # wait for all parallel jobs to be done

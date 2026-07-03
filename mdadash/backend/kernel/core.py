@@ -5,6 +5,7 @@ Kernel core where MDAnalysis code runs
 import ast
 import asyncio
 import copy
+import logging
 import numbers
 from collections import deque
 from dataclasses import asdict
@@ -16,6 +17,10 @@ import numpy as np
 from MDAnalysis.coordinates.base import FrameIteratorAll, FrameIteratorBase, ProtoReader
 
 from mdadash.backend.widgets.base import WidgetManager
+
+logging.basicConfig(level=logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 
 class BufferFrameIteratorIndices(FrameIteratorBase):
@@ -297,7 +302,7 @@ class UniverseManager:
             self._connected = True
             self._comm_handler.send({"status": "ok"})
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(e)
+            logger.exception("Failed to connect to simulations")
             self._comm_handler.send({"status": "error", "message": str(e)})
 
     def _send_tsdata(self, u: mda.Universe):
@@ -386,8 +391,8 @@ class UniverseManager:
                         ) == 0
                         self._wm.run_widgets(uid, batch_ready, batch_size)
                     # pylint: disable=broad-exception-caught
-                    except Exception as e:  # pragma: no cover
-                        print(e)
+                    except Exception:  # pragma: no cover
+                        logger.exception("Trajectory iteration failed for uid %d", uid)
                     await asyncio.sleep(0)
         except asyncio.CancelledError:
             pass
