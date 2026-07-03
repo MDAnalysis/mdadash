@@ -89,7 +89,9 @@ class StateManager:
                         return
                     logger.error("Invalid mdadash state file")
                 except json.JSONDecodeError:
-                    logger.exception("Failed to parse state file '%s'", self._state_file)
+                    logger.exception(
+                        "Failed to parse state file '%s'", self._state_file
+                    )
         self._state = {
             "version": 1,
             "app": "mdadash",
