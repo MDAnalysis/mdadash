@@ -1,15 +1,15 @@
 name: mdadash-dev
 channels:
   - conda-forge
+  - nodefaults
 dependencies:
   # Base depends
   - python
   - pip
+  - pip:
+    - build
 
   # Development
   - nodejs
   - twine
   - ruff
-
-  # Build
-  - build

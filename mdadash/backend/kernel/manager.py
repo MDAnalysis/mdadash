@@ -86,6 +86,20 @@ class KernelManager:
 
     async def stop(self) -> None:
         """Stop the async kernel"""
+        # This seems to be the only reliable way to get coverage results
+        # back from the kernel started with AsyncKernerlManager on Ubuntu.
+        # This should not impact existing app functionality.
+        coverage_flush = """
+        try:
+            import coverage
+            cov = coverage.Coverage.current()
+            if cov:
+                cov.stop()
+                cov.save()
+        except ImportError:
+            pass
+        """
+        self.kc.execute(coverage_flush)
         self._is_running = False
         # wait for listen task to completely exit
         await self.listen_task

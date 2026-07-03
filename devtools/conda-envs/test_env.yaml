@@ -1,6 +1,7 @@
 name: mdadash-test
 channels:
   - conda-forge
+  - nodefaults
 dependencies:
   # Base depends
   - python

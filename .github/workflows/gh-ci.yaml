@@ -12,6 +12,10 @@ on:
     #   (from https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule)
     - cron: "0 0 * * 0"
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   # Specific group naming so CI is only cancelled
   # within same PR or on merge to main

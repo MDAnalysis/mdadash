@@ -8,6 +8,9 @@ on:
     types:
       - published
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.ref }}-${{ github.head_ref }}-${{ github.workflow }}
   cancel-in-progress: true

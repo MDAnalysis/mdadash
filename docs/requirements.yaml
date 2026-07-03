@@ -1,6 +1,7 @@
 name: mdadash-docs
 channels:
   - conda-forge
+  - nodefaults
 
 dependencies:
   # Base depends
