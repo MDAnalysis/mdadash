@@ -31,6 +31,8 @@ The rules for this file:
 
 - Added persistence support (PR #19)
 - Added support for MDA `AnalysisBase`-based classes (PR #21)
+- Optimized plot generation to improve performane and reduce memory (PR #25)
+- Added widgets for Ramachandran and Janin plots (PR #26)
 
 ### Fixed
 

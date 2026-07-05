@@ -540,6 +540,32 @@ async def test_widget_run_dssp_parallel_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
+async def test_widget_run_ramachandran(_client, imd_server):
+    uuid = await add_widget("Ramachandran Plot")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection", "protein"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_janin(_client, imd_server):
+    uuid = await add_widget("Janin Plot")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection", "protein"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
 def test_state_load(tmp_path):
     # test with no state file
     sm = StateManager("")
