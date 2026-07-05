@@ -6,6 +6,7 @@ import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
+from IPython.display import display
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -49,35 +50,52 @@ class EnergyWidgetBase:
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
         self.x_type = "time"
-        self.x_label = None
         self.x_values = None
-        self._reset_plot()
+        self._setup_plot()
+        self._reset_plot_values()
 
-    def _set_x_values(self):
-        """Set the values for the x-axis"""
-        if self.x_type == "step":
-            self.x_label = "Step"
-            self.x_values = self.steps
-        else:
-            self.x_label = "Time (ps)"
-            self.x_values = self.times
+    def _setup_plot(self):
+        """Setup matplotlib plot"""
+        self.fig, self.ax = plt.subplots()
+        (self.plot,) = self.ax.plot([], [])
+        self._set_title()
+        self.ax.set_ylabel(self.y_label)
+        self.ax.grid(True)
 
-    def _reset_plot(self):
+    def _reset_plot_values(self):
+        """Reset plot values"""
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
         self._set_x_values()
 
+    def _set_title(self):
+        """Set plot title"""
+        self.ax.set_title(self.title, y=1.05)
+
+    def _set_x_values(self):
+        """Set the values for the x-axis"""
+        if self.x_type == "step":
+            x_label = "Step"
+            self.x_values = self.steps
+        else:
+            x_label = "Time (ps)"
+            self.x_values = self.times
+        self.ax.set_xlabel(x_label)
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._reset_plot()
+        self._set_title()
+        self._reset_plot_values()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
-            self._reset_plot()
+            self._reset_plot_values()
+        elif attribute == "title":
+            self._set_title()
         elif attribute == "x_type":
             self._set_x_values()
 
@@ -89,13 +107,12 @@ class EnergyWidgetBase:
         self.steps.append(ts.data["step"])
         self.times.append(ts.data["time"])
         self.y_values.append(ts.data[self.data_key])
-        # create plot
-        plt.plot(self.x_values, self.y_values)
-        plt.ylabel(self.y_label)
-        plt.xlabel(self.x_label)
-        plt.title(self.title, y=1.05)
-        plt.grid(True)
-        plt.show()
+        # update plot
+        self.plot.set_data(self.x_values, self.y_values)
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.fig.canvas.draw()
+        display(self.fig)
 
 
 class AbsoluteTemperature(EnergyWidgetBase, WidgetBase):

@@ -6,6 +6,7 @@ import logging
 from collections import deque
 
 import matplotlib.pyplot as plt
+from IPython.display import display
 from MDAnalysis.exceptions import NoDataError
 from MDAnalysis.lib.distances import calc_bonds
 
@@ -93,16 +94,45 @@ class COMDistance(WidgetBase):
         self.updating = False
         self.ag1 = None
         self.ag2 = None
-        self.max_distance = 5.0
+        self.max_distance = 50.0
         self.max_distance_alert = False
         self.title = "Distance between COMs"
         self.custom_title = None
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
         self.x_type = "time"
-        self.x_label = None
         self.x_values = None
-        self._reset_plot()
+        self._setup_plot()
+        self._reset_plot_values()
+
+    def _setup_plot(self):
+        """Setup matplotlib plot"""
+        self.fig, self.ax = plt.subplots()
+        (self.plot,) = self.ax.plot([], [])
+        self.ax.set_ylabel("Distance (Å)")
+        self.ax.grid(True)
+        self._set_title()
+
+    def _reset_plot_values(self):
+        """Reset plot values"""
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
+    def _set_title(self):
+        """Set plot title"""
+        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+
+    def _set_x_values(self):
+        """Set the values for the x-axis"""
+        if self.x_type == "step":
+            x_label = "Step"
+            self.x_values = self.steps
+        else:
+            x_label = "Time (ps)"
+            self.x_values = self.times
+        self.ax.set_xlabel(x_label)
 
     def _update_selections(self):
         """Update atom groups when selection phrases change"""
@@ -112,26 +142,13 @@ class COMDistance(WidgetBase):
         self.ag2 = self.u.select_atoms(
             self.selection2, periodic=self.periodic, updating=self.updating
         )
-        self.title = f"{self.selection1} <-> {self.selection2}"
-
-    def _set_x_values(self):
-        """Set the values for the x-axis"""
-        if self.x_type == "step":
-            self.x_label = "Step"
-            self.x_values = self.steps
-        else:
-            self.x_label = "Time (ps)"
-            self.x_values = self.times
-
-    def _reset_plot(self):
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
-        self._set_x_values()
+        self.title = f"{self.selection1} <---> {self.selection2}"
+        self._set_title()
 
     def on_post_create(self):
         """on_post_create handler"""
-        self._reset_plot()
+        self._set_title()
+        self._reset_plot_values()
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -146,6 +163,8 @@ class COMDistance(WidgetBase):
             reset_plot = True
         elif attribute == "x_type":
             self._set_x_values()
+        elif attribute == "custom_title":
+            self._set_title()
         elif attribute == "selection1":
             self._update_selections()
             reset_plot = True
@@ -155,7 +174,7 @@ class COMDistance(WidgetBase):
         elif attribute in ("periodic", "updating"):
             self._update_selections()
         if reset_plot:
-            self._reset_plot()
+            self._reset_plot_values()
 
     def run_per_frame(self):
         """per-frame run handler"""
@@ -169,9 +188,9 @@ class COMDistance(WidgetBase):
         self.y_values.append(calc_bonds(com1, com2, box=self.u.dimensions))
         self.steps.append(self.u.trajectory.ts.data["step"])
         self.times.append(self.u.trajectory.ts.data["time"])
-        plt.plot(self.x_values, self.y_values)
-        plt.ylabel("Distance (Å)")
-        plt.xlabel(self.x_label)
-        plt.title(self.custom_title if self.custom_title else self.title)
-        plt.grid(True)
-        plt.show()
+        # update plot
+        self.plot.set_data(self.x_values, self.y_values)
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.fig.canvas.draw()
+        display(self.fig)

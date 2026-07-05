@@ -353,6 +353,7 @@ async def test_widget_input_changes(_client):
     inputs = [
         ("maxlen", -1),
         ("x_type", "step"),
+        ("title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
     # test name / desc changes
@@ -414,6 +415,7 @@ async def test_widget_run_com_distance(_client, imd_server):
         ("maxlen", -1),
         ("x_type", "step"),
         ("updating", True),
+        ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)
@@ -430,6 +432,7 @@ async def test_widget_run_rog_serial_per_frame(_client, imd_server):
         ("maxlen", -1),
         ("x_type", "step"),
         ("updating", True),
+        ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)

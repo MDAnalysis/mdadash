@@ -3,6 +3,7 @@ from collections import deque
 
 import matplotlib.pyplot as plt
 import numpy as np
+from IPython.display import display
 from joblib import delayed
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
@@ -64,57 +65,85 @@ class DSSPAnalysis(WidgetBase):
     def __init__(self):
         super().__init__()
         self.dssp = None
-        self.res_ids = None
         self.n_residues = None
         self.ss_map = {"H": 1, "E": 2, "-": 3}
-        self.labels = ["Helix (H)", "Sheet (E)", "Loop (-)"]
-        self.colors = ["#ff6666", "#66b2ff", "#d9d9d9"]
-        self.custom_cmap = ListedColormap(self.colors)
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
         self.custom_title = None
         self.x_type = "time"
-        self.x_label = None
         self.x_values = None
-        self._reset_plot()
+        self._setup_plot()
+        self._reset_plot_values()
 
-    def _set_x_values(self):
-        """Set the values for the x-axis"""
-        if self.x_type == "step":
-            self.x_label = "Step"
-            self.x_values = self.steps
-        else:
-            self.x_label = "Time (ps)"
-            self.x_values = self.times
+    def _setup_plot(self):
+        """Setup matplotlib plot"""
+        self.fig, self.ax = plt.subplots(layout="constrained")
+        self._set_title()
+        self.ax.set_ylabel("Res ID")
+        colors = ["#ff6666", "#66b2ff", "#d9d9d9"]
+        self.ax.legend(
+            [Patch(facecolor=c) for c in colors],
+            ["Helix (H)", "Sheet (E)", "Loop (-)"],
+            loc="lower center",
+            bbox_to_anchor=(0.5, 1.02),
+            ncols=3,
+        )
+        self.im = self.ax.imshow(
+            [[0]],
+            cmap=ListedColormap(colors),
+            aspect="auto",
+            interpolation="nearest",
+            vmin=0.5,
+            vmax=3.5,
+        )
 
-    def _reset_plot(self):
+    def _reset_plot_values(self):
+        """Reset plot values"""
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
         self._set_x_values()
 
+    def _set_title(self):
+        """Set plot title"""
+        self.ax.set_title(self.custom_title if self.custom_title else "", pad=40)
+
+    def _set_x_values(self):
+        """Set the values for the x-axis"""
+        if self.x_type == "step":
+            x_label = "Step"
+            self.x_values = self.steps
+        else:
+            x_label = "Time (ps)"
+            self.x_values = self.times
+        self.ax.set_xlabel(x_label)
+
     def on_post_create(self):
         """on_post_create handler"""
-        self._reset_plot()
+        self._set_title()
+        self._reset_plot_values()
 
     def on_post_connect(self):
         """on_post_connect handler"""
         protein = self.u.select_atoms("protein")
-        self.res_ids = protein.residues.resids
+        res_ids = protein.residues.resids
         self.n_residues = len(protein.residues)
         self.dssp = DSSP(protein)
+        # setup plot y-axis
+        tick_spacing = max(1, self.n_residues // 10)
+        self.ax.set_yticks(np.arange(0, self.n_residues, tick_spacing))
+        self.ax.set_yticklabels(res_ids[::tick_spacing])
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
-        reset_plot = False
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
-            reset_plot = True
+            self._reset_plot_values()
         elif attribute == "x_type":
             self._set_x_values()
-        if reset_plot:
-            self._reset_plot()
+        elif attribute == "custom_title":
+            self._set_title()
 
     def _compute_per_frame(self):
         """Compute values for current frame"""
@@ -150,8 +179,8 @@ class DSSPAnalysis(WidgetBase):
         delattr(self.dssp.results, "resids")
         return values
 
-    def _create_plot(self, values):
-        """Append values and create plot"""
+    def _update_plot(self, values):
+        """Append values and update plot"""
         if isinstance(values, tuple):
             values = [values]
         # update plot points
@@ -160,45 +189,26 @@ class DSSPAnalysis(WidgetBase):
             self.y_values.append(nv)
             self.steps.append(step)
             self.times.append(time)
-        # create plot
-        _, ax = plt.subplots(layout="constrained")
+        # update plot
         matrix_to_plot = np.array(self.y_values).T
         min_x = self.x_values[0]
         max_x = self.x_values[-1]
         if min_x == max_x:
             max_x = min_x + 1
-        _ = ax.imshow(
-            matrix_to_plot,
-            cmap=self.custom_cmap,
-            aspect="auto",
-            interpolation="nearest",
-            vmin=0.5,
-            vmax=3.5,
-            extent=[min_x, max_x, 0, self.n_residues],
-        )
-        if self.custom_title:
-            ax.set_title(self.custom_title, pad=40)
-        ax.set_xlabel(self.x_label)
-        ax.set_ylabel("Res ID")
-        tick_spacing = max(1, self.n_residues // 10)
-        ax.set_yticks(np.arange(0, self.n_residues, tick_spacing))
-        ax.set_yticklabels(self.res_ids[::tick_spacing])
-        ax.legend(
-            [Patch(facecolor=c) for c in self.colors],
-            self.labels,
-            loc="lower center",
-            bbox_to_anchor=(0.5, 1.02),
-            ncols=3,
-        )
-        plt.show()
+        self.im.set_data(matrix_to_plot)
+        self.im.set_extent([min_x, max_x, 0, self.n_residues])
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.fig.canvas.draw()
+        display(self.fig)
 
     def run_per_frame(self):
         """per-frame run handler"""
-        self._create_plot(self._compute_per_frame())
+        self._update_plot(self._compute_per_frame())
 
     def run_batch(self, batch_size):
         """batch run handler"""
-        self._create_plot(self._compute_batch(batch_size))
+        self._update_plot(self._compute_batch(batch_size))
 
     def get_parallel_job(self, batch_size):
         """get parallel job handler"""
@@ -208,4 +218,4 @@ class DSSPAnalysis(WidgetBase):
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""
-        self._create_plot(values)
+        self._update_plot(values)

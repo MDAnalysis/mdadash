@@ -7,6 +7,7 @@ from collections import deque
 
 import matplotlib.pyplot as plt
 import numpy as np
+from IPython.display import display
 from joblib import delayed
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -98,9 +99,40 @@ class ROG(WidgetBase):
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
         self.x_type = "time"
-        self.x_label = None
         self.x_values = None
-        self._reset_plot()
+        self._setup_plot()
+        self._reset_plot_values()
+
+    def _setup_plot(self):
+        """Setup matplotlib plot"""
+        self.fig, self.ax = plt.subplots()
+        self.ax.set_ylabel("Radii (Å)")
+        labels = ["all", "x-axis", "y-axis", "z-axis"]
+        self.plots = [self.ax.plot([], [], label=label)[0] for label in labels]
+        self.ax.legend(loc="upper left")
+        self.ax.grid(True)
+        self._set_title()
+
+    def _reset_plot_values(self):
+        """Reset plot values"""
+        self.steps = deque(maxlen=self.maxlen)
+        self.times = deque(maxlen=self.maxlen)
+        self.y_values = deque(maxlen=self.maxlen)
+        self._set_x_values()
+
+    def _set_title(self):
+        """Set plot title"""
+        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+
+    def _set_x_values(self):
+        """Set the values for the x-axis"""
+        if self.x_type == "step":
+            x_label = "Step"
+            self.x_values = self.steps
+        else:
+            x_label = "Time (ps)"
+            self.x_values = self.times
+        self.ax.set_xlabel(x_label)
 
     def _update_selection(self):
         """Update atom groups when selection phrase changes"""
@@ -108,25 +140,12 @@ class ROG(WidgetBase):
             self.selection, periodic=self.periodic, updating=self.updating
         )
         self.title = f"ROG of {self.selection}"
-
-    def _set_x_values(self):
-        """Set the values for the x-axis"""
-        if self.x_type == "step":
-            self.x_label = "Step"
-            self.x_values = self.steps
-        else:
-            self.x_label = "Time (ps)"
-            self.x_values = self.times
-
-    def _reset_plot(self):
-        self.steps = deque(maxlen=self.maxlen)
-        self.times = deque(maxlen=self.maxlen)
-        self.y_values = deque(maxlen=self.maxlen)
-        self._set_x_values()
+        self._set_title()
 
     def on_post_create(self):
         """on_post_create handler"""
-        self._reset_plot()
+        self._set_title()
+        self._reset_plot_values()
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -141,13 +160,15 @@ class ROG(WidgetBase):
             reset_plot = True
         elif attribute == "x_type":
             self._set_x_values()
+        elif attribute == "custom_title":
+            self._set_title()
         elif attribute == "selection":
             self._update_selection()
             reset_plot = True
         elif attribute in ("periodic", "updating"):
             self._update_selection()
         if reset_plot:
-            self._reset_plot()
+            self._reset_plot_values()
 
     def _compute_per_frame(self):
         """Compute ROG values for current frame"""
@@ -181,8 +202,8 @@ class ROG(WidgetBase):
             values.append(self._compute_per_frame())
         return values
 
-    def _create_plot(self, values):
-        """Append ROG values and create plot"""
+    def _update_plot(self, values):
+        """Append ROG values and update plot"""
         if isinstance(values, tuple):
             values = [values]
         # update plot points
@@ -191,25 +212,22 @@ class ROG(WidgetBase):
             self.steps.append(steps)
             self.times.append(times)
             self.y_values.append(rog)
-        # create plot
+        # update plot
         data = np.array(self.y_values)
-        labels = ["all", "x-axis", "y-axis", "z-axis"]
-        for i, label in enumerate(labels):
-            plt.plot(self.x_values, data[:, i], label=label)
-        plt.legend(loc="upper left")
-        plt.ylabel("Radii (Å)")
-        plt.xlabel(self.x_label)
-        plt.title(self.custom_title if self.custom_title else self.title)
-        plt.grid(True)
-        plt.show()
+        for plot, y_value in zip(self.plots, data.T):
+            plot.set_data(self.x_values, y_value)
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.fig.canvas.draw()
+        display(self.fig)
 
     def run_per_frame(self):
         """per-frame run handler"""
-        self._create_plot(self._compute_per_frame())
+        self._update_plot(self._compute_per_frame())
 
     def run_batch(self, batch_size):
         """batch run handler"""
-        self._create_plot(self._compute_batch(batch_size))
+        self._update_plot(self._compute_batch(batch_size))
 
     def get_parallel_job(self, batch_size):
         """get parallel job handler"""
@@ -219,4 +237,4 @@ class ROG(WidgetBase):
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""
-        self._create_plot(values)
+        self._update_plot(values)
