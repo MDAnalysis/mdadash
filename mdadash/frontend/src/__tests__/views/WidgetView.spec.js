@@ -64,7 +64,7 @@ const widgetDetails = {
       name: 'Analysis mode',
       description: 'The mode to run this analysis widget',
       type: 'select',
-      items: ['per-frame', 'batch'],
+      items: ['every-frame', 'batch'],
     },
   ],
 }

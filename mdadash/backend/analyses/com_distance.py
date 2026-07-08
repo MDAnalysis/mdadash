@@ -76,6 +76,11 @@ class COMDistance(WidgetBase):
             "type": "bool",
         },
         {
+            "attribute": "max_distance_pause",
+            "name": "Pause simulation if distance > 'Max distance'",
+            "type": "bool",
+        },
+        {
             "attribute": "x_type",
             "name": "X-axis",
             "type": "toggle",
@@ -96,6 +101,7 @@ class COMDistance(WidgetBase):
         self.ag2 = None
         self.max_distance = 50.0
         self.max_distance_alert = False
+        self.max_distance_pause = False
         self.title = "Distance between COMs"
         self.custom_title = None
         self.default_maxlen = 100
@@ -176,8 +182,8 @@ class COMDistance(WidgetBase):
         if reset_plot:
             self._reset_plot_values()
 
-    def run_per_frame(self):
-        """per-frame run handler"""
+    def run_every_frame(self):
+        """every-frame run handler"""
         try:
             com1 = self.ag1.center_of_mass(unwrap=True)
             com2 = self.ag2.center_of_mass(unwrap=True)
@@ -185,7 +191,8 @@ class COMDistance(WidgetBase):
             # unwrap can fail if there is no bonds info
             com1 = self.ag1.center_of_mass()
             com2 = self.ag2.center_of_mass()
-        self.y_values.append(calc_bonds(com1, com2, box=self.u.dimensions))
+        dist = calc_bonds(com1, com2, box=self.u.dimensions)
+        self.y_values.append(dist)
         self.steps.append(self.u.trajectory.ts.data["step"])
         self.times.append(self.u.trajectory.ts.data["time"])
         # update plot
@@ -194,3 +201,5 @@ class COMDistance(WidgetBase):
         self.ax.autoscale_view()
         self.fig.canvas.draw()
         display(self.fig)
+        if self.max_distance_pause and dist > self.max_distance:
+            self.pause_simulation()

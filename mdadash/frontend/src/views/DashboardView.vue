@@ -214,6 +214,7 @@
             <v-autocomplete
               v-else
               :menu="isAddWidgetOpen"
+              :menu-props="{ maxWidth: '100%' }"
               @update:menu="setAddWidgetMenuState"
               :items="addWidgetItems"
               item-title="name"

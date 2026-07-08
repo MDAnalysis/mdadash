@@ -32,7 +32,7 @@ class ROG(WidgetBase):
             "description": "The frequency with which the widget is run",
             "type": "select",
             "items": [
-                "per-frame",
+                "every-frame",
                 "batch",
             ],
         },
@@ -170,7 +170,7 @@ class ROG(WidgetBase):
         if reset_plot:
             self._reset_plot_values()
 
-    def _compute_per_frame(self):
+    def _compute_current_frame(self):
         """Compute ROG values for current frame"""
         masses = self.ag.masses
         total_mass = np.sum(masses)
@@ -199,7 +199,7 @@ class ROG(WidgetBase):
         values = []
         for i in range(batch_size):
             _ = self.u.trajectory[i]
-            values.append(self._compute_per_frame())
+            values.append(self._compute_current_frame())
         return values
 
     def _update_plot(self, values):
@@ -221,9 +221,9 @@ class ROG(WidgetBase):
         self.fig.canvas.draw()
         display(self.fig)
 
-    def run_per_frame(self):
-        """per-frame run handler"""
-        self._update_plot(self._compute_per_frame())
+    def run_every_frame(self):
+        """every-frame run handler"""
+        self._update_plot(self._compute_current_frame())
 
     def run_batch(self, batch_size):
         """batch run handler"""
@@ -233,7 +233,7 @@ class ROG(WidgetBase):
         """get parallel job handler"""
         if self._run_frequency == "batch":
             return delayed(self._compute_batch)(batch_size)
-        return delayed(self._compute_per_frame)()
+        return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""

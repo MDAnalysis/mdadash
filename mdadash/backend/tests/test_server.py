@@ -195,7 +195,7 @@ async def test_update_settings(_client):
 
 async def test_widget_registration():
     # test invalid widget class
-    wm = WidgetManager()
+    wm = WidgetManager(None)
 
     class TestWidget1:
         pass
@@ -220,13 +220,13 @@ async def test_widget_registration():
 
         class _TestWidget3b(WidgetBase):
             name = "TestWidget3"
-            run_per_frame = None  # not a callable
+            run_every_frame = None  # not a callable
 
-    # test correct registration - per-frame
+    # test correct registration - every-frame
     class _TestWidget4a(WidgetBase):
         name = "TestWidget4a"
 
-        def run_per_frame(self):
+        def run_every_frame(self):
             pass
 
     # test correct registration - batch
@@ -242,7 +242,7 @@ async def test_widget_registration():
         class _TestWidget5(WidgetBase):
             name = "TestWidget4a"
 
-            def run_per_frame(self):
+            def run_every_frame(self):
                 pass
 
 
@@ -424,7 +424,24 @@ async def test_widget_run_com_distance(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_rog_serial_per_frame(_client, imd_server):
+async def test_widget_run_com_distance_pause_trigger(_client, imd_server):
+    uuid = await add_widget("COMDistance")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection1", "resid 1"),
+        ("selection2", "resid 2"),
+        ("max_distance", 0),
+        ("max_distance_pause", True),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "runningState", n=3)
+    assert main.mdadash.sm.running_state["running"] is False
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rog_serial_every_frame(_client, imd_server):
     await connect_to_simulation(imd_server)
     uuid = await add_widget("ROG")
     inputs = [
@@ -454,7 +471,7 @@ async def test_widget_run_rog_serial_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_rog_parallel_per_frame(_client, imd_server):
+async def test_widget_run_rog_parallel_every_frame(_client, imd_server):
     uuid = await add_widget("ROG")
     inputs = [
         ("_run_mode", "parallel"),
@@ -483,7 +500,7 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_dssp_serial_per_frame(_client, imd_server):
+async def test_widget_run_dssp_serial_every_frame(_client, imd_server):
     await connect_to_simulation(imd_server)
     uuid = await add_widget("DSSP Analysis")
     inputs = [
@@ -511,7 +528,7 @@ async def test_widget_run_dssp_serial_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_dssp_parallel_per_frame(_client, imd_server):
+async def test_widget_run_dssp_parallel_every_frame(_client, imd_server):
     uuid = await add_widget("DSSP Analysis")
     inputs = [
         ("_run_mode", "parallel"),

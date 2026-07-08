@@ -7,12 +7,15 @@ import logging
 from abc import ABC
 from contextlib import contextmanager
 from threading import Thread
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid1
 
 import IPython
 import MDAnalysis as mda
 from joblib import Parallel
+
+if TYPE_CHECKING:
+    from mdadash.backend.kernel.core import CommHandler
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,7 @@ class WidgetBase(ABC):
 
     """
 
-    _run_frequency = "per-frame"
+    _run_frequency = "every-frame"
     _run_mode = "serial"
 
     def __init_subclass__(cls, **kwargs):
@@ -36,7 +39,17 @@ class WidgetBase(ABC):
         self.uid = None
         self.u = None
         self.uuid = None
+        self._wm = None
         self._input_errors = {}
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["_wm"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._wm = None
 
     def _set_universe(self, u: mda.Universe):
         """Internal: Set the universe"""
@@ -58,6 +71,10 @@ class WidgetBase(ABC):
         else:
             if attribute in self._input_errors:
                 del self._input_errors[attribute]
+
+    def pause_simulation(self) -> None:
+        if self._wm is not None and self._wm.comm_handler is not None:
+            self._wm.comm_handler.send({"pause_simulation": {}})
 
     def on_post_create(self) -> None:
         """on_post_create handler
@@ -116,11 +133,11 @@ class WidgetBase(ABC):
 
         """
 
-    def run_per_frame(self) -> None:
-        """run_per_frame handler
+    def run_every_frame(self) -> None:
+        """run_every_frame handler
 
         This handler is called during every trajectory iteration if the run
-        frequency is set to `per-frame` (`_run_frequency='per-frame'`). The
+        frequency is set to `every-frame` (`_run_frequency='every-frame'`). The
         trajectory timestep is the current frame.
 
         """
@@ -184,7 +201,8 @@ class WidgetManager:
     _classes = {}
     _instances = {}
 
-    def __init__(self):
+    def __init__(self, comm_handler: "CommHandler"):
+        self.comm_handler = comm_handler
         self.n_jobs = 2
         self._patch_IMDReader()
 
@@ -223,7 +241,7 @@ class WidgetManager:
             raise ValueError(f"Widget name '{widget_name}' already registered")
         # check for one of the run methods to exist with correct params
         run_methods = {
-            "run_per_frame": 1,
+            "run_every_frame": 1,
             "run_batch": 2,
         }
         has_valid_run_method = False
@@ -315,6 +333,7 @@ class WidgetManager:
             instance = widget_class()
             setattr(instance, "uid", uid)
             setattr(instance, "uuid", uuid)
+            setattr(instance, "_wm", self)
             self.instances[uuid] = instance
             details = {
                 "uid": uid,
@@ -350,6 +369,7 @@ class WidgetManager:
         widget_class = instance.__class__
         new_instance = widget_class()
         setattr(new_instance, "uid", uid)
+        setattr(new_instance, "_wm", self)
         # set inputs for new instance
         inputs = instance._get_inputs()
         for _input in inputs:
@@ -388,6 +408,7 @@ class WidgetManager:
                 instance = widget_class()
                 setattr(instance, "uid", widget["uid"])
                 setattr(instance, "uuid", widget_uuid)
+                setattr(instance, "_wm", self)
                 inputs = widget["inputs"]
                 for _input in inputs:
                     attribute = _input["attribute"]
@@ -477,7 +498,8 @@ class WidgetManager:
         """Update n_jobs for joblib.Parallel"""
         self.n_jobs = data["n_jobs"]
 
-    def _patch_IMDReader(self):
+    @staticmethod
+    def _patch_IMDReader():
         """Internal: Patch `IMDReader` to make it serializable"""
         # pylint: disable=import-outside-toplevel
         from MDAnalysis.coordinates.IMD import IMDReader
@@ -500,9 +522,9 @@ class WidgetManager:
         for widget in parallel_widgets:
             parallel_jobs.append(widget.get_parallel_job(batch_size))
         try:
-            results = Parallel(n_jobs=self.n_jobs, initializer=self._patch_IMDReader)(
-                parallel_jobs
-            )
+            results = Parallel(
+                n_jobs=self.n_jobs, initializer=WidgetManager._patch_IMDReader
+            )(parallel_jobs)
             parallel_results.extend(results)
         # pylint: disable=broad-exception-caught
         except Exception:  # pragma: no cover
@@ -531,7 +553,7 @@ class WidgetManager:
             if widget.uid != uid or widget._input_errors:
                 continue
             if widget._run_mode == "parallel":
-                if widget._run_frequency == "per-frame" or batch_ready:
+                if widget._run_frequency == "every-frame" or batch_ready:
                     parallel_widgets.append(widget)
             else:
                 serial_widgets.append(widget)
@@ -551,8 +573,8 @@ class WidgetManager:
         for widget in serial_widgets:
             with _widget_uuid_in_metadata(widget.uuid):
                 try:
-                    if widget._run_frequency == "per-frame":
-                        widget.run_per_frame()
+                    if widget._run_frequency == "every-frame":
+                        widget.run_every_frame()
                     elif batch_ready:
                         widget.run_batch(batch_size)
                 # pylint: disable=broad-exception-caught

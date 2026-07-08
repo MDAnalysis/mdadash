@@ -68,8 +68,8 @@ class JaninPlot(WidgetBase):
     def _do_nothing(self, *_args, **_kwargs):
         return None
 
-    def run_per_frame(self):
-        """per-frame run handler"""
+    def run_every_frame(self):
+        """every-frame run handler"""
         self.janin.run(frames=[self.u.trajectory.frame])
         # update plot
         self.ax.clear()

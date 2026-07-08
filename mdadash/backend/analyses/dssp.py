@@ -25,7 +25,7 @@ class DSSPAnalysis(WidgetBase):
             "description": "The frequency with which the widget is run",
             "type": "select",
             "items": [
-                "per-frame",
+                "every-frame",
                 "batch",
             ],
         },
@@ -145,7 +145,7 @@ class DSSPAnalysis(WidgetBase):
         elif attribute == "custom_title":
             self._set_title()
 
-    def _compute_per_frame(self):
+    def _compute_current_frame(self):
         """Compute values for current frame"""
         self.dssp.run(frames=[self.u.trajectory.frame])
         return (
@@ -202,9 +202,9 @@ class DSSPAnalysis(WidgetBase):
         self.fig.canvas.draw()
         display(self.fig)
 
-    def run_per_frame(self):
-        """per-frame run handler"""
-        self._update_plot(self._compute_per_frame())
+    def run_every_frame(self):
+        """every-frame run handler"""
+        self._update_plot(self._compute_current_frame())
 
     def run_batch(self, batch_size):
         """batch run handler"""
@@ -214,7 +214,7 @@ class DSSPAnalysis(WidgetBase):
         """get parallel job handler"""
         if self._run_frequency == "batch":
             return delayed(self._compute_batch)(batch_size)
-        return delayed(self._compute_per_frame)()
+        return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""

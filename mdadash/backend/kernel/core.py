@@ -510,8 +510,8 @@ def execute_code(data: dict) -> dict:
             comm_handler.send({"output": str(result.error_in_exec)})
 
 
-wm = WidgetManager()
 comm_handler = CommHandler()
+wm = WidgetManager(comm_handler)
 um = UniverseManager(wm, comm_handler)
 widgets_comm = WidgetsComm(um, wm, comm_handler)
 

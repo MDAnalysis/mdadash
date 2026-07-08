@@ -173,6 +173,11 @@ class KernelManager:
                         await self._emit_tsdata(data["tsinfo"])
                     elif "sessioninfo" in data:
                         await self._emit_sessioninfo(data["sessioninfo"])
+                    elif "pause_simulation" in data:
+                        if self.sm.running_state["running"]:
+                            await self.send_message("pause_simulations", {})
+                            self.sm.running_state["running"] = False
+                            await self.sio.emit("runningState", self.sm.running_state)
                     else:
                         parent_id = msg.get("parent_header", {}).get("msg_id")
                         # check if a pending future can be resolved with msg
