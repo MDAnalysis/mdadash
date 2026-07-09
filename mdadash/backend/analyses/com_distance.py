@@ -201,5 +201,8 @@ class COMDistance(WidgetBase):
         self.ax.autoscale_view()
         self.fig.canvas.draw()
         display(self.fig)
-        if self.max_distance_pause and dist > self.max_distance:
-            self.pause_simulation()
+        if dist > self.max_distance:
+            if self.max_distance_alert:
+                self.alert(f"Distance between '{self.title}' > {self.max_distance}")
+            if self.max_distance_pause:
+                self.pause_simulation()

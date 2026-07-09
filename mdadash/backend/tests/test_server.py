@@ -67,6 +67,7 @@ def test_start_server(mocker):
             "imd://localhost:1234",
             "--state-file",
             "",
+            "--clear-alerts",
         ],
     )
     # uvicorn.run is a blocking call, so we need to
@@ -424,19 +425,36 @@ async def test_widget_run_com_distance(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_com_distance_pause_trigger(_client, imd_server):
+async def test_widget_run_com_distance_alert_pause(_client, imd_server):
     uuid = await add_widget("COMDistance")
     await connect_to_simulation(imd_server)
     inputs = [
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
         ("max_distance", 0),
+        ("max_distance_alert", True),
         ("max_distance_pause", True),
     ]
     await check_input_changes(uuid, inputs)
+    # check there are no alerts
+    assert len(main.mdadash.sm.alerts) == 0
+    # resume simulation
     await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "runningState", n=3)
     assert main.mdadash.sm.running_state["running"] is False
+    # check alert generation
+    handler = sio.handlers["/"]["get_alerts"]
+    alerts = await run_task_until_done(handler("_sid"))
+    n_alerts = len(alerts)
+    assert n_alerts > 0
+    # check alert deletion
+    handler = sio.handlers["/"]["delete_alert"]
+    await run_task_until_done(handler("_sid", 0))
+    assert len(main.mdadash.sm.alerts) == n_alerts - 1
+    # check delete all alerts
+    handler = sio.handlers["/"]["delete_all_alerts"]
+    await run_task_until_done(handler("_sid"))
+    assert len(main.mdadash.sm.alerts) == 0
     await remove_widget(uuid)
     await disconnect_from_simulation()
 
@@ -605,3 +623,6 @@ def test_state_load(tmp_path):
         json.dump(state, f)
     sm = StateManager(temp_file)
     assert sm.state is not None
+    # test alerts related keys
+    assert sm._alertID == 0
+    assert len(sm.alerts) == 0

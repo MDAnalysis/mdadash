@@ -29,6 +29,9 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added pause support from within widgets (PR #27)
+- Added alerts support (PR #28)
+
 ### Fixed
 
 <!-- Bug fixes -->

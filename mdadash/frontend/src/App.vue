@@ -56,51 +56,18 @@
           <!-- v8 ignore stop -->
           <!-- Alerts icon -->
           <v-spacer></v-spacer>
-          <v-menu offset-y min-width="300">
-            <template v-slot:activator="{ props }">
-              <v-btn icon v-bind="props">
-                <v-badge
-                  color="error"
-                  width="24"
-                  height="24"
-                  :content="alertsUnreadCount"
-                  :model-value="alertsUnreadCount > 0"
-                >
-                  <v-icon :icon="mdiBellOutline" size="large"></v-icon>
-                </v-badge>
-              </v-btn>
-            </template>
-            <v-list lines="two">
-              <v-list-subheader>Recent Alerts</v-list-subheader>
-              <!-- v8 ignore start -->
-              <v-list-item
-                v-for="alert in recentAlerts"
-                :key="alert.id"
-                :title="alert.title"
-                :subtitle="alert.time"
-              >
-                <template v-slot:append>
-                  <v-btn
-                    :icon="mdiCheckCircleOutline"
-                    variant="text"
-                    color="success"
-                    @click.stop="removeAlert(alert.id)"
-                  ></v-btn>
-                </template>
-              </v-list-item>
-              <v-divider v-if="recentAlerts.length > 0"></v-divider>
-              <!-- v8 ignore stop -->
-              <v-list-item v-if="recentAlerts.length === 0" title="No new alerts"></v-list-item>
-              <v-divider></v-divider>
-              <!-- view all alerts -->
-              <v-list-item
-                title="View All Alerts"
-                text-color="primary"
-                class="text-center"
-                to="/alerts"
-              ></v-list-item>
-            </v-list>
-          </v-menu>
+          <v-btn icon @click="forceRoute('/alerts')">
+            <v-badge
+              color="error"
+              width="24"
+              height="24"
+              :content="alertsCount"
+              :model-value="alertsCount > 0"
+            >
+              <v-icon :icon="mdiBellOutline" size="large"></v-icon>
+            </v-badge>
+            <v-tooltip activator="parent" location="bottom">Alerts</v-tooltip>
+          </v-btn>
           <v-divider vertical inset class="mx-2"></v-divider>
 
           <!-- App bar overflow items -->
@@ -157,7 +124,7 @@
     <!-- Main content -->
     <v-main class="bg-grey-lighten-5">
       <router-view v-slot="{ Component }">
-        <keep-alive :exclude="['WidgetView']">
+        <keep-alive :exclude="['WidgetView', 'AlertsView']">
           <component :is="Component" />
         </keep-alive>
       </router-view>
@@ -182,12 +149,11 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted, onBeforeUnmount, provide } from 'vue'
 import {
   mdiAlert,
   mdiBellOutline,
-  mdiCheckCircleOutline,
   mdiCog,
   mdiDotsVertical,
   mdiLanConnect,
@@ -199,6 +165,7 @@ import {
 } from '@mdi/js'
 
 const route = useRoute()
+const router = useRouter()
 const appBarTitle = computed(() => route.meta.title)
 const appBarMenuItems = [
   { name: 'Dashboard', icon: mdiViewDashboardOutline, path: '/' },
@@ -210,8 +177,7 @@ const runningState = ref({
   running: false,
 })
 const showConfirm = ref(false)
-const recentAlerts = ref([])
-const alertsUnreadCount = 0
+const alertsCount = ref(0)
 
 function handlePause() {
   runningState.value.pending = true
@@ -238,11 +204,6 @@ function confirmDisconnect() {
   socket.emit('disconnect_from_simulations')
 }
 
-// v8 ignore next
-const removeAlert = (id) => {
-  recentAlerts.value = recentAlerts.value.filter((alert) => alert.id !== id)
-}
-
 const stickyBarColor = computed(() => {
   if (!runningState.value.connected) return 'red-lighten-5'
   if (!runningState.value.running) return 'amber-lighten-5'
@@ -260,6 +221,19 @@ const settings = ref({
 const origSettings = ref(null)
 
 const socketConnected = ref(false)
+
+function forceRoute(path) {
+  // v8 ignore next
+  if (router.currentRoute.value.path === path) {
+    window.location.reload()
+  } else {
+    router.push(path)
+  }
+}
+
+function updateAlertsCount(value) {
+  alertsCount.value = value
+}
 
 onMounted(() => {
   socket.on('connect', () => {
@@ -283,6 +257,9 @@ onMounted(() => {
     settings.value = JSON.parse(JSON.stringify(data))
     origSettings.value = JSON.parse(JSON.stringify(data))
   })
+  socket.on('alertsCount', (data) => {
+    alertsCount.value = data
+  })
 })
 
 onBeforeUnmount(() => {
@@ -291,12 +268,15 @@ onBeforeUnmount(() => {
   socket.off('runningState')
   socket.off('timestepInfo')
   socket.off('settings')
+  socket.off('alertsCount')
 })
 
 provide('runningState', runningState)
 provide('timestepInfo', timestepInfo)
 provide('settings', settings)
 provide('origSettings', origSettings)
+provide('alertsCount', alertsCount)
+provide('updateAlertsCount', updateAlertsCount)
 </script>
 
 <style scoped></style>

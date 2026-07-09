@@ -120,6 +120,8 @@ class StateManager:
             },
             "widgets_layout": [],
             "widgets": {},
+            "alertID": 0,
+            "alerts": [],
         }
 
     @property
@@ -161,3 +163,24 @@ class StateManager:
     def widgets(self) -> dict:
         """The widgets dict of the dashboard"""
         return self._state["widgets"]
+
+    @property
+    def _alertID(self) -> int:
+        """Internal: Get current alert ID"""
+        if "alertID" not in self._state:
+            self._state["alertID"] = 0
+        return self._state["alertID"]
+
+    @property
+    def alerts(self) -> dict:
+        """Alerts array"""
+        if "alerts" not in self._state:
+            self._state["alerts"] = []
+        return self._state["alerts"]
+
+    async def add_alert(self, data: dict) -> None:
+        """Add alert to alerts array"""
+        data["id"] = self._alertID
+        self.alerts.append(data)
+        self._state["alertID"] += 1
+        await self.save()

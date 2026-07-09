@@ -72,9 +72,39 @@ class WidgetBase(ABC):
             if attribute in self._input_errors:
                 del self._input_errors[attribute]
 
-    def pause_simulation(self) -> None:
+    def _get_tsinfo(self) -> dict:
+        """Internal: Get the current timestep info"""
+        return {
+            "frame": self.u.trajectory.frame,
+            "time": self.u.trajectory.ts.data.get("time"),
+            "step": self.u.trajectory.ts.data.get("step"),
+        }
+
+    def alert(self, message: str) -> None:
+        """Create an alert
+
+        Parameters
+        ----------
+        message: str
+            The string message used for the alert
+
+        """
         if self._wm is not None and self._wm.comm_handler is not None:
-            self._wm.comm_handler.send({"pause_simulation": {}})
+            self._wm.comm_handler.send(
+                {"alert": {"tsinfo": self._get_tsinfo(), "message": message}}
+            )
+
+    def pause_simulation(self) -> None:
+        """Pause the simulation"""
+        if self._wm is not None and self._wm.comm_handler is not None:
+            self._wm.comm_handler.send(
+                {
+                    "pause_simulation": {
+                        "tsinfo": self._get_tsinfo(),
+                        "message": f"Pause triggered by: {getattr(self, 'name')}",
+                    }
+                }
+            )
 
     def on_post_create(self) -> None:
         """on_post_create handler

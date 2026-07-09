@@ -58,6 +58,7 @@ async def catch_all():
     return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
 
 
+# pylint: disable=too-many-public-methods
 class MDADash:
     """MDADash
 
@@ -89,6 +90,9 @@ class MDADash:
         self.sio.on("widget:get_details")(self.on_widget_get_details)
         self.sio.on("widget:name_desc_change")(self.on_widget_name_desc_change)
         self.sio.on("widget:input_change")(self.on_widget_input_change)
+        self.sio.on("get_alerts")(self.on_get_alerts)
+        self.sio.on("delete_alert")(self.on_delete_alert)
+        self.sio.on("delete_all_alerts")(self.on_delete_all_alerts)
 
     async def emit_running_state(self, sid: Any = None) -> None:
         """Emit current dashboard running state"""
@@ -101,6 +105,10 @@ class MDADash:
     async def emit_layout(self, sid: Any = None) -> None:
         """Emit current dashboard layout"""
         await self.sio.emit("widgets:layout", self.sm.widgets_layout, to=sid)
+
+    async def emit_alerts_count(self, sid: Any = None) -> None:
+        """Emit alerts count"""
+        await self.sio.emit("alertsCount", len(self.sm.alerts), to=sid)
 
     @asynccontextmanager
     async def _emit_running_states(self):
@@ -123,6 +131,7 @@ class MDADash:
         await self.km._emit_last_known_values(sid)
         await self.emit_layout(sid)
         await self.emit_settings(sid)
+        await self.emit_alerts_count(sid)
 
     async def on_disconnect(self, _sid):
         """disconnect handler"""
@@ -219,6 +228,22 @@ class MDADash:
             data["uuid"], data["attribute"], data["value"]
         )
 
+    async def on_get_alerts(self, _sid):
+        """get_alerts"""
+        return self.sm.alerts
+
+    async def on_delete_alert(self, _sid, _id):
+        """delete_alert"""
+        self.sm.alerts[:] = [a for a in self.sm.alerts if a["id"] != _id]
+        await self.emit_alerts_count()
+        await self.sm.save()
+
+    async def on_delete_all_alerts(self, _sid):
+        """delete_all_alerts"""
+        self.sm.alerts.clear()
+        await self.emit_alerts_count()
+        await self.sm.save()
+
 
 def start_server():
     global mdadash  # pylint: disable=global-statement
@@ -240,6 +265,11 @@ def start_server():
         type=str,
         default="mdadash.state.json",
         help="The dashboard state file (default: mdadash.state.json)",
+    )
+    parser.add_argument(
+        "--clear-alerts",
+        action="store_true",
+        help="Clear alerts if any from dashboard state",
     )
     parser.add_argument(
         "--dashboard-port",
@@ -274,6 +304,10 @@ def start_server():
     logger.info("State file: %s", args.state_file)
     # create mdadash instance
     mdadash = MDADash(sio, args.state_file)
+    # clear alerts if specified
+    if args.clear_alerts:
+        mdadash.sm.alerts.clear()
+        mdadash.sm.save()
     # update state with topology and trajectory details (first universe)
     mdadash.sm.universe_configs[0].update(
         {

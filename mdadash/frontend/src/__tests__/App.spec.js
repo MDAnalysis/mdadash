@@ -153,4 +153,21 @@ describe('App', () => {
     expect(moreItemsBtn).toBeDefined()
     await moreItemsBtn.trigger('click')
   })
+
+  it('alerts badge display', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    const appBar = wrapper.findComponent(VAppBar)
+    expect(appBar.exists()).toBe(true)
+    // check alerts badge
+    await socketListeners['alertsCount'](1)
+    expect(wrapper.vm.alertsCount).toStrictEqual(1)
+    // check alerts update from alerts view page
+    wrapper.vm.updateAlertsCount(0)
+    expect(wrapper.vm.alertsCount).toStrictEqual(0)
+  })
 })

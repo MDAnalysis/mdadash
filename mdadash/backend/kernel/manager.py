@@ -157,6 +157,11 @@ class KernelManager:
         if self._sessioninfo is not None:
             await self.sio.emit("sessionInfo", self._sessioninfo, to=sid)
 
+    async def _alert(self, data: dict) -> None:
+        """Internal: Handle alert from a widget"""
+        await self.sm.add_alert(data)
+        await self.sio.emit("alertsCount", len(self.sm.alerts))
+
     # pylint: disable=too-many-branches
     async def _listen_iopub_channel(self):
         """Internal: Listen on iopub channel"""
@@ -173,11 +178,14 @@ class KernelManager:
                         await self._emit_tsdata(data["tsinfo"])
                     elif "sessioninfo" in data:
                         await self._emit_sessioninfo(data["sessioninfo"])
+                    elif "alert" in data:
+                        await self._alert(data["alert"])
                     elif "pause_simulation" in data:
                         if self.sm.running_state["running"]:
                             await self.send_message("pause_simulations", {})
                             self.sm.running_state["running"] = False
                             await self.sio.emit("runningState", self.sm.running_state)
+                            await self._alert(data["pause_simulation"])
                     else:
                         parent_id = msg.get("parent_header", {}).get("msg_id")
                         # check if a pending future can be resolved with msg

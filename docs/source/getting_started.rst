@@ -63,8 +63,8 @@ To see a list of all the available options:
 .. code:: sh
 
    $ mdadash -h
-   usage: mdadash [-h] --topology TOPOLOGY --trajectory TRAJECTORY [--state-file STATE_FILE] [--dashboard-port DASHBOARD_PORT]
-                  [--dashboard-host DASHBOARD_HOST] [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-v]
+   usage: mdadash [-h] --topology TOPOLOGY --trajectory TRAJECTORY [--state-file STATE_FILE] [--clear-alerts]
+                  [--dashboard-port DASHBOARD_PORT] [--dashboard-host DASHBOARD_HOST] [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [-v]
 
    Start the MDA Dashboard server
 
@@ -75,6 +75,7 @@ To see a list of all the available options:
                            Trajectory URL (of the form 'imd://host:port') (required)
      --state-file STATE_FILE
                            The dashboard state file (default: mdadash.state.json)
+     --clear-alerts        Clear alerts if any from dashboard state
      --dashboard-port DASHBOARD_PORT
                            Port to run the dashboard server on (default: 8000)
      --dashboard-host DASHBOARD_HOST
