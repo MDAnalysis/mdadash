@@ -52,13 +52,13 @@ async def check_input_changes(uuid, inputs, status="ok"):
         assert response["status"] == status
 
 
-async def connect_to_simulation(imd_server):
+async def connect_to_simulation(imd_server, step=2, batch_size=1):
     main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
-            "step": 2,
-            "batch_size": 1,
+            "step": step,
+            "batch_size": batch_size,
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]

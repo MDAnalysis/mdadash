@@ -31,6 +31,7 @@ The rules for this file:
 
 - Added pause support from within widgets (PR #27)
 - Added alerts support (PR #29)
+- Added widget for MSD Analysis (PR #35)
 
 ### Fixed
 
