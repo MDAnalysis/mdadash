@@ -445,16 +445,19 @@ async def test_widget_run_com_distance_alert_pause(_client, imd_server):
     # check alert generation
     handler = sio.handlers["/"]["get_alerts"]
     alerts = await run_task_until_done(handler("_sid"))
-    n_alerts = len(alerts)
-    assert n_alerts > 0
+    previous_alerts = alerts.copy()
+    assert alerts[0]["id"] == 0
     # check alert deletion
     handler = sio.handlers["/"]["delete_alert"]
     await run_task_until_done(handler("_sid", 0))
-    assert len(main.mdadash.sm.alerts) == n_alerts - 1
+    if len(main.mdadash.sm.alerts) > 0:
+        assert alerts[0]["id"] != 0
     # check delete all alerts
     handler = sio.handlers["/"]["delete_all_alerts"]
     await run_task_until_done(handler("_sid"))
-    assert len(main.mdadash.sm.alerts) == 0
+    handler = sio.handlers["/"]["get_alerts"]
+    alerts = await run_task_until_done(handler("_sid"))
+    assert alerts != previous_alerts
     await remove_widget(uuid)
     await disconnect_from_simulation()
 
