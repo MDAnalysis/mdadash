@@ -1,19 +1,19 @@
 import logging
-from functools import partial
 
+# from functools import partial
 import matplotlib.pyplot as plt
 from IPython.display import display
 from joblib import delayed
 from MDAnalysis.analysis import msd
-from tqdm import tqdm
 
+# from tqdm import tqdm
 from mdadash.backend.widgets.base import WidgetBase
 
 logger = logging.getLogger(__name__)
 
 # `MDAnalysis.analysis.msd.EinsteinMSD` shows a progress bar for the simple
 # and FFT cases. Disable this to prevent console output of the progress bar
-tqdm.__init__ = partial(tqdm.__init__, disable=True)
+# tqdm.__init__ = partial(tqdm.__init__, disable=True)
 
 
 class MSDAnalysis(WidgetBase):
