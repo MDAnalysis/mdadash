@@ -19,8 +19,6 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-os.environ["TQDM_DISABLE"] = "True"
-
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):

@@ -1,9 +1,11 @@
 import logging
+from collections import defaultdict, deque
 
 import matplotlib.pyplot as plt
+import MDAnalysis as mda
+import numpy as np
 from IPython.display import display
 from joblib import delayed
-from MDAnalysis.analysis import msd
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -47,18 +49,6 @@ class MSDAnalysis(WidgetBase):
             ],
         },
         {
-            "attribute": "fft",
-            "name": "FFT",
-            "description": "Use a fast FFT based computation",
-            "type": "bool",
-        },
-        {
-            "attribute": "non_linear",
-            "name": "Non-linear",
-            "description": "Frames are non-linear",
-            "type": "bool",
-        },
-        {
             "attribute": "log_scale",
             "name": "Log scale",
             "description": "Use a log scale for the axes",
@@ -77,8 +67,6 @@ class MSDAnalysis(WidgetBase):
         self.msd = None
         self.selection = "all"
         self.msd_type = "xyz"
-        self.fft = False
-        self.non_linear = False
         self.log_scale = False
         self.title = "MSD"
         self.custom_title = None
@@ -88,9 +76,9 @@ class MSDAnalysis(WidgetBase):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
         (self.plot,) = self.ax.plot([], [])
-        self.ax.set_xlabel("Lag time")
-        self.ax.set_ylabel("MSD")
-        self.ax.grid(True)
+        self.ax.set_xlabel(r"Lag time $\Delta$t (ps)")
+        self.ax.set_ylabel(r"MSD ($\AA^2$)")
+        self.ax.grid(True, linestyle="--", alpha=0.6)
         self._set_title()
         self._set_axes_scale()
 
@@ -105,12 +93,10 @@ class MSDAnalysis(WidgetBase):
 
     def _create_msd(self):
         """Create msd instance"""
-        self.msd = msd.EinsteinMSD(
+        self.msd = SlidingWindowMSD(
             self.u,
             select=self.selection,
             msd_type=self.msd_type,
-            fft=self.fft,
-            non_linear=self.non_linear,
         )
         self.title = f"MSD of '{self.selection}'"
         self._set_title()
@@ -130,20 +116,18 @@ class MSDAnalysis(WidgetBase):
             self._set_title()
         elif attribute == "log_scale":
             self._set_axes_scale()
+        elif attribute == "_run_mode":
+            pass
         else:
             self._create_msd()
 
-    def _compute(self):
+    def _compute(self, parallel: bool = False):
         """Run MSD for the current timesteps window"""
-        self.msd.run()
-        return (
-            self.msd.results.delta_t_values,
-            self.msd.results.timeseries,
-        )
+        return self.msd.run(parallel=parallel)
 
-    def _update_plot(self, values):
+    def _update_plot(self, x_values, y_values):
         """Update plot with computed values"""
-        self.plot.set_data(*values)
+        self.plot.set_data(x_values, y_values)
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
@@ -151,12 +135,67 @@ class MSDAnalysis(WidgetBase):
 
     def run_every_frame(self):
         """every-frame run handler"""
-        self._update_plot(self._compute())
+        x_values, y_values, _ = self._compute()
+        self._update_plot(x_values, y_values)
 
     def get_parallel_job(self, batch_size):
         """get parallel job handler"""
-        return delayed(self._compute)()
+        return delayed(self._compute)(parallel=True)
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""
-        self._update_plot(values)
+        x_values, y_values, self.msd.msd_dict = values
+        self._update_plot(x_values, y_values)
+
+
+class SlidingWindowMSD:
+    """Sliding Window MSD
+
+    Calculate MSD for a sliding window of frames
+
+    """
+
+    def __init__(self, u: mda.Universe, select: str = "all", msd_type: str = "xyz"):
+        self.u = u
+        self.select = select
+        self.msd_type = msd_type
+        self._parse_msd_type()
+        self.ag = u.select_atoms(self.select)
+        self.msd_dict = defaultdict(lambda: deque(maxlen=self.u.trajectory.buffer_size))
+        self.msd_dict[0] = deque([0])
+
+    def _parse_msd_type(self):
+        """Sets up the desired dimensionality of the MSD."""
+        keys = {
+            "x": [0],
+            "y": [1],
+            "z": [2],
+            "xy": [0, 1],
+            "xz": [0, 2],
+            "yz": [1, 2],
+            "xyz": [0, 1, 2],
+        }
+        self._dim = keys[self.msd_type.lower()]
+
+    def run(self, parallel: bool = False) -> tuple:
+        """Run MSD for the current window"""
+
+        time_current = self.u.trajectory.ts.time
+        positions_current = self.ag.positions[:, self._dim]
+
+        for i in range(0, len(self.u.trajectory) - 1):
+            ts = self.u.trajectory[i]  # set the buffered trajectory frame
+            delta_t = round(time_current - ts.time, 2)
+            disp = positions_current - self.ag.positions[:, self._dim]
+            squared_disp = np.sum(disp**2, axis=1)
+            msd = np.mean(squared_disp)
+            self.msd_dict[delta_t].append(msd)
+
+        delta_t_values = sorted(self.msd_dict.keys())
+        avg_msds = np.array([np.mean(self.msd_dict[dt]) for dt in delta_t_values])
+
+        return (
+            delta_t_values,
+            avg_msds,
+            self.msd_dict if parallel else None,
+        )
