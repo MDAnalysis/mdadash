@@ -138,7 +138,7 @@ class MSDAnalysis(WidgetBase):
         x_values, y_values, _ = self._compute()
         self._update_plot(x_values, y_values)
 
-    def get_parallel_job(self, batch_size):
+    def get_parallel_job(self):
         """get parallel job handler"""
         return delayed(self._compute)(parallel=True)
 
