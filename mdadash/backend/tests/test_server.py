@@ -234,7 +234,7 @@ async def test_widget_registration():
     class _TestWidget4b(WidgetBase):
         name = "TestWidget4b"
 
-        def run_batch(self, batch_size):
+        def run_batch(self):
             pass
 
     # test duplicate widget name registraion exception

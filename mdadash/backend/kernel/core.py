@@ -393,7 +393,7 @@ class UniverseManager:
                         batch_ready = (u.trajectory._frame + step) % (
                             step * batch_size
                         ) == 0
-                        self._wm.run_widgets(uid, batch_ready, batch_size)
+                        self._wm.run_widgets(uid, batch_ready)
                     # pylint: disable=broad-exception-caught
                     except Exception:  # pragma: no cover
                         logger.exception("Trajectory iteration failed for uid %d", uid)
