@@ -154,7 +154,7 @@ class DSSPAnalysis(WidgetBase):
             self.u.trajectory.ts.data["time"],
         )
 
-    def _compute_batch(self, _batch_size):
+    def _compute_batch(self):
         """Compute values for current batch"""
         self.dssp.run()
         # `run()` can also be invoked with a non-serial backend
@@ -206,14 +206,14 @@ class DSSPAnalysis(WidgetBase):
         """every-frame run handler"""
         self._update_plot(self._compute_current_frame())
 
-    def run_batch(self, batch_size):
+    def run_batch(self):
         """batch run handler"""
-        self._update_plot(self._compute_batch(batch_size))
+        self._update_plot(self._compute_batch())
 
-    def get_parallel_job(self, batch_size):
+    def get_parallel_job(self):
         """get parallel job handler"""
         if self._run_frequency == "batch":
-            return delayed(self._compute_batch)(batch_size)
+            return delayed(self._compute_batch)()
         return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):

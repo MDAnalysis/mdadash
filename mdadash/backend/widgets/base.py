@@ -55,6 +55,10 @@ class WidgetBase(ABC):
         """Internal: Set the universe"""
         self.u = u
 
+    def _reset_frame_latest(self):
+        """Internal: Reset frame to latest timestep"""
+        _ = self.u.trajectory[-1]
+
     def _get_inputs(self):
         """Internal: Get the current instance inputs"""
         inputs = getattr(self, "_inputs")
@@ -172,32 +176,23 @@ class WidgetBase(ABC):
 
         """
 
-    def run_batch(self, batch_size: int) -> None:
+    def run_batch(self) -> None:
         """run_batch handler
 
         This handler is called every time a new batch of timesteps is full
         and ready to be run if the run frequency is set to `batch`
         (`_run_frequency='batch'`).
 
-        Parameters
-        ----------
-        batch_size: int
-            The batch size, which indicates the number of buffered timesteps
-            available in the buffer is passed
+        `self.u.trajectory.buffer_size` is the size of the buffer / batch
+        that can be used by the widget class.
 
         """
 
-    def get_parallel_job(self, batch_size: int) -> Any:
+    def get_parallel_job(self) -> Any:
         """get_parallel_job handler
 
         This handler is called if the run mode is set to `parallel`
         (`_run_mode='parallel'`) to get the parallel job to run.
-
-        Parameters
-        ----------
-        batch_size: int
-            The configured batch size to use in the parallel jobs
-            if their run frequency is `batch`
 
         Returns
         -------
@@ -272,7 +267,7 @@ class WidgetManager:
         # check for one of the run methods to exist with correct params
         run_methods = {
             "run_every_frame": 1,
-            "run_batch": 2,
+            "run_batch": 1,
         }
         has_valid_run_method = False
         for run_method, n_params in run_methods.items():
@@ -546,11 +541,11 @@ class WidgetManager:
         IMDReader.__setstate__ = custom_setstate
         IMDReader.__getstate__ = custom_getstate
 
-    def _run_parallel_jobs(self, parallel_widgets, batch_size, parallel_results):
+    def _run_parallel_jobs(self, parallel_widgets, parallel_results):
         """Internal: Run parallel jobs using joblib.Parallel"""
         parallel_jobs = []
         for widget in parallel_widgets:
-            parallel_jobs.append(widget.get_parallel_job(batch_size))
+            parallel_jobs.append(widget.get_parallel_job())
         try:
             results = Parallel(
                 n_jobs=self.n_jobs, initializer=WidgetManager._patch_IMDReader
@@ -560,7 +555,7 @@ class WidgetManager:
         except Exception:  # pragma: no cover
             logger.exception("Parallel run failed for jobs %s", parallel_jobs)
 
-    def run_widgets(self, uid: int, batch_ready: bool, batch_size: int) -> None:
+    def run_widgets(self, uid: int, batch_ready: bool) -> None:
         """Run widget instances
 
         Parameters
@@ -570,9 +565,6 @@ class WidgetManager:
 
         batch_ready: bool
             Flag indicating if a batch of timesteps is full
-
-        batch_size: int
-            Size of the batch
 
         """
         # collect widgets that need to be run
@@ -594,19 +586,19 @@ class WidgetManager:
                 target=self._run_parallel_jobs,
                 args=(
                     parallel_widgets,
-                    batch_size,
                     parallel_results,
                 ),
             )
             parallel_thread.start()
         # run serial widgets
         for widget in serial_widgets:
+            widget._reset_frame_latest()
             with _widget_uuid_in_metadata(widget.uuid):
                 try:
                     if widget._run_frequency == "every-frame":
                         widget.run_every_frame()
                     elif batch_ready:
-                        widget.run_batch(batch_size)
+                        widget.run_batch()
                 # pylint: disable=broad-exception-caught
                 except Exception:  # pragma: no cover
                     logger.exception("Serial run failed for widget %s", widget.uuid)

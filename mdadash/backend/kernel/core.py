@@ -65,16 +65,20 @@ class BufferedTrajectory:
 
     """
 
-    def __init__(self, trajectory: mda.Universe.trajectory, batch_size: int):
+    def __init__(self, trajectory: mda.Universe.trajectory, buffer_size: int):
         self._trajectory = trajectory
-        self._batch_size = batch_size
-        self._buffer = deque(maxlen=batch_size)
+        self._buffer_size = buffer_size
+        self._buffer = deque(maxlen=buffer_size)
         self._buffer.append(trajectory.ts.copy())
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
 
     @property
     def n_frames(self):
         return len(self._buffer)
+
+    @property
+    def buffer_size(self):
+        return self._buffer_size
 
     def __len__(self):
         return len(self._buffer)
@@ -389,7 +393,7 @@ class UniverseManager:
                         batch_ready = (u.trajectory._frame + step) % (
                             step * batch_size
                         ) == 0
-                        self._wm.run_widgets(uid, batch_ready, batch_size)
+                        self._wm.run_widgets(uid, batch_ready)
                     # pylint: disable=broad-exception-caught
                     except Exception:  # pragma: no cover
                         logger.exception("Trajectory iteration failed for uid %d", uid)

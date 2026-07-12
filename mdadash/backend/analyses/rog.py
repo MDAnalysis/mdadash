@@ -194,10 +194,10 @@ class ROG(WidgetBase):
             rog,
         )
 
-    def _compute_batch(self, batch_size):
+    def _compute_batch(self):
         """Compute ROG values for current batch"""
         values = []
-        for i in range(batch_size):
+        for i in range(self.u.trajectory.buffer_size):
             _ = self.u.trajectory[i]
             values.append(self._compute_current_frame())
         return values
@@ -225,14 +225,14 @@ class ROG(WidgetBase):
         """every-frame run handler"""
         self._update_plot(self._compute_current_frame())
 
-    def run_batch(self, batch_size):
+    def run_batch(self):
         """batch run handler"""
-        self._update_plot(self._compute_batch(batch_size))
+        self._update_plot(self._compute_batch())
 
-    def get_parallel_job(self, batch_size):
+    def get_parallel_job(self):
         """get parallel job handler"""
         if self._run_frequency == "batch":
-            return delayed(self._compute_batch)(batch_size)
+            return delayed(self._compute_batch)()
         return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):

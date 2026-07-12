@@ -163,12 +163,12 @@
 
               <v-number-input
                 class="mb-4"
-                label="Batch size"
+                label="Buffer / batch size"
                 variant="outlined"
                 v-model="settings.universe_configs[0].batch_size"
                 :min="1"
                 control-variant="hidden"
-                hint="Number of timesteps to batch for a batch run"
+                hint="Number of timesteps to buffer for a batch run"
                 persistent-hint
               ></v-number-input>
 
