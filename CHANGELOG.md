@@ -29,8 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added pause support from within widgets (PR #27)
-- Added alerts support (PR #29)
 - Added widget for MSD Analysis (PR #35)
 
 ### Fixed
@@ -48,6 +46,27 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.0.6]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+07/12/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added pause support from within widgets (PR #27)
+- Added alerts support (PR #29)
+
+### Changed
+
+<!-- Changes in existing functionality -->
+
+- Cleaned up widget invocation (PR #36)
 
 ## [0.0.5]
 
