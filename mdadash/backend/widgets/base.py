@@ -13,11 +13,13 @@ from uuid import uuid1
 import IPython
 import MDAnalysis as mda
 from joblib import Parallel
+from matplotlib_inline.backend_inline import InlineBackend
 
 if TYPE_CHECKING:
     from mdadash.backend.kernel.core import CommHandler
 
 logger = logging.getLogger(__name__)
+InlineBackend.instance().figure_formats = {"jpeg"}
 
 
 class WidgetBase(ABC):
@@ -541,11 +543,18 @@ class WidgetManager:
         IMDReader.__setstate__ = custom_setstate
         IMDReader.__getstate__ = custom_getstate
 
+    @staticmethod
+    def with_reset_frame(func, *args, **kwargs):
+        instance = getattr(func, "__self__")
+        getattr(instance, "_reset_frame_latest")()
+        return func(*args, **kwargs)
+
     def _run_parallel_jobs(self, parallel_widgets, parallel_results):
         """Internal: Run parallel jobs using joblib.Parallel"""
         parallel_jobs = []
         for widget in parallel_widgets:
-            parallel_jobs.append(widget.get_parallel_job())
+            func, args, kwargs = widget.get_parallel_job()
+            parallel_jobs.append((self.with_reset_frame, (func,) + args, kwargs))
         try:
             results = Parallel(
                 n_jobs=self.n_jobs, initializer=WidgetManager._patch_IMDReader

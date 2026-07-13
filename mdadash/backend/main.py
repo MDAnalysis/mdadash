@@ -307,7 +307,6 @@ def start_server():
     # clear alerts if specified
     if args.clear_alerts:
         mdadash.sm.alerts.clear()
-        mdadash.sm.save()
     # update state with topology and trajectory details (first universe)
     mdadash.sm.universe_configs[0].update(
         {

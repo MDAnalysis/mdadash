@@ -313,8 +313,8 @@
               class="flex-grow-1"
               contain
               height="0"
-              v-if="widgetOutputs[item.i]?.['image/png']"
-              :src="`data:image/png;base64,${widgetOutputs[item.i]['image/png']}`"
+              v-if="widgetOutputs[item.i]?.['image/jpeg']"
+              :src="`data:image/jpeg;base64,${widgetOutputs[item.i]['image/jpeg']}`"
             ></v-img>
           </v-card>
         </grid-item>

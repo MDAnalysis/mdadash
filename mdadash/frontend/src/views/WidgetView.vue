@@ -97,8 +97,8 @@
           <!-- Image -->
           <v-img
             :aspect-ratio="16 / 9"
-            v-if="widgetOutput?.['image/png']"
-            :src="`data:image/png;base64,${widgetOutput['image/png']}`"
+            v-if="widgetOutput?.['image/jpeg']"
+            :src="`data:image/jpeg;base64,${widgetOutput['image/jpeg']}`"
           ></v-img>
         </div>
       </v-expand-transition>
