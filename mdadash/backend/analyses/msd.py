@@ -1,11 +1,11 @@
 import logging
-from collections import defaultdict, deque
 
 import matplotlib.pyplot as plt
 import MDAnalysis as mda
 import numpy as np
 from IPython.display import display
 from joblib import delayed
+from matplotlib.collections import LineCollection
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -49,6 +49,12 @@ class MSDAnalysis(WidgetBase):
             ],
         },
         {
+            "attribute": "show_particle_msds",
+            "name": "Show particle MSDs",
+            "description": "Show MSDs for individual particles of the selection",
+            "type": "bool",
+        },
+        {
             "attribute": "log_scale",
             "name": "Log scale",
             "description": "Use a log scale for the axes",
@@ -68,6 +74,7 @@ class MSDAnalysis(WidgetBase):
         self.selection = "all"
         self.msd_type = "xyz"
         self.log_scale = False
+        self.show_particle_msds = False
         self.title = "MSD"
         self.custom_title = None
         self._setup_plot()
@@ -75,7 +82,11 @@ class MSDAnalysis(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
-        (self.plot,) = self.ax.plot([], [])
+        # use non-empty values to prevent initial exception
+        # if widget is configured to use log scale
+        (self.plot,) = self.ax.plot([1], [1], color="red", zorder=2)
+        self.lc = LineCollection([], colors="gray", alpha=0.2, lw=0.5, zorder=1)
+        self.ax.add_collection(self.lc)
         self.ax.set_xlabel(r"Lag time $\Delta$t (ps)")
         self.ax.set_ylabel(r"MSD ($\AA^2$)")
         self.ax.grid(True, linestyle="--", alpha=0.6)
@@ -97,6 +108,7 @@ class MSDAnalysis(WidgetBase):
             self.u,
             select=self.selection,
             msd_type=self.msd_type,
+            show_particle_msds=self.show_particle_msds,
         )
         self.title = f"MSD of '{self.selection}'"
         self._set_title()
@@ -125,9 +137,10 @@ class MSDAnalysis(WidgetBase):
         """Run MSD for the current timesteps window"""
         return self.msd.run(parallel=parallel)
 
-    def _update_plot(self, x_values, y_values):
+    def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
-        self.plot.set_data(x_values, y_values)
+        self.plot.set_data(x, y1)
+        self.lc.set_segments(y2 if self.show_particle_msds else [])
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
@@ -135,8 +148,8 @@ class MSDAnalysis(WidgetBase):
 
     def run_every_frame(self):
         """every-frame run handler"""
-        x_values, y_values, _ = self._compute()
-        self._update_plot(x_values, y_values)
+        x, y1, y2, _ = self._compute()
+        self._update_plot(x, y1, y2)
 
     def get_parallel_job(self):
         """get parallel job handler"""
@@ -144,8 +157,13 @@ class MSDAnalysis(WidgetBase):
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""
-        x_values, y_values, self.msd.msd_dict = values
-        self._update_plot(x_values, y_values)
+        x, y1, y2, (v1, v2, v3, v4) = values
+        self._update_plot(x, y1, y2)
+        # update msd state
+        self.msd.msd_sums = v1
+        self.msd.msd_counts = v2
+        self.msd.particle_msd_sums = v3
+        self.msd.particle_msd_counts = v4
 
 
 class SlidingWindowMSD:
@@ -155,14 +173,28 @@ class SlidingWindowMSD:
 
     """
 
-    def __init__(self, u: mda.Universe, select: str = "all", msd_type: str = "xyz"):
+    def __init__(
+        self,
+        u: mda.Universe,
+        select: str = "all",
+        msd_type: str = "xyz",
+        show_particle_msds: bool = False,
+    ):
         self.u = u
         self.select = select
         self.msd_type = msd_type
+        self.show_particle_msds = show_particle_msds
         self._parse_msd_type()
         self.ag = u.select_atoms(self.select)
-        self.msd_dict = defaultdict(lambda: deque(maxlen=self.u.trajectory.buffer_size))
-        self.msd_dict[0] = deque([0])
+        self.n_atoms = self.ag.atoms.n_atoms
+        self.n_lags = u.trajectory.buffer_size
+        self.msd_sums = np.zeros(self.n_lags)
+        self.msd_counts = np.zeros(self.n_lags, dtype=int)
+        self.msd_counts[0] = 1
+        if self.show_particle_msds:
+            self.particle_msd_sums = np.zeros((self.n_lags, self.n_atoms))
+            self.particle_msd_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
+            self.particle_msd_counts[0, :] = 1
 
     def _parse_msd_type(self):
         """Sets up the desired dimensionality of the MSD."""
@@ -180,22 +212,45 @@ class SlidingWindowMSD:
     def run(self, parallel: bool = False) -> tuple:
         """Run MSD for the current window"""
 
-        time_current = self.u.trajectory.ts.time
+        n = len(self.u.trajectory)  # buffer / window might not be full yet
         positions_current = self.ag.positions[:, self._dim]
-
-        for i in range(0, len(self.u.trajectory) - 1):
-            ts = self.u.trajectory[i]  # set the buffered trajectory frame
-            delta_t = round(time_current - ts.time, 2)
+        for i in range(n - 1):
+            lag = n - 1 - i
+            _ = self.u.trajectory[i]  # set the buffered trajectory frame
             disp = positions_current - self.ag.positions[:, self._dim]
             squared_disp = np.sum(disp**2, axis=1)
             msd = np.mean(squared_disp)
-            self.msd_dict[delta_t].append(msd)
+            self.msd_sums[lag] += msd
+            self.msd_counts[lag] += 1
+            if self.show_particle_msds:
+                self.particle_msd_sums[lag, :] += squared_disp
+                self.particle_msd_counts[lag, :] += 1
 
-        delta_t_values = sorted(self.msd_dict.keys())
-        avg_msds = np.array([np.mean(self.msd_dict[dt]) for dt in delta_t_values])
+        # We will have at least 2 frames by the time we are here.
+        # frame_dt will ensure the delta_t is correct even if we have step
+        # value (other than 1) configured in the universe configuration
+        frame_dt = round(self.u.trajectory[1].time - self.u.trajectory[0].time, 2)
+        delta_t_values = np.arange(n) * frame_dt
+        avg_msds = self.msd_sums[:n] / self.msd_counts[:n]
+        msds_by_particle_lines = None
+        if self.show_particle_msds:
+            msds_by_particle_array = (
+                self.particle_msd_sums[:n, :] / self.particle_msd_counts[:n, :]
+            )
+            msds_by_particle_lines = np.empty((self.n_atoms, n, 2))
+            msds_by_particle_lines[:, :, 0] = delta_t_values
+            msds_by_particle_lines[:, :, 1] = msds_by_particle_array.T
 
         return (
             delta_t_values,
             avg_msds,
-            self.msd_dict if parallel else None,
+            msds_by_particle_lines,
+            (
+                self.msd_sums,
+                self.msd_counts,
+                self.particle_msd_sums,
+                self.particle_msd_counts,
+            )
+            if parallel
+            else (None,) * 4,
         )

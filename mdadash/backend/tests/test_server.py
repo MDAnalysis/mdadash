@@ -610,6 +610,7 @@ async def test_widget_run_msd_serial(_client, imd_server):
     inputs = [
         ("selection", "resid 1"),
         ("custom_title", ""),
+        ("show_particle_msds", True),
         ("log_scale", False),
     ]
     await check_input_changes(uuid, inputs)
@@ -624,6 +625,7 @@ async def test_widget_run_msd_parallel(_client, imd_server):
     await connect_to_simulation(imd_server, step=1, batch_size=2)
     inputs = [
         ("selection", "resid 1"),
+        ("show_particle_msds", True),
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)

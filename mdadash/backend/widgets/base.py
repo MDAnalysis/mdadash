@@ -556,8 +556,12 @@ class WidgetManager:
             func, args, kwargs = widget.get_parallel_job()
             parallel_jobs.append((self.with_reset_frame, (func,) + args, kwargs))
         try:
+            # without max_nbytes=None, np arrays passed / returned
+            # are marked read-only in subsequent calls (eg: msd case)
             results = Parallel(
-                n_jobs=self.n_jobs, initializer=WidgetManager._patch_IMDReader
+                n_jobs=self.n_jobs,
+                max_nbytes=None,
+                initializer=WidgetManager._patch_IMDReader,
             )(parallel_jobs)
             parallel_results.extend(results)
         # pylint: disable=broad-exception-caught
