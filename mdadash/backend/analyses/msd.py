@@ -162,8 +162,9 @@ class MSDAnalysis(WidgetBase):
         # update msd state
         self.msd.msd_sums = v1
         self.msd.msd_counts = v2
-        self.msd.particle_msd_sums = v3
-        self.msd.particle_msd_counts = v4
+        if self.show_particle_msds:
+            self.msd.particle_msd_sums = v3
+            self.msd.particle_msd_counts = v4
 
 
 class SlidingWindowMSD:
@@ -248,8 +249,8 @@ class SlidingWindowMSD:
             (
                 self.msd_sums,
                 self.msd_counts,
-                self.particle_msd_sums,
-                self.particle_msd_counts,
+                self.particle_msd_sums if self.show_particle_msds else None,
+                self.particle_msd_counts if self.show_particle_msds else None,
             )
             if parallel
             else (None,) * 4,
