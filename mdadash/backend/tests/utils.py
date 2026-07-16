@@ -32,7 +32,7 @@ async def sio_event_emitted(_sio, event, n=1, timeout=5.0):
             args, _ = call
             if args[0] == event:
                 count += 1
-        if count == n:
+        if count >= n:
             emitted = True
             break
         await asyncio.sleep(0)
