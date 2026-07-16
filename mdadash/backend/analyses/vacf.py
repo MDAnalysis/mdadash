@@ -83,7 +83,6 @@ class VACFAnalysis(WidgetBase):
         self.show_running_integral = False
         self.show_particle_vacfs = False
         self.normalized = False
-        self.title = "VACF"
         self.custom_title = None
         self._setup_plot()
 
@@ -100,14 +99,18 @@ class VACFAnalysis(WidgetBase):
 
     def _set_title(self):
         """Set plot title"""
-        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+        if self.show_running_integral:
+            title = f"Running integral of VACF of '{self.selection}'"
+        else:
+            title = f"VACF of '{self.selection}'"
+        self.ax.set_title(self.custom_title if self.custom_title else title)
 
     def _set_y_label(self):
         """Set plot y label"""
         if self.show_running_integral:
-            self.ax.set_ylabel(r"Running integral of VACF")
+            self.ax.set_ylabel(r"Running integral of VACF (${\AA}^2$/ps)")
         else:
-            self.ax.set_ylabel(r"Velocity Autocorrelation Function")
+            self.ax.set_ylabel(r"Velocity Autocorrelation Function (${\AA}^2/ps^2$)")
 
     def _create_vacf(self):
         """Create vacf instance"""
@@ -118,7 +121,6 @@ class VACFAnalysis(WidgetBase):
             show_running_integral=self.show_running_integral,
             show_particle_vacfs=self.show_particle_vacfs,
         )
-        self.title = f"VACF of '{self.selection}'"
         self._set_title()
         self._set_y_label()
 

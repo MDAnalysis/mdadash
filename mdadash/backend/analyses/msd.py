@@ -34,8 +34,8 @@ class MSDAnalysis(WidgetBase):
             "type": "str",
         },
         {
-            "attribute": "msd_type",
-            "name": "MSD type",
+            "attribute": "dim_type",
+            "name": "Dimension type",
             "description": "Desired dimensions to be included in the MSD",
             "type": "select",
             "items": [
@@ -47,6 +47,12 @@ class MSDAnalysis(WidgetBase):
                 "y",
                 "z",
             ],
+        },
+        {
+            "attribute": "show_diffusion_coefficient",
+            "name": "Show diffusion coefficient",
+            "description": "Show self-diffusion coefficient calculated from MSD",
+            "type": "bool",
         },
         {
             "attribute": "show_particle_msds",
@@ -72,12 +78,13 @@ class MSDAnalysis(WidgetBase):
         super().__init__()
         self.msd = None
         self.selection = "all"
-        self.msd_type = "xyz"
+        self.dim_type = "xyz"
         self.log_scale = False
+        self.show_diffusion_coefficient = False
         self.show_particle_msds = False
-        self.title = "MSD"
         self.custom_title = None
         self._setup_plot()
+        self._set_y_label()
 
     def _setup_plot(self):
         """Setup matplotlib plot"""
@@ -87,15 +94,26 @@ class MSDAnalysis(WidgetBase):
         (self.plot,) = self.ax.plot([1], [1], color="red", zorder=2)
         self.lc = LineCollection([], colors="gray", alpha=0.2, lw=0.5, zorder=1)
         self.ax.add_collection(self.lc)
-        self.ax.set_xlabel(r"Lag time $\Delta$t (ps)")
-        self.ax.set_ylabel(r"MSD ($\AA^2$)")
+        self.ax.set_xlabel(r"Time (ps)")
         self.ax.grid(True, linestyle="--", alpha=0.6)
         self._set_title()
+        self._set_y_label()
         self._set_axes_scale()
 
     def _set_title(self):
         """Set plot title"""
-        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+        if self.show_diffusion_coefficient:
+            title = f"Diffusion coefficient of '{self.selection}'"
+        else:
+            title = f"MSD of '{self.selection}'"
+        self.ax.set_title(self.custom_title if self.custom_title else title)
+
+    def _set_y_label(self):
+        """Set plot y label"""
+        if self.show_diffusion_coefficient:
+            self.ax.set_ylabel(r"Diffusion Coefficient (${\AA}^2$/ps)")
+        else:
+            self.ax.set_ylabel(r"MSD ($\AA^2$)")
 
     def _set_axes_scale(self):
         """Set axes scale"""
@@ -107,15 +125,17 @@ class MSDAnalysis(WidgetBase):
         self.msd = SlidingWindowMSD(
             self.u,
             select=self.selection,
-            msd_type=self.msd_type,
+            dim_type=self.dim_type,
+            show_diffusion_coefficient=self.show_diffusion_coefficient,
             show_particle_msds=self.show_particle_msds,
         )
-        self.title = f"MSD of '{self.selection}'"
         self._set_title()
+        self._set_y_label()
 
     def on_post_create(self):
         """on_post_create handler"""
         self._set_title()
+        self._set_y_label()
         self._set_axes_scale()
 
     def on_post_connect(self):
@@ -178,14 +198,18 @@ class SlidingWindowMSD:
         self,
         u: mda.Universe,
         select: str = "all",
-        msd_type: str = "xyz",
+        dim_type: str = "xyz",
+        show_diffusion_coefficient: bool = False,
         show_particle_msds: bool = False,
     ):
         self.u = u
         self.select = select
-        self.msd_type = msd_type
-        self.show_particle_msds = show_particle_msds
-        self._parse_msd_type()
+        self.dim_type = dim_type
+        self.show_diffusion_coefficient = show_diffusion_coefficient
+        self.show_particle_msds = (
+            not show_diffusion_coefficient
+        ) and show_particle_msds
+        self._parse_dim_type()
         self.ag = u.select_atoms(self.select)
         self.n_atoms = self.ag.atoms.n_atoms
         self.n_lags = u.trajectory.buffer_size
@@ -197,8 +221,8 @@ class SlidingWindowMSD:
             self.particle_msd_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
             self.particle_msd_counts[0, :] = 1
 
-    def _parse_msd_type(self):
-        """Sets up the desired dimensionality of the MSD."""
+    def _parse_dim_type(self):
+        """Sets up the desired dimensionality."""
         keys = {
             "x": [0],
             "y": [1],
@@ -208,7 +232,7 @@ class SlidingWindowMSD:
             "yz": [1, 2],
             "xyz": [0, 1, 2],
         }
-        self._dim = keys[self.msd_type.lower()]
+        self._dim = keys[self.dim_type.lower()]
 
     def run(self, parallel: bool = False) -> tuple:
         """Run MSD for the current window"""
@@ -242,9 +266,14 @@ class SlidingWindowMSD:
             msds_by_particle_lines[:, :, 0] = delta_t_values
             msds_by_particle_lines[:, :, 1] = msds_by_particle_array.T
 
+        if self.show_diffusion_coefficient:
+            diffusion_coefficient = np.gradient(avg_msds, delta_t_values) / (
+                2 * len(self._dim)
+            )
+
         return (
             delta_t_values,
-            avg_msds,
+            diffusion_coefficient if self.show_diffusion_coefficient else avg_msds,
             msds_by_particle_lines,
             (
                 self.msd_sums,

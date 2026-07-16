@@ -649,6 +649,20 @@ async def test_widget_run_msd_parallel(_client, imd_server):
     await disconnect_from_simulation()
 
 
+async def test_widget_run_msd_diffusion_coefficient(_client, imd_server):
+    uuid = await add_widget("MSD Analysis")
+    await connect_to_simulation(imd_server, step=1, batch_size=2)
+    inputs = [
+        ("selection", "resid 1"),
+        ("show_diffusion_coefficient", True),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
 async def test_widget_run_vacf_serial(_client, imd_server_trr):
     uuid = await add_widget("VACF")
     await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
