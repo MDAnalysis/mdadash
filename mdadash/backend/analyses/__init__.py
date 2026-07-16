@@ -2,7 +2,7 @@
 Module that has all the analyses widgets
 """
 
-from . import com_distance, dssp, energies, janin, msd, ramachandran, rog
+from . import com_distance, dssp, energies, janin, msd, ramachandran, rog, vacf
 
 __all__ = [
     "energies",
@@ -12,4 +12,5 @@ __all__ = [
     "ramachandran",
     "janin",
     "msd",
+    "vacf",
 ]

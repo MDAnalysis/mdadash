@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added widget for MSD Analysis (PR #35)
+- Added widget for Velocity Autocorrelation Function (VACF) (PR #36)
 
 ### Fixed
 

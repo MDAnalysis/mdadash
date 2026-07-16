@@ -12,7 +12,7 @@ from mdadash.backend import main
 from mdadash.backend.kernel.core import BufferedTrajectory
 from mdadash.backend.main import MDADash, app, sio, start_server
 from mdadash.backend.state.manager import StateManager
-from mdadash.backend.tests.data.files import TPR, XTC
+from mdadash.backend.tests.data.files import TPR, TRR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
 from .utils import (
@@ -46,6 +46,20 @@ def imd_server_fixture():
     server = InThreadIMDServer(u.trajectory)
     info = create_default_imdsinfo_v3()
     info.velocities = False
+    info.forces = False
+    info.box = True
+    server.set_imdsessioninfo(info)
+    server.handshake_sequence("localhost", first_frame=True)
+    yield server
+    server.cleanup()
+
+
+@pytest.fixture(name="imd_server_trr")
+def imd_server_fixture_trr():
+    u = mda.Universe(TPR, TRR)
+    server = InThreadIMDServer(u.trajectory)
+    info = create_default_imdsinfo_v3()
+    info.velocities = True
     info.forces = False
     info.box = True
     server.set_imdsessioninfo(info)
@@ -630,6 +644,51 @@ async def test_widget_run_msd_parallel(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_vacf_serial(_client, imd_server_trr):
+    uuid = await add_widget("VACF")
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    inputs = [
+        ("selection", "resid 1"),
+        ("custom_title", ""),
+        ("show_particle_vacfs", True),
+        ("normalized", True),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server_trr, n_frames=5)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_vacf_parallel(_client, imd_server_trr):
+    uuid = await add_widget("VACF")
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    inputs = [
+        ("selection", "resid 1"),
+        ("show_particle_vacfs", True),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server_trr, n_frames=5)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_vacf_running_integral(_client, imd_server_trr):
+    uuid = await add_widget("VACF")
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    inputs = [
+        ("selection", "resid 1"),
+        ("show_running_integral", True),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server_trr, n_frames=5)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
