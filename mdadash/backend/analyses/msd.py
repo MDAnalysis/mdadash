@@ -160,7 +160,7 @@ class MSDAnalysis(WidgetBase):
     def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
         self.plot.set_data(x, y1)
-        self.lc.set_segments(y2 if self.show_particle_msds else [])
+        self.lc.set_segments(y2 if y2 is not None else [])
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
@@ -182,7 +182,7 @@ class MSDAnalysis(WidgetBase):
         # update msd state
         self.msd.msd_sums = v1
         self.msd.msd_counts = v2
-        if self.show_particle_msds:
+        if v3 is not None:
             self.msd.particle_msd_sums = v3
             self.msd.particle_msd_counts = v4
 

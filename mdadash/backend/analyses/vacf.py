@@ -149,7 +149,7 @@ class VACFAnalysis(WidgetBase):
     def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
         self.plot.set_data(x, y1)
-        self.lc.set_segments(y2 if self.show_particle_vacfs else [])
+        self.lc.set_segments(y2 if y2 is not None else [])
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
@@ -171,7 +171,7 @@ class VACFAnalysis(WidgetBase):
         # update vacf state
         self.vacf.vacf_sums = v1
         self.vacf.vacf_counts = v2
-        if self.show_particle_vacfs:
+        if v3 is not None:
             self.vacf.particle_vacf_sums = v3
             self.vacf.particle_vacf_counts = v4
 
