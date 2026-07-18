@@ -664,12 +664,14 @@ async def test_widget_run_msd_diffusion_coefficient(_client, imd_server):
 
 
 async def test_widget_run_vacf_serial(_client, imd_server_trr):
-    uuid = await add_widget("VACF")
+    uuid = await add_widget("ACF")
     await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
     inputs = [
+        ("physical_property", "velocity"),
         ("selection", "resid 1"),
         ("custom_title", ""),
-        ("show_particle_vacfs", True),
+        ("show_particle_acfs", True),
+        ("centered", True),
         ("normalized", True),
     ]
     await check_input_changes(uuid, inputs)
@@ -680,11 +682,12 @@ async def test_widget_run_vacf_serial(_client, imd_server_trr):
 
 
 async def test_widget_run_vacf_parallel(_client, imd_server_trr):
-    uuid = await add_widget("VACF")
+    uuid = await add_widget("ACF")
     await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
     inputs = [
+        ("physical_property", "velocity"),
         ("selection", "resid 1"),
-        ("show_particle_vacfs", True),
+        ("show_particle_acfs", True),
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
@@ -695,9 +698,10 @@ async def test_widget_run_vacf_parallel(_client, imd_server_trr):
 
 
 async def test_widget_run_vacf_running_integral(_client, imd_server_trr):
-    uuid = await add_widget("VACF")
+    uuid = await add_widget("ACF")
     await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
     inputs = [
+        ("physical_property", "velocity"),
         ("selection", "resid 1"),
         ("show_running_integral", True),
     ]

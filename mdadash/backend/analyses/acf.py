@@ -13,9 +13,9 @@ from mdadash.backend.widgets.base import WidgetBase
 logger = logging.getLogger(__name__)
 
 
-class VACFAnalysis(WidgetBase):
-    name = "VACF"
-    description = "Velociy Autocorrelation Function"
+class ACFAnalysis(WidgetBase):
+    name = "ACF"
+    description = "Autocorrelation Function"
 
     _inputs = [
         {
@@ -29,6 +29,17 @@ class VACFAnalysis(WidgetBase):
             ],
         },
         {
+            "attribute": "physical_property",
+            "name": "Physical property",
+            "description": "Physical property to analyze",
+            "type": "select",
+            "items": [
+                "velocity",
+                "position",
+                "force",
+            ],
+        },
+        {
             "attribute": "selection",
             "name": "Selection",
             "description": "MDAnalysis selection phrase",
@@ -37,7 +48,7 @@ class VACFAnalysis(WidgetBase):
         {
             "attribute": "dim_type",
             "name": "Dimension type",
-            "description": "Desired dimensions to be included in the VACF",
+            "description": "Desired dimensions to be included in the ACF",
             "type": "select",
             "items": [
                 "xyz",
@@ -50,21 +61,27 @@ class VACFAnalysis(WidgetBase):
             ],
         },
         {
-            "attribute": "show_running_integral",
-            "name": "Show running integral",
-            "description": "Show running integral of the VACF",
+            "attribute": "centered",
+            "name": "Centered",
+            "description": "Use mean subtracted values to calculate ACF",
             "type": "bool",
         },
         {
-            "attribute": "show_particle_vacfs",
-            "name": "Show particle VACFs",
-            "description": "Show VACFs for individual particles of the selection",
+            "attribute": "show_running_integral",
+            "name": "Show running integral",
+            "description": "Show running integral of the ACF",
+            "type": "bool",
+        },
+        {
+            "attribute": "show_particle_acfs",
+            "name": "Show particle ACFs",
+            "description": "Show ACFs for individual particles of the selection",
             "type": "bool",
         },
         {
             "attribute": "normalized",
             "name": "Normalize",
-            "description": "Normalize VACF values",
+            "description": "Normalize ACF values",
             "type": "bool",
         },
         {
@@ -77,11 +94,13 @@ class VACFAnalysis(WidgetBase):
 
     def __init__(self):
         super().__init__()
-        self.vacf = None
+        self.acf = None
+        self.physical_property = "velocity"
         self.selection = "all"
         self.dim_type = "xyz"
+        self.centered = False
         self.show_running_integral = False
-        self.show_particle_vacfs = False
+        self.show_particle_acfs = False
         self.normalized = False
         self.custom_title = None
         self._setup_plot()
@@ -100,26 +119,35 @@ class VACFAnalysis(WidgetBase):
     def _set_title(self):
         """Set plot title"""
         if self.show_running_integral:
-            title = f"Running integral of VACF of '{self.selection}'"
+            title = (
+                f"Running integral of {self.physical_property.title()} "
+                f"ACF of '{self.selection}'"
+            )
         else:
-            title = f"VACF of '{self.selection}'"
+            title = f"{self.physical_property.title()} ACF of '{self.selection}'"
         self.ax.set_title(self.custom_title if self.custom_title else title)
 
     def _set_y_label(self):
         """Set plot y label"""
         if self.show_running_integral:
-            self.ax.set_ylabel(r"Running integral of VACF (${\AA}^2$/ps)")
+            self.ax.set_ylabel(
+                f"Running integral of {self.physical_property.title()} ACF"
+            )
         else:
-            self.ax.set_ylabel(r"Velocity Autocorrelation Function (${\AA}^2/ps^2$)")
+            self.ax.set_ylabel(
+                f"{self.physical_property.title()} Autocorrelation Function"
+            )
 
-    def _create_vacf(self):
-        """Create vacf instance"""
-        self.vacf = SlidingWindowVACF(
+    def _create_acf(self):
+        """Create acf instance"""
+        self.acf = SlidingWindowACF(
             self.u,
             select=self.selection,
+            physical_property=self.physical_property,
             dim_type=self.dim_type,
+            centered=self.centered,
             show_running_integral=self.show_running_integral,
-            show_particle_vacfs=self.show_particle_vacfs,
+            show_particle_acfs=self.show_particle_acfs,
         )
         self._set_title()
         self._set_y_label()
@@ -131,7 +159,7 @@ class VACFAnalysis(WidgetBase):
 
     def on_post_connect(self):
         """on_post_connect handler"""
-        self._create_vacf()
+        self._create_acf()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
@@ -140,11 +168,11 @@ class VACFAnalysis(WidgetBase):
         elif attribute in ("normalized", "_run_mode"):
             pass
         else:
-            self._create_vacf()
+            self._create_acf()
 
     def _compute(self, normalized: bool = False, parallel: bool = False):
-        """Run VACF for the current timesteps window"""
-        return self.vacf.run(normalized=normalized, parallel=parallel)
+        """Run ACF for the current timesteps window"""
+        return self.acf.run(normalized=normalized, parallel=parallel)
 
     def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
@@ -166,20 +194,22 @@ class VACFAnalysis(WidgetBase):
 
     def apply_parallel_results(self, values):
         """apply parallel results handler"""
-        x, y1, y2, (v1, v2, v3, v4) = values
+        x, y1, y2, (v1, v2, v3, v4, v5, v6) = values
         self._update_plot(x, y1, y2)
-        # update vacf state
-        self.vacf.vacf_sums = v1
-        self.vacf.vacf_counts = v2
-        if v3 is not None:
-            self.vacf.particle_vacf_sums = v3
-            self.vacf.particle_vacf_counts = v4
+        # update acf state
+        self.acf.acf_sums = v1
+        self.acf.acf_counts = v2
+        self.acf.running_sum = v3
+        self.acf.running_count = v4
+        if v5 is not None:
+            self.acf.particle_acf_sums = v5
+            self.acf.particle_acf_counts = v6
 
 
-class SlidingWindowVACF:
-    """Sliding Window VACF
+class SlidingWindowACF:
+    """Sliding Window ACF
 
-    Calculate VACF for a sliding window of frames
+    Calculate ACF for a sliding window of frames
 
     """
 
@@ -187,27 +217,38 @@ class SlidingWindowVACF:
     def __init__(
         self,
         u: mda.Universe,
+        physical_property: str = "velocity",
         select: str = "all",
         dim_type: str = "xyz",
+        centered: bool = False,
         show_running_integral: bool = False,
-        show_particle_vacfs: bool = False,
+        show_particle_acfs: bool = False,
     ):
         self.u = u
+        property_map = {
+            "velocity": "velocities",
+            "position": "positions",
+            "force": "forces",
+        }
+        self.physical_property = property_map[physical_property]
         self.select = select
         self.dim_type = dim_type
+        self.centered = centered
         self.show_running_integral = show_running_integral
-        self.show_particle_vacfs = (not show_running_integral) and show_particle_vacfs
+        self.show_particle_acfs = (not show_running_integral) and show_particle_acfs
         self._parse_dim_type()
         self.ag = u.select_atoms(self.select)
         self.n_atoms = self.ag.atoms.n_atoms
         self.n_lags = u.trajectory.buffer_size
-        self.vacf_sums = np.zeros(self.n_lags)
-        self.vacf_counts = np.zeros(self.n_lags, dtype=int)
-        self.vacf_counts[0] = 1
-        if self.show_particle_vacfs:
-            self.particle_vacf_sums = np.zeros((self.n_lags, self.n_atoms))
-            self.particle_vacf_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
-            self.particle_vacf_counts[0, :] = 1
+        self.running_sum = np.zeros_like(
+            getattr(self.ag, self.physical_property)[:, self._dim], dtype=np.float64
+        )
+        self.running_count = 0
+        self.acf_sums = np.zeros(self.n_lags)
+        self.acf_counts = np.zeros(self.n_lags, dtype=int)
+        if self.show_particle_acfs:
+            self.particle_acf_sums = np.zeros((self.n_lags, self.n_atoms))
+            self.particle_acf_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
 
     def _parse_dim_type(self):
         """Sets up the desired dimensionality."""
@@ -222,59 +263,71 @@ class SlidingWindowVACF:
         }
         self._dim = keys[self.dim_type.lower()]
 
+    # pylint: disable=too-many-locals
     def run(self, normalized: bool = False, parallel: bool = False) -> tuple:
-        """Run VACF for the current window"""
+        """Run ACF for the current window"""
 
         n = len(self.u.trajectory)  # buffer / window might not be full yet
-        velocities_current = self.ag.velocities[:, self._dim]
+        current = getattr(self.ag, self.physical_property)[:, self._dim]
+        self.running_sum += current
+        self.running_count += 1
+        mu = self.running_sum / self.running_count
         for i in range(n):
             lag = n - 1 - i
-            _ = self.u.trajectory[i]  # set the buffered trajectory frame
-            veloc = velocities_current * self.ag.velocities[:, self._dim]
-            sum_veloc = np.sum(veloc, axis=-1)
-            self.vacf_sums[lag] += np.mean(sum_veloc)
-            self.vacf_counts[lag] += 1
-            if self.show_particle_vacfs:
-                self.particle_vacf_sums[lag, :] += sum_veloc
-                self.particle_vacf_counts[lag, :] += 1
+            _ = self.u.trajectory[i]  # set trajectory to past frame
+            previous = getattr(self.ag, self.physical_property)
+            if self.centered:
+                corr = (current - mu) * (previous[:, self._dim] - mu)
+            else:
+                corr = current * previous[:, self._dim]
+            sum_corr = np.sum(corr, axis=-1)
+            self.acf_sums[lag] += np.mean(sum_corr)
+            self.acf_counts[lag] += 1
+            if self.show_particle_acfs:
+                self.particle_acf_sums[lag, :] += sum_corr
+                self.particle_acf_counts[lag, :] += 1
 
         # We will have at least 2 frames by the time we are here.
         # frame_dt will ensure the delta_t is correct even if we have step
         # value (other than 1) configured in the universe configuration
         frame_dt = round(self.u.trajectory[1].time - self.u.trajectory[0].time, 2)
         delta_t_values = np.arange(n) * frame_dt
-        avg_vacfs = self.vacf_sums[:n] / self.vacf_counts[:n]
+        avg_acfs = self.acf_sums[:n] / self.acf_counts[:n]
+
         if normalized:
-            avg_vacfs = avg_vacfs / avg_vacfs[0]
-        vacfs_by_particle_lines = None
-        if self.show_particle_vacfs:
-            vacfs_by_particle_array = (
-                self.particle_vacf_sums[:n, :] / self.particle_vacf_counts[:n, :]
+            avg_acfs = avg_acfs / avg_acfs[0]
+
+        acfs_by_particle_lines = None
+        if self.show_particle_acfs:
+            acfs_by_particle_array = (
+                self.particle_acf_sums[:n, :] / self.particle_acf_counts[:n, :]
             )
             if normalized:
-                vacfs_by_particle_array = (
-                    vacfs_by_particle_array / vacfs_by_particle_array[0]
+                acfs_by_particle_array = (
+                    acfs_by_particle_array / acfs_by_particle_array[0]
                 )
-            vacfs_by_particle_lines = np.empty((self.n_atoms, n, 2))
-            vacfs_by_particle_lines[:, :, 0] = delta_t_values
-            vacfs_by_particle_lines[:, :, 1] = vacfs_by_particle_array.T
+            acfs_by_particle_lines = np.empty((self.n_atoms, n, 2))
+            acfs_by_particle_lines[:, :, 0] = delta_t_values
+            acfs_by_particle_lines[:, :, 1] = acfs_by_particle_array.T
 
         if self.show_running_integral:
             running_integral = integrate.cumulative_trapezoid(
-                avg_vacfs,
+                avg_acfs,
                 delta_t_values,
                 initial=0,
             ) / len(self._dim)
 
         return (
             delta_t_values,
-            running_integral if self.show_running_integral else avg_vacfs,
-            vacfs_by_particle_lines,
+            running_integral if self.show_running_integral else avg_acfs,
+            acfs_by_particle_lines,
             (
-                self.vacf_sums,
-                self.vacf_counts,
-                self.particle_vacf_sums if self.show_particle_vacfs else None,
-                self.particle_vacf_counts if self.show_particle_vacfs else None,
+                self.acf_sums,
+                self.acf_counts,
+                self.running_sum,
+                self.running_count,
+                self.particle_acf_sums if self.show_particle_acfs else None,
+                self.particle_acf_counts if self.show_particle_acfs else None,
             )
             if parallel
             else (None,) * 4,
