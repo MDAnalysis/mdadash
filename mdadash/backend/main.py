@@ -258,7 +258,7 @@ def start_server():
         "--trajectory",
         type=str,
         required=True,
-        help="Trajectory URL (of the form 'imd://host:port') (required)",
+        help="Trajectory URL or file (Eg: 'imd://host:port' or trajectory.xtc) (required)",
     )
     parser.add_argument(
         "--state-file",

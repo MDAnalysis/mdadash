@@ -15,6 +15,7 @@ import IPython
 import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.coordinates.base import FrameIteratorAll, FrameIteratorBase, ProtoReader
+from MDAnalysis.coordinates.IMD import IMDReader
 
 from mdadash.backend.widgets.base import WidgetManager
 
@@ -202,6 +203,7 @@ class UniverseManager:
     def __init__(self, _wm: WidgetManager, _comm_handler: CommHandler):
         self._universes = []
         self._universe_configs = []
+        self._streaming = False
         self._iter_loop_task = None
         self._iter_loop_running = False
         self._iter_loop_resumed = asyncio.Event()
@@ -287,13 +289,16 @@ class UniverseManager:
                     trajectory,
                     **kwargs,
                 )
+                if isinstance(u.trajectory, IMDReader):
+                    self._streaming = True
                 u.trajectory = BufferedTrajectory(
                     u.trajectory,
                     config["batch_size"],
                 )
                 if uid == 0:
                     self._send_tsdata(u)
-                    self._send_sessioninfo(u)
+                    if self._streaming:
+                        self._send_sessioninfo(u)
                 self._universes[uid] = u
                 # set universe for the widget instances with this uid
                 self._wm._set_universe(uid, u)

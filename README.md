@@ -69,13 +69,21 @@ uvx mdadash -h
 Once the package is installed, it can be run using the `mdadash` command to start the dashboard server:
 
 ```sh
-mdadash --topology <topology_filename> --trajectory <trajectory_url>
+mdadash --topology <topology_filename> --trajectory <trajectory_url_or_file>
 ```
 
-Example:
+Examples:
+
+Streaming:
 
 ```sh
-mdadash --topology start.gro --trajectory imd://localhost:8889
+mdadash --topology topology.tpr --trajectory imd://localhost:8889
+```
+
+File based trajectories:
+
+```sh
+mdadash --topology topology.tpr --trajectory trajectory.xtc
 ```
 
 To see a list of all the available options:
@@ -95,7 +103,7 @@ options:
   -h, --help            show this help message and exit
   --topology TOPOLOGY   Topology filepath (required)
   --trajectory TRAJECTORY
-                        Trajectory URL (of the form 'imd://host:port') (required)
+                        Trajectory URL or file (Eg: 'imd://host:port' or trajectory.xtc) (required)
   --state-file STATE_FILE
                         The dashboard state file (default: mdadash.state.json)
   --clear-alerts        Clear alerts if any from dashboard state
