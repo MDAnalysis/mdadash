@@ -24,7 +24,9 @@
                 <template v-slot:label>
                   <div class="d-flex flex-column">
                     <div>Show Session Info</div>
-                    <div class="text-caption text-grey">Show session info card in dashboard</div>
+                    <div class="text-caption text-grey">
+                      Show session info card (when available) in dashboard
+                    </div>
                   </div>
                 </template>
               </v-switch>
@@ -96,9 +98,20 @@
                 v-model="settings.universe_configs[0].trajectory"
                 readonly
                 class="text-medium-emphasis mb-4"
-                hint="Trajectory URL (read-only)"
+                hint="Trajectory URL or filename (read-only)"
                 persistent-hint
               ></v-text-field>
+
+              <v-switch
+                class="mb-8"
+                density="compact"
+                color="primary"
+                v-model="settings.universe_configs[0].nojump"
+                label="No Jump"
+                hint="Add a 'NoJump' transformation to the universe"
+                persistent-hint
+              ></v-switch>
+
               <v-number-input
                 class="mb-4"
                 label="socket_bufsize"

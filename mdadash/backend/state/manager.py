@@ -107,6 +107,7 @@ class StateManager:
                     {
                         "topology": None,
                         "trajectory": None,
+                        "nojump": False,
                         "socket_bufsize": None,
                         "buffer_size": 10000000,
                         "timeout": 5,

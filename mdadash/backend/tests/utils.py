@@ -57,6 +57,7 @@ async def connect_to_simulation(imd_server, step=2, batch_size=1):
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
+            "nojump": False,
             "step": step,
             "batch_size": batch_size,
         }

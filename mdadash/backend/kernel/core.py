@@ -16,6 +16,7 @@ import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.coordinates.base import FrameIteratorAll, FrameIteratorBase, ProtoReader
 from MDAnalysis.coordinates.IMD import IMDReader
+from MDAnalysis.transformations import NoJump
 
 from mdadash.backend.widgets.base import WidgetManager
 
@@ -289,6 +290,8 @@ class UniverseManager:
                     trajectory,
                     **kwargs,
                 )
+                if config["nojump"]:
+                    u.trajectory.add_transformations(NoJump())
                 if isinstance(u.trajectory, IMDReader):
                     self._streaming = True
                 u.trajectory = BufferedTrajectory(
