@@ -63,7 +63,12 @@ class ACFAnalysis(WidgetBase):
         {
             "attribute": "centered",
             "name": "Centered",
-            "description": "Use mean subtracted values to calculate ACF",
+            "description": (
+                "Use mean subtracted values to calculate ACF. "
+                "A running updated mean based on data processed so far is used. "
+                "The number of data samples must be much greater than the lag-time "
+                "window for this to be accurate."
+            ),
             "type": "bool",
         },
         {
@@ -277,24 +282,21 @@ class SlidingWindowACF:
             lag = n - 1 - i
             _ = self.u.trajectory[i]  # set trajectory to past frame
             previous = getattr(self.ag, self.physical_property)
+            acf = current * previous[:, self._dim]
             if self.centered:
-                corr = (current - mu) * (previous[:, self._dim] - mu)
-            else:
-                corr = current * previous[:, self._dim]
-            sum_corr = np.sum(corr, axis=-1)
-            self.acf_sums[lag] += np.mean(sum_corr)
+                acf = acf - (mu**2)
+            acf_sum = np.sum(acf, axis=-1)
+            self.acf_sums[lag] += np.mean(acf_sum)
             self.acf_counts[lag] += 1
             if self.show_particle_acfs:
-                self.particle_acf_sums[lag, :] += sum_corr
+                self.particle_acf_sums[lag, :] += acf_sum
                 self.particle_acf_counts[lag, :] += 1
 
         if self.frame_dt is None:
             # We will have at least 2 frames by the time we are here.
             # frame_dt will ensure the delta_t is correct even if we have step
             # value (other than 1) configured in the universe configuration
-            self.frame_dt = self.u.trajectory.ts.dt * (
-                self.u.trajectory[1].frame - self.u.trajectory[0].frame
-            )
+            self.frame_dt = self.u.trajectory[1].time - self.u.trajectory[0].time
         delta_t_values = np.arange(n) * self.frame_dt
         avg_acfs = self.acf_sums[:n] / self.acf_counts[:n]
 
