@@ -240,6 +240,7 @@ class SlidingWindowACF:
         self.ag = u.select_atoms(self.select)
         self.n_atoms = self.ag.atoms.n_atoms
         self.n_lags = u.trajectory.buffer_size
+        self.frame_dt = None
         self.running_sum = np.zeros_like(
             getattr(self.ag, self.physical_property)[:, self._dim], dtype=np.float64
         )
@@ -287,11 +288,14 @@ class SlidingWindowACF:
                 self.particle_acf_sums[lag, :] += sum_corr
                 self.particle_acf_counts[lag, :] += 1
 
-        # We will have at least 2 frames by the time we are here.
-        # frame_dt will ensure the delta_t is correct even if we have step
-        # value (other than 1) configured in the universe configuration
-        frame_dt = round(self.u.trajectory[1].time - self.u.trajectory[0].time, 2)
-        delta_t_values = np.arange(n) * frame_dt
+        if self.frame_dt is None:
+            # We will have at least 2 frames by the time we are here.
+            # frame_dt will ensure the delta_t is correct even if we have step
+            # value (other than 1) configured in the universe configuration
+            self.frame_dt = self.u.trajectory.ts.dt * (
+                self.u.trajectory[1].frame - self.u.trajectory[0].frame
+            )
+        delta_t_values = np.arange(n) * self.frame_dt
         avg_acfs = self.acf_sums[:n] / self.acf_counts[:n]
 
         if normalized:
