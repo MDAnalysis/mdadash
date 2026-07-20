@@ -19,6 +19,7 @@ const settings = ref({
     {
       topology: null,
       trajectory: null,
+      nojump: false,
       socket_bufsize: null,
       buffer_size: 10000000,
       timeout: 5,
@@ -106,6 +107,7 @@ describe('SettingsView.vue', () => {
       VNumberInput: 0,
       VCheckbox: true,
       VSelect: '',
+      VSwitch: true,
     }
     const keys = Object.keys(dataMap)
     for (const name of keys) {

@@ -108,6 +108,7 @@ async def test_simulation_connectivity(_client, imd_server):
         {
             "topology": str(TPR),
             "trajectory": f"imd://localhost:{imd_server.port}",
+            "nojump": True,
             "kwargs": [["arg1", "value1"], ["bool1", "true"], ["bool2", "false"]],
             "step": 2,
         }
