@@ -16,6 +16,14 @@ class MSDAnalysis(WidgetBase):
     name = "MSD Analysis"
     description = "Mean squared displacement analysis"
 
+    _notes = (
+        "To correctly compute MSD using this widget, you must supply coordinates "
+        "in the unwrapped convention, also known as no-jump. That is, when atoms "
+        "pass the periodic boundary, they must not be wrapped back into the primary "
+        "simulation cell. You can enable NoJump for the universe in the Universe "
+        "Configuration section in the Settings page."
+    )
+
     _inputs = [
         {
             "attribute": "_run_mode",

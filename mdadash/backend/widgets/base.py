@@ -78,6 +78,10 @@ class WidgetBase(ABC):
             if attribute in self._input_errors:
                 del self._input_errors[attribute]
 
+    def _get_notes(self):
+        """Internal: Get the current instance notes"""
+        return getattr(self, "_notes", None)
+
     def _get_tsinfo(self) -> dict:
         """Internal: Get the current timestep info"""
         return {
@@ -487,6 +491,23 @@ class WidgetManager:
         """
         widget = self.instances[uuid]
         return widget._get_inputs()
+
+    def get_notes(self, uuid: str) -> str:
+        """Get notes for widget instance
+
+        Parameters
+        ----------
+        uuid: str
+            The uuid of the widget instance
+
+        Returns
+        -------
+        response: str
+            The notes string of the widget
+
+        """
+        widget = self.instances[uuid]
+        return widget._get_notes()
 
     def set_input(self, uuid: str, attribute: str, value: Any) -> bool:
         """Set input for a widget instance attribute

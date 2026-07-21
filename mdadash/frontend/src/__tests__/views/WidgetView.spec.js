@@ -26,6 +26,7 @@ const widgetDetails = {
   uuid: 'uuid1',
   name: 'name1',
   description: 'desc1',
+  notes: 'notes',
   inputs: [
     {
       attribute: 'selection',

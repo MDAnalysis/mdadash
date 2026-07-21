@@ -497,8 +497,13 @@ class WidgetsComm:
 
     def get_inputs(self, data: dict) -> list:
         """Get the inputs for a widget instance"""
+        uuid = data["uuid"]
         self._comm_handler.send(
-            {"status": "ok", "inputs": self._wm.get_inputs(data["uuid"])}
+            {
+                "status": "ok",
+                "inputs": self._wm.get_inputs(uuid),
+                "notes": self._wm.get_notes(uuid),
+            }
         )
 
     def set_input(self, data: dict) -> list:

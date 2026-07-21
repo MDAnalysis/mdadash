@@ -1,5 +1,15 @@
 <template>
   <v-container>
+    <!-- Widget notes (if any) -->
+    <v-alert
+      v-if="widgetDetails.notes"
+      class="mb-6 text-pre-line"
+      closable
+      :text="widgetDetails.notes"
+      type="info"
+      variant="tonal"
+    ></v-alert>
+
     <!-- Widget name -->
     <v-text-field
       id="name"
