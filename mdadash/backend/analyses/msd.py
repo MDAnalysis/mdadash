@@ -221,11 +221,13 @@ class SlidingWindowMSD:
         self.ag = u.select_atoms(self.select)
         self.n_atoms = self.ag.atoms.n_atoms
         self.n_lags = u.trajectory.buffer_size
-        self.msd_sums = np.zeros(self.n_lags)
+        self.msd_sums = np.zeros(self.n_lags, dtype=np.float64)
         self.msd_counts = np.zeros(self.n_lags, dtype=int)
         self.msd_counts[0] = 1
         if self.show_particle_msds:
-            self.particle_msd_sums = np.zeros((self.n_lags, self.n_atoms))
+            self.particle_msd_sums = np.zeros(
+                (self.n_lags, self.n_atoms), dtype=np.float64
+            )
             self.particle_msd_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
             self.particle_msd_counts[0, :] = 1
 

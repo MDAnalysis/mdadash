@@ -17,6 +17,14 @@ class ACFAnalysis(WidgetBase):
     name = "ACF"
     description = "Autocorrelation Function"
 
+    _notes = (
+        "To correctly compute positional ACF using this widget, you must supply "
+        "coordinates in the unwrapped convention, also known as no-jump. That is, "
+        "when atoms pass the periodic boundary, they must not be wrapped back into "
+        "the primary simulation cell. You can enable NoJump for the universe in the "
+        "Universe Configuration section in the Settings page."
+    )
+
     _inputs = [
         {
             "attribute": "_run_mode",
@@ -250,10 +258,12 @@ class SlidingWindowACF:
             getattr(self.ag, self.physical_property)[:, self._dim], dtype=np.float64
         )
         self.running_count = 0
-        self.acf_sums = np.zeros(self.n_lags)
+        self.acf_sums = np.zeros(self.n_lags, dtype=np.float64)
         self.acf_counts = np.zeros(self.n_lags, dtype=int)
         if self.show_particle_acfs:
-            self.particle_acf_sums = np.zeros((self.n_lags, self.n_atoms))
+            self.particle_acf_sums = np.zeros(
+                (self.n_lags, self.n_atoms), dtype=np.float64
+            )
             self.particle_acf_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
 
     def _parse_dim_type(self):
