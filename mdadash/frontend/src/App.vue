@@ -101,7 +101,7 @@
 
           <div class="d-flex flex-column align-center">
             <span class="text-grey-darken-1">Time:</span>
-            <span class="font-weight-bold"> {{ timestepInfo.time?.toFixed(2) ?? '-' }} ps </span>
+            <span class="font-weight-bold"> {{ timestepInfo.time?.toFixed(3) ?? '-' }} ps </span>
           </div>
 
           <v-divider vertical inset class="mx-4" thickness="2"></v-divider>
