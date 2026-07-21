@@ -126,6 +126,15 @@ class DSSPAnalysis(WidgetBase):
     def on_post_connect(self):
         """on_post_connect handler"""
         protein = self.u.select_atoms("protein")
+        # Fix for ValueError: Universe contains unequal numbers of (N,CA,C,O) atoms
+        n_res = self.u.select_atoms("protein and name N").resids
+        ca_res = self.u.select_atoms("protein and name CA").resids
+        c_res = self.u.select_atoms("protein and name C").resids
+        o_res = self.u.select_atoms("protein and name O O1 OT1").resids
+        valid_resids = set(n_res) & set(ca_res) & set(c_res) & set(o_res)
+        protein = self.u.select_atoms(
+            f"protein and resid {' '.join(map(str, valid_resids))} and (name N CA C O O1 OT1)"
+        )
         res_ids = protein.residues.resids
         self.n_residues = len(protein.residues)
         self.dssp = DSSP(protein)
