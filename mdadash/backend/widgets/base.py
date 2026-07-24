@@ -7,7 +7,7 @@ import logging
 from abc import ABC
 from contextlib import contextmanager
 from threading import Thread
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 from uuid import uuid1
 
 import IPython
@@ -63,14 +63,15 @@ class WidgetBase(ABC):
 
     def _get_inputs(self):
         """Internal: Get the current instance inputs"""
-        inputs = getattr(self, "_inputs")
-        for _input in inputs:
-            # set the value and error states
-            _input["value"] = getattr(self, _input["attribute"], None)
-            _input["error"] = self._input_errors.get(_input["attribute"], None)
+        inputs = getattr(self, "_inputs", None)
+        if inputs is not None:
+            for _input in inputs:
+                # set the value and error states
+                _input["value"] = getattr(self, _input["attribute"], None)
+                _input["error"] = self._input_errors.get(_input["attribute"], None)
         return inputs
 
-    def _set_input_state(self, attribute: str, error: str = None):
+    def _set_input_state(self, attribute: str, error: str | None = None):
         """Internal: Set input attribute validation state"""
         if error is not None:
             self._input_errors[attribute] = error
@@ -111,7 +112,7 @@ class WidgetBase(ABC):
                 {
                     "pause_simulation": {
                         "tsinfo": self._get_tsinfo(),
-                        "message": f"Pause triggered by: {getattr(self, 'name')}",
+                        "message": f"Pause triggered by: {getattr(self, 'name', None)}",
                     }
                 }
             )
@@ -229,8 +230,8 @@ class WidgetManager:
 
     """
 
-    _classes = {}
-    _instances = {}
+    _classes: ClassVar = {}
+    _instances: ClassVar = {}
 
     def __init__(self, comm_handler: "CommHandler"):
         self.comm_handler = comm_handler
@@ -264,7 +265,7 @@ class WidgetManager:
     def _validate_widget_class(cls, widget_class: WidgetBase) -> None:
         """Internal: Method to validate a widget class"""
         if not issubclass(widget_class, WidgetBase):
-            raise ValueError(f"{widget_class} is not a widget class")
+            raise TypeError(f"{widget_class} is not a widget class")
         if not hasattr(widget_class, "name"):
             raise ValueError("name not specified in widget class")
         widget_name = widget_class.name
@@ -317,7 +318,7 @@ class WidgetManager:
             # invoke the on_post_connect handler
             self._invoke_widget_lifecyle_method(widget, "on_post_connect")
 
-    def _set_universe(self, uid: int, u: mda.Universe, uuid: str = None) -> None:
+    def _set_universe(self, uid: int, u: mda.Universe, uuid: str | None = None) -> None:
         """Internal: Set the universe for all or given widget"""
         if uuid is None:
             for widget in self.instances.values():
@@ -362,9 +363,9 @@ class WidgetManager:
             widget_class = self.classes[widget_name]
             uuid = str(uuid1())
             instance = widget_class()
-            setattr(instance, "uid", uid)
-            setattr(instance, "uuid", uuid)
-            setattr(instance, "_wm", self)
+            instance.uid = uid
+            instance.uuid = uuid
+            instance._wm = self
             self.instances[uuid] = instance
             details = {
                 "uid": uid,
@@ -399,8 +400,8 @@ class WidgetManager:
         # duplicate instance
         widget_class = instance.__class__
         new_instance = widget_class()
-        setattr(new_instance, "uid", uid)
-        setattr(new_instance, "_wm", self)
+        new_instance.uid = uid
+        new_instance._wm = self
         # set inputs for new instance
         inputs = instance._get_inputs()
         for _input in inputs:
@@ -410,7 +411,7 @@ class WidgetManager:
                 new_instance._set_input_state(attribute, _input["error"])
         # add new instance to instances list
         new_uuid = str(uuid1())
-        setattr(new_instance, "uuid", new_uuid)
+        new_instance.uuid = new_uuid
         self.instances[new_uuid] = new_instance
         details = {
             "uid": uid,
@@ -437,9 +438,9 @@ class WidgetManager:
             try:
                 widget_class = self.classes[widget["class_name"]]
                 instance = widget_class()
-                setattr(instance, "uid", widget["uid"])
-                setattr(instance, "uuid", widget_uuid)
-                setattr(instance, "_wm", self)
+                instance.uid = widget["uid"]
+                instance.uuid = widget_uuid
+                instance._wm = self
                 inputs = widget["inputs"]
                 for _input in inputs:
                     attribute = _input["attribute"]
@@ -538,7 +539,7 @@ class WidgetManager:
             widget.on_input_change(attribute, old_value, value)
             widget._set_input_state(attribute)
             return True
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
             widget._set_input_state(attribute, str(e))
         return False
 
@@ -566,8 +567,8 @@ class WidgetManager:
 
     @staticmethod
     def with_reset_frame(func, *args, **kwargs):
-        instance = getattr(func, "__self__")
-        getattr(instance, "_reset_frame_latest")()
+        instance = func.__self__
+        instance._reset_frame_latest()
         return func(*args, **kwargs)
 
     def _run_parallel_jobs(self, parallel_widgets, parallel_results):

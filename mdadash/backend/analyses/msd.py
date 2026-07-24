@@ -1,4 +1,5 @@
 import logging
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import MDAnalysis as mda
@@ -24,7 +25,7 @@ class MSDAnalysis(WidgetBase):
         "Configuration section in the Settings page."
     )
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "_run_mode",
             "name": "Run mode",

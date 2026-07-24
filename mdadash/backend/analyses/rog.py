@@ -4,6 +4,7 @@ Radii of Gyration
 
 import logging
 from collections import deque
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +26,7 @@ class ROG(WidgetBase):
     name = "ROG"
     description = "Radii of Gyration of a selection"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",
             "name": "Run frequency",

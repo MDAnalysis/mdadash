@@ -5,12 +5,12 @@ Module that has all the analyses widgets
 from . import acf, com_distance, dssp, energies, janin, msd, ramachandran, rog
 
 __all__ = [
-    "energies",
+    "acf",
     "com_distance",
-    "rog",
     "dssp",
-    "ramachandran",
+    "energies",
     "janin",
     "msd",
-    "acf",
+    "ramachandran",
+    "rog",
 ]

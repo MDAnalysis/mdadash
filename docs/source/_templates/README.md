@@ -8,7 +8,7 @@ so a file named "page.html" will overwrite the builtin "page.html".
 The path to this folder is set in the Sphinx `conf.py` file in the line:
 
 ```python
-templates_path = ['_templates']
+templates_path = ["_templates"]
 ```
 
 ## Examples of file to add to this directory

@@ -1,5 +1,6 @@
 import logging
 from collections import deque
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +19,7 @@ class DSSPAnalysis(WidgetBase):
     name = "DSSP Analysis"
     description = "Secondary structure assignment of protein"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",
             "name": "Run frequency",

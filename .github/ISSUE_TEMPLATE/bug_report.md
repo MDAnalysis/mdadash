@@ -19,7 +19,6 @@ about: Create a report to help us improve
 import mdadash
 
 ...
-
 ```
 
 ## Current environment

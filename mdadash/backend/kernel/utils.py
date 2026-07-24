@@ -17,12 +17,12 @@ class EMATrend:
         self.ema_short = None
         self.ema_long = None
 
-    def update(self, value: int | float) -> int:
+    def update(self, value: float) -> int:
         """Update current value and return trend
 
         Parameters
         ----------
-        value: int | float
+        value: float
             The current value to update
 
         Returns

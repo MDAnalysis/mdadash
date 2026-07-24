@@ -4,6 +4,7 @@ Widgets for various simulation energies
 
 import logging
 from collections import deque
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
@@ -20,7 +21,7 @@ class EnergyWidgetBase:
     data_key = ""
     y_label = "Energy ( kJ / mol )"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "maxlen",
             "name": "Max values",
@@ -101,7 +102,7 @@ class EnergyWidgetBase:
 
     def run_every_frame(self):
         """every-frame run handler"""
-        ts = getattr(self, "u").trajectory.ts
+        ts = self.u.trajectory.ts  # pylint: disable=no-member
         if self.data_key not in ts.data:
             return  # pragma: no cover
         self.steps.append(ts.data["step"])

@@ -341,8 +341,10 @@ class UniverseManager:
         for u in self._universes:
             try:
                 u.trajectory.close()
-            except Exception:  # pylint: disable=broad-exception-caught
+            except AttributeError:
                 pass
+            except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                logger.exception("Failed to close trajectory")
         self._connected = False
         self._running = False
 
@@ -377,7 +379,7 @@ class UniverseManager:
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
             u.trajectory.next()
-        except (EOFError, IOError, StopIteration):  # pragma: no cover
+        except (OSError, EOFError, StopIteration):  # pragma: no cover
             pass
 
     async def _iter_loop(self):
@@ -432,7 +434,7 @@ class WidgetsComm:
         for widget_class in self._wm.classes.values():
             widgets.append(
                 {
-                    "name": getattr(widget_class, "name"),
+                    "name": widget_class.name,
                     "description": getattr(widget_class, "description", None),
                 }
             )

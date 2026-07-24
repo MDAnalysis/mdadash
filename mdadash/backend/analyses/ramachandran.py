@@ -3,6 +3,7 @@ Ramachandran plot
 """
 
 import logging
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
@@ -23,7 +24,7 @@ class RamachandranPlot(WidgetBase):
     name = "Ramachandran Plot"
     description = "Dihedral angles analysis using Ramachandran plot"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "selection",
             "name": "Selection",

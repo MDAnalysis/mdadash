@@ -3,6 +3,7 @@ Janin plot
 """
 
 import logging
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
@@ -23,7 +24,7 @@ class JaninPlot(WidgetBase):
     name = "Janin Plot"
     description = "Dihedral angles analysis using Janin plot"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "selection",
             "name": "Selection",

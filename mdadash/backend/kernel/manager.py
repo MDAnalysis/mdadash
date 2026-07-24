@@ -220,7 +220,7 @@ class KernelManager:
                 else:
                     logger.debug("IOPUB: %s", msg)
                 # TODO: handle other message types
-            except (asyncio.TimeoutError, queue.Empty):
+            except (TimeoutError, queue.Empty):
                 continue
 
     async def _listen_shell_channel(self):
@@ -231,7 +231,7 @@ class KernelManager:
                 # msg_type = msg["header"]["msg_type"]
                 # content = msg["content"]
                 logger.debug("SHELL: %s", msg)
-            except (asyncio.TimeoutError, queue.Empty):
+            except (TimeoutError, queue.Empty):
                 continue
 
     def _comm_open(self):
@@ -265,7 +265,7 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
 
     async def send_message_await_response(
-        self, msg_type: str, data: dict = None, timeout: int = 5
+        self, msg_type: str, data: dict | None = None, timeout: int = 5
     ) -> dict | None:
         """Send message to kernel and wait for a response (async)
 
@@ -306,7 +306,7 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
         try:
             return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError as e:  # pragma: no cover
+        except TimeoutError as e:  # pragma: no cover
             raise TimeoutError("Timed out waiting for kernel response") from e
         finally:
             self._pending_futures.pop(msg_id, None)

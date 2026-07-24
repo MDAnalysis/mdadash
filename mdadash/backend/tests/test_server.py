@@ -216,7 +216,7 @@ async def test_widget_registration():
     class TestWidget1:
         pass
 
-    with pytest.raises(ValueError, match="is not a widget class"):
+    with pytest.raises(TypeError, match="is not a widget class"):
         wm.register_class(TestWidget1)
 
     # test widget class without a name

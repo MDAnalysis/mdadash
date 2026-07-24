@@ -4,6 +4,7 @@ Distance between two center-of-masses
 
 import logging
 from collections import deque
+from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
@@ -25,7 +26,7 @@ class COMDistance(WidgetBase):
     name = "COMDistance"
     description = "Distance between two COMs"
 
-    _inputs = [
+    _inputs: ClassVar = [
         {
             "attribute": "selection1",
             "name": "Selection 1",
@@ -171,10 +172,7 @@ class COMDistance(WidgetBase):
             self._set_x_values()
         elif attribute == "custom_title":
             self._set_title()
-        elif attribute == "selection1":
-            self._update_selections()
-            reset_plot = True
-        elif attribute == "selection2":
+        elif attribute in ("selection1", "selection2"):
             self._update_selections()
             reset_plot = True
         elif attribute in ("periodic", "updating"):
