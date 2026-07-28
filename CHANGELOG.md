@@ -31,6 +31,7 @@ The rules for this file:
 
 - Added widget for MSD Analysis (PR #35)
 - Added widget for Velocity Autocorrelation Function (VACF) (PR #36)
+- Added widget for custom code (PR #43)
 
 ### Fixed
 
