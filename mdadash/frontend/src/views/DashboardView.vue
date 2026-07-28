@@ -307,15 +307,42 @@
               </template>
             </v-card-item>
             <v-divider />
-            <!-- Widget output -->
-            <!-- Image -->
-            <v-img
-              class="flex-grow-1"
-              contain
-              height="0"
-              v-if="widgetOutputs[item.i]?.['image/jpeg']"
-              :src="`data:image/jpeg;base64,${widgetOutputs[item.i]['image/jpeg']}`"
-            ></v-img>
+            <!-- Widget output(s) -->
+            <template v-if="isWidgetOutputSingleImage(item.i)">
+              <!-- special case for single image output to fit the card -->
+              <v-img
+                :aspect-ratio="4 / 3"
+                class="flex-grow-1"
+                contain
+                height="0"
+                :src="`data:image/jpeg;base64,${widgetOutputs[item.i][0].content}`"
+              ></v-img>
+            </template>
+            <template v-else>
+              <!-- array of outputs -->
+              <v-card-text class="flex-grow-1 overflow-y-auto py-0">
+                <div v-for="(item, index) in widgetOutputs[item.i]" :key="index" class="mb-4">
+                  <pre v-if="item.type === 'text'" class="text-pre-wrap">{{ item.content }}</pre>
+                  <v-alert
+                    v-if="item.type === 'error'"
+                    type="error"
+                    variant="tonal"
+                    density="compact"
+                    class="text-caption"
+                  >
+                    {{ item.content }}
+                  </v-alert>
+                  <v-img
+                    :aspect-ratio="4 / 3"
+                    v-else-if="item.type === 'image'"
+                    :src="'data:image/jpeg;base64,' + item.content"
+                    max-width="100%"
+                    contain
+                    class="rounded"
+                  ></v-img>
+                </div>
+              </v-card-text>
+            </template>
           </v-card>
         </grid-item>
       </grid-layout>
@@ -432,6 +459,11 @@ const widgetsGridKey = ref(0)
 const widgetOutputs = ref({})
 var displayedLayoutWidgets = ref([...layoutWidgets.value])
 const showSaveLayoutConfirm = ref(false)
+
+const isWidgetOutputSingleImage = (uuid) => {
+  const widgetOutput = widgetOutputs.value[uuid]
+  return widgetOutput?.length === 1 && widgetOutput[0].type === 'image'
+}
 
 const displayedLayoutWidgetsByPosition = computed(() => {
   return [...displayedLayoutWidgets.value].sort((a, b) => {
@@ -628,5 +660,12 @@ onDeactivated(() => {
   padding-top: 0px !important;
   padding-bottom: 0px !important;
   align-items: center;
+}
+</style>
+
+<style>
+/* Prevent text selection when resizing grid cards */
+.grid-layout-plus-resizing * {
+  user-select: none !important;
 }
 </style>

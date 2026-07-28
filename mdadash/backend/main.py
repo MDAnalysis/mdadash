@@ -1,5 +1,6 @@
 import argparse
 import copy
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -93,6 +94,9 @@ class MDADash:
         self.sio.on("get_alerts")(self.on_get_alerts)
         self.sio.on("delete_alert")(self.on_delete_alert)
         self.sio.on("delete_all_alerts")(self.on_delete_all_alerts)
+        self.sio.on("cell_run")(self.on_cell_run)
+        self.sio.on("cell_code_complete")(self.on_cell_code_complete)
+        self.sio.on("cell_code_inspect")(self.on_cell_code_inspect)
 
     async def emit_running_state(self, sid: Any = None) -> None:
         """Emit current dashboard running state"""
@@ -243,6 +247,38 @@ class MDADash:
         self.sm.alerts.clear()
         await self.emit_alerts_count()
         await self.sm.save()
+
+    async def on_cell_run(self, _sid, data):
+        """cell_run"""
+        cell_data = json.loads(data)
+        return await self.km.execute_code(cell_data["code"])
+
+    async def on_cell_code_complete(self, _sid, data):
+        """cell_code_complete"""
+        try:
+            response = await self.km.kc.complete(
+                code=data["code"],
+                cursor_pos=data["cursor_pos"],
+                reply=True,
+                timeout=5.0,
+            )
+            return response["content"]
+        except TimeoutError:  # pragma: no cover
+            return None
+
+    async def on_cell_code_inspect(self, _sid, data):
+        """cell_code_inspect"""
+        try:
+            response = await self.km.kc.inspect(
+                code=data["code"],
+                cursor_pos=data["cursor_pos"],
+                detail_level=0,
+                reply=True,
+                timeout=5.0,
+            )
+            return response["content"]
+        except TimeoutError:  # pragma: no cover
+            return None
 
 
 def start_server():

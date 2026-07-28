@@ -103,13 +103,29 @@
       <v-divider />
       <v-expand-transition>
         <div v-show="isOutputExpanded">
-          <!-- Widget output -->
-          <!-- Image -->
-          <v-img
-            :aspect-ratio="16 / 9"
-            v-if="widgetOutput?.['image/jpeg']"
-            :src="`data:image/jpeg;base64,${widgetOutput['image/jpeg']}`"
-          ></v-img>
+          <!-- Widget outputs -->
+          <v-card-text class="flex-grow-1 overflow-y-auto py-0">
+            <div v-for="(item, index) in widgetOutput" :key="index" class="mb-4">
+              <pre v-if="item.type === 'text'" class="text-pre-wrap">{{ item.content }}</pre>
+              <v-alert
+                v-if="item.type === 'error'"
+                type="error"
+                variant="tonal"
+                density="compact"
+                class="text-caption"
+              >
+                {{ item.content }}
+              </v-alert>
+              <v-img
+                :aspect-ratio="16 / 9"
+                v-else-if="item.type === 'image'"
+                :src="'data:image/jpeg;base64,' + item.content"
+                max-width="100%"
+                contain
+                class="rounded"
+              ></v-img>
+            </div>
+          </v-card-text>
         </div>
       </v-expand-transition>
     </v-card>
@@ -125,6 +141,7 @@ import { useRoute } from 'vue-router'
 import { ref, onMounted, onBeforeUnmount, inject } from 'vue'
 import { mdiChevronDown, mdiChevronUp } from '@mdi/js'
 import { VTextField, VSelect, VNumberInput, VSwitch, VBtnToggle } from 'vuetify/components'
+import NotebookCell from '@/components/NotebookCell.vue'
 
 const route = useRoute()
 const uuid = route.query.uuid
@@ -142,6 +159,7 @@ const componentMap = {
   bool: VSwitch,
   select: VSelect,
   toggle: VBtnToggle,
+  cell: NotebookCell,
 }
 
 const propsMap = {

@@ -91,6 +91,12 @@ class WidgetBase(ABC):
             "step": self.u.trajectory.ts.data.get("step"),
         }
 
+    def _run_code(self, code: str):
+        """Internal: Run user-defined code"""
+        if self._wm is not None:
+            return self._wm._run_cell(code)
+        return None  # pragma: no cover
+
     def alert(self, message: str) -> None:
         """Create an alert
 
@@ -590,6 +596,7 @@ class WidgetManager:
         except Exception:  # pragma: no cover
             logger.exception("Parallel run failed for jobs %s", parallel_jobs)
 
+    # pylint: disable=too-many-branches
     def run_widgets(self, uid: int, batch_ready: bool) -> None:
         """Run widget instances
 
@@ -628,49 +635,82 @@ class WidgetManager:
         # run serial widgets
         for widget in serial_widgets:
             widget._reset_frame_latest()
-            with _widget_uuid_in_metadata(widget.uuid):
+            widget_outputs = None
+            with _capture_outputs() as captured_outputs:
                 try:
                     if widget._run_frequency == "every-frame":
-                        widget.run_every_frame()
+                        widget_outputs = widget.run_every_frame()
                     elif batch_ready:
-                        widget.run_batch()
+                        widget_outputs = widget.run_batch()
                 # pylint: disable=broad-exception-caught
                 except Exception:  # pragma: no cover
                     logger.exception("Serial run failed for widget %s", widget.uuid)
+            if widget_outputs is not None:
+                # custom code widget returns outputs directly
+                self.comm_handler.send(
+                    {"widget_outputs": {"uuid": widget.uuid, "outputs": widget_outputs}}
+                )
+            elif captured_outputs:
+                self.comm_handler.send(
+                    {
+                        "widget_outputs": {
+                            "uuid": widget.uuid,
+                            "outputs": captured_outputs,
+                        }
+                    }
+                )
+
         # apply parallel results back
         if parallel_widgets:
             # wait for all parallel jobs to be done
             parallel_thread.join()
             for i, widget in enumerate(parallel_widgets):
-                with _widget_uuid_in_metadata(widget.uuid):
+                with _capture_outputs() as captured_outputs:
                     widget.apply_parallel_results(parallel_results[i])
+                if captured_outputs:
+                    self.comm_handler.send(
+                        {
+                            "widget_outputs": {
+                                "uuid": widget.uuid,
+                                "outputs": captured_outputs,
+                            }
+                        }
+                    )
+
+    def _run_cell(self, code: str) -> list:
+        """Internal: Run code and return all outputs"""
+        outputs = []
+        with _capture_outputs() as capture:
+            result = IPython.get_ipython().run_cell(code)
+        if result.error_before_exec:
+            outputs.append({"type": "error", "content": str(result.error_before_exec)})
+        if result.error_in_exec:
+            outputs.append({"type": "error", "content": str(result.error_in_exec)})
+        if result.result is not None:
+            outputs.append({"type": "text", "content": str(result.result)})
+        outputs.extend(capture)
+        return outputs
+
+    def execute_code(self, data: dict) -> dict:
+        """Execute code in this kernel"""
+        outputs = self._run_cell(data["code"])
+        self.comm_handler.send({"outputs": outputs})
 
 
 @contextmanager
-def _widget_uuid_in_metadata(uuid: str):
-    """Internal: Add uuid in content metadata sent from kernel"""
-    session = IPython.get_ipython().kernel.session
-    original_send = session.send
-
-    def patched_send(stream, msg_type_or_msg, *args, **kwargs):
-        msg_type = None
-        content = None
-        if isinstance(msg_type_or_msg, str):  # pragma: no cover
-            msg_type = msg_type_or_msg
-            if len(args) > 0 and isinstance(args[0], dict):
-                content = args[0]
-        elif isinstance(msg_type_or_msg, dict):
-            msg_type = msg_type_or_msg.get("msg_type") or msg_type_or_msg.get(
-                "header", {}
-            ).get("msg_type")
-            content = msg_type_or_msg.get("content", msg_type_or_msg)
-        # Add widget uuid to metadata
-        if msg_type == "display_data" and content is not None:
-            content["metadata"]["widget_uuid"] = uuid
-        return original_send(stream, msg_type_or_msg, *args, **kwargs)
-
-    session.send = patched_send
-    try:
-        yield
-    finally:
-        session.send = original_send
+def _capture_outputs():
+    """Internal: Context manager to capture outputs of code execution"""
+    outputs = []
+    with IPython.utils.capture.capture_output() as capture:
+        yield outputs
+    if capture.stdout:
+        outputs.append({"type": "text", "content": capture.stdout})
+    if capture.stderr:
+        outputs.append({"type": "text", "content": capture.stderr})
+    for out in capture.outputs:
+        data = out.data
+        if "image/jpeg" in data:
+            outputs.append({"type": "image", "content": data["image/jpeg"]})
+        elif "text/plain" in data:  # pragma: no cover
+            # skip text repr of a matplotlib image if image exists
+            outputs.append({"type": "text", "content": data["text/plain"]})

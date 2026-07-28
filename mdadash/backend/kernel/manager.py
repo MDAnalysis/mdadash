@@ -72,6 +72,7 @@ class KernelManager:
         self.listen_task = asyncio.create_task(self._start_listening())
         # initialize the kernel core
         self.kc.execute("from mdadash.backend.kernel import core")
+        self.kc.execute("u = None")
         # open comms with the kernel
         self._comm_open()
         self._is_running = True
@@ -113,7 +114,6 @@ class KernelManager:
         """Internal: Create separate listen tasks for iopub and shell"""
         await asyncio.gather(
             self._listen_iopub_channel(),
-            self._listen_shell_channel(),
         )
 
     def _get_energy_trend(self, key, value):
@@ -176,6 +176,15 @@ class KernelManager:
                     data = msg["content"]["data"]
                     if "tsinfo" in data:
                         await self._emit_tsdata(data["tsinfo"])
+                    elif "widget_outputs" in data:
+                        # send widget outputs to browser
+                        await self.sio.emit(
+                            "widgets:output",
+                            {
+                                "uuid": data["widget_outputs"]["uuid"],
+                                "data": data["widget_outputs"]["outputs"],
+                            },
+                        )
                     elif "sessioninfo" in data:
                         await self._emit_sessioninfo(data["sessioninfo"])
                     elif "alert" in data:
@@ -207,30 +216,9 @@ class KernelManager:
                 elif msg_type == "error":
                     # redirect kernel errors to server output
                     print(f"KERNEL (error): {content['ename']}: {content['evalue']}")
-                elif msg_type == "display_data":
-                    if "metadata" in content and "widget_uuid" in content["metadata"]:
-                        # send widget output to browser
-                        await self.sio.emit(
-                            "widgets:output",
-                            {
-                                "uuid": content["metadata"]["widget_uuid"],
-                                "data": content["data"],
-                            },
-                        )
                 else:
                     logger.debug("IOPUB: %s", msg)
                 # TODO: handle other message types
-            except (TimeoutError, queue.Empty):
-                continue
-
-    async def _listen_shell_channel(self):
-        """Internal: Listen on shell channel"""
-        while self._is_running:
-            try:
-                msg = await self.kc.shell_channel.get_msg(timeout=0.1)
-                # msg_type = msg["header"]["msg_type"]
-                # content = msg["content"]
-                logger.debug("SHELL: %s", msg)
             except (TimeoutError, queue.Empty):
                 continue
 
@@ -331,7 +319,7 @@ class KernelManager:
         response = await self.send_message_await_response(
             "execute_code", {"code": code}, timeout
         )
-        return response["output"]
+        return response["outputs"]
 
     async def connect_to_simulations(self) -> dict:
         """Connect to the MD simulation
