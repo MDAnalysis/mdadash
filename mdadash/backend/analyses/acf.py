@@ -1,3 +1,7 @@
+"""
+Autocorrelation Function (ACF)
+"""
+
 import logging
 from typing import ClassVar
 

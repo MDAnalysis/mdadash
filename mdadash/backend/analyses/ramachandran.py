@@ -1,5 +1,5 @@
 """
-Ramachandran plot
+Ramachandran plot (Dihedral angles analysis)
 """
 
 import logging
