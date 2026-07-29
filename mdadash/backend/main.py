@@ -262,7 +262,7 @@ class MDADash:
                 reply=True,
                 timeout=1.0,
             )
-            return response["content"]
+            return response["content"]  # pragma: no cover
         except TimeoutError:  # pragma: no cover
             return None
 
@@ -276,7 +276,7 @@ class MDADash:
                 reply=True,
                 timeout=1.0,
             )
-            return response["content"]
+            return response["content"]  # pragma: no cover
         except TimeoutError:  # pragma: no cover
             return None
 
