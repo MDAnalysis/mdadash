@@ -7,6 +7,7 @@ import asyncio
 import copy
 import logging
 import numbers
+import sys
 from collections import deque
 from dataclasses import asdict
 
@@ -549,3 +550,8 @@ comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
 comm_handler.register_handler("widget:set_input", widgets_comm.set_input)
 comm_handler.register_handler("execute_code", wm.execute_code)
 comm_handler.register_handler("update_n_jobs", wm.update_n_jobs)
+
+# disable jedi for code complete in macOS python 3.12
+# this times out when used with AsyncKernelManager
+if sys.platform == "darwin" and sys.version == (3, 12):  # pragma: no cover
+    IPython.get_ipython().Completer.use_jedi = False

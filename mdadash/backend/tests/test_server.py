@@ -739,7 +739,6 @@ async def test_notebook_cell(_client, imd_server):
     )
     if response is not None:
         assert "Universe" in response["data"]["text/plain"]
-    await resume_simulation(imd_server)
     await disconnect_from_simulation()
 
 
