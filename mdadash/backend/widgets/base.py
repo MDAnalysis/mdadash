@@ -16,7 +16,7 @@ from joblib import Parallel
 from matplotlib_inline.backend_inline import InlineBackend
 
 if TYPE_CHECKING:
-    from mdadash.backend.kernel.core import CommHandler
+    from mdadash.backend.kernel.core import CommHandler, UniverseManager
 
 logger = logging.getLogger(__name__)
 InlineBackend.instance().figure_formats = {"jpeg"}
@@ -41,7 +41,7 @@ class WidgetBase(ABC):
         self.uid = None
         self.u = None
         self.uuid = None
-        self._wm = None
+        self._wm: WidgetManager = None
         self._input_errors = {}
 
     def __getstate__(self):
@@ -106,15 +106,15 @@ class WidgetBase(ABC):
             The string message used for the alert
 
         """
-        if self._wm is not None and self._wm.comm_handler is not None:
-            self._wm.comm_handler.send(
+        if self._wm is not None and self._wm._comms is not None:
+            self._wm._comms.send(
                 {"alert": {"tsinfo": self._get_tsinfo(), "message": message}}
             )
 
     def pause_simulation(self) -> None:
         """Pause the simulation"""
-        if self._wm is not None and self._wm.comm_handler is not None:
-            self._wm.comm_handler.send(
+        if self._wm is not None and self._wm._comms is not None:
+            self._wm._comms.send(
                 {
                     "pause_simulation": {
                         "tsinfo": self._get_tsinfo(),
@@ -239,20 +239,11 @@ class WidgetManager:
     _classes: ClassVar = {}
     _instances: ClassVar = {}
 
-    def __init__(self, comm_handler: "CommHandler"):
-        self.comm_handler = comm_handler
+    def __init__(self, comms: "CommHandler"):
+        self._comms = comms
+        self._um: UniverseManager = None
         self.n_jobs = 2
         self._patch_IMDReader()
-
-    @property
-    def classes(self):
-        """Dictionary of registered widget classes keyed by widget name"""
-        return self._classes
-
-    @property
-    def instances(self):
-        """Dictionary of widget instances keyed by widget uuid"""
-        return self._instances
 
     @classmethod
     def register_class(cls, widget_class: WidgetBase) -> None:
@@ -327,15 +318,15 @@ class WidgetManager:
     def _set_universe(self, uid: int, u: mda.Universe, uuid: str | None = None) -> None:
         """Internal: Set the universe for all or given widget"""
         if uuid is None:
-            for widget in self.instances.values():
+            for widget in self._instances.values():
                 self._set_widget_universe(widget, uid, u)
         else:
-            widget = self.instances[uuid]
+            widget = self._instances[uuid]
             self._set_widget_universe(widget, uid, u)
 
     def _invoke_lifecycle_method(self, method: str) -> None:
         """Internal: Invoke given lifecycle method for all instances"""
-        for widget in self.instances.values():
+        for widget in self._instances.values():
             self._invoke_widget_lifecyle_method(widget, method)
 
     def _get_inputs_state(self, inputs):
@@ -344,7 +335,147 @@ class WidgetManager:
             {k: i[k] for k in ("attribute", "value", "error") if k in i} for i in inputs
         ]
 
-    def add_widget_instance(
+    def get_available_widgets(self, _data: dict) -> None:
+        """Get available widgets
+
+        Sends a dict containing name and description of all available
+        widgets to the client.
+
+        """
+        widgets = []
+        for widget_class in self._classes.values():
+            widgets.append(
+                {
+                    "name": widget_class.name,
+                    "description": getattr(widget_class, "description", None),
+                }
+            )
+        self._comms.send({"widgets": widgets})
+
+    def recreate_instances(self, data: dict) -> None:
+        """Recreate widget instances
+
+        Recreate widget instances with data from state file
+
+        Parameters
+        ----------
+        data: dict
+            Data of the instances that need to be recreated
+
+        """
+        ret = self._recreate_instances(data)
+        self._comms.send({"status": "ok" if ret else "error"})
+
+    def add_widget_instance(self, data: dict) -> dict:
+        """Add widget instance based on registered widget name"""
+        uid = data["uid"]
+        widget_name = data["name"]
+        uuid, details = self._add_widget_instance(uid, widget_name)
+        if uuid is not None:
+            if self._um._connected:
+                # set the universe for the new widget instance
+                self._set_universe(uid, self._um._universes[uid], uuid)
+            self._comms.send(
+                {
+                    "status": "ok",
+                    "uuid": uuid,
+                    "details": details,
+                }
+            )
+        else:
+            self._comms.send(
+                {
+                    "status": "error",
+                    "message": f"Failed to add widget instance for {widget_name}",
+                }
+            )
+
+    def duplicate_widget_instance(self, data: dict) -> None:
+        """Duplicate widget instance based on instance uuid"""
+        uid = data["uid"]
+        new_uuid, details = self._duplicate_widget_instance(uid, data["uuid"])
+        if self._um._connected:
+            # set the universe for the new widget instance
+            self._set_universe(uid, self._um._universes[uid], new_uuid)
+        self._comms.send(
+            {
+                "status": "ok",
+                "uuid": new_uuid,
+                "details": details,
+            }
+        )
+
+    def remove_widget_instance(self, data: dict) -> None:
+        """Remove widget instance
+
+        Remove widget instance based on uuid returned during
+        the instance creation using :meth:`add_widget_instance`
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            uuid: str
+                The uuid of the instance
+
+        """
+        uuid = self._remove_widget_instance(data["uuid"])
+        if uuid is not None:
+            self._comms.send({"status": "ok"})
+        else:
+            self._comms.send(
+                {
+                    "status": "error",
+                    "message": f"Failed to remove widget instance with uuid {uuid}",
+                }
+            )
+
+    def get_widget_inputs(self, data: dict) -> None:
+        """Get inputs
+
+        Send a dict containing the inputs and notes for a given widget uuid.
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            uuid: str
+                The uuid of the instance
+
+        """
+        uuid = data["uuid"]
+        self._comms.send(
+            {
+                "status": "ok",
+                "inputs": self._get_widget_inputs(uuid),
+                "notes": self._get_widget_notes(uuid),
+            }
+        )
+
+    def set_widget_input(self, data: dict) -> None:
+        """Set input
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            uuid: str
+                The uuid of the instance
+
+            attribute: str
+                The input attribute to set
+
+            value: Any
+                The value to set for the attribute
+
+        """
+        ret = self._set_widget_input(data["uuid"], data["attribute"], data["value"])
+        self._comms.send({"status": "ok" if ret else "error"})
+
+    def _add_widget_instance(
         self, uid: int, widget_name: str
     ) -> tuple[str, dict] | None:
         """Add widget instance
@@ -365,14 +496,14 @@ class WidgetManager:
         uuid of instance added and input details or None, None
 
         """
-        if widget_name in self.classes:
-            widget_class = self.classes[widget_name]
+        if widget_name in self._classes:
+            widget_class = self._classes[widget_name]
             uuid = str(uuid1())
             instance = widget_class()
             instance.uid = uid
             instance.uuid = uuid
             instance._wm = self
-            self.instances[uuid] = instance
+            self._instances[uuid] = instance
             details = {
                 "uid": uid,
                 "class_name": widget_name,
@@ -383,7 +514,7 @@ class WidgetManager:
             return uuid, details
         return None, None
 
-    def duplicate_widget_instance(self, uid: int, uuid: str) -> tuple[str, dict]:
+    def _duplicate_widget_instance(self, uid: int, uuid: str) -> tuple[str, dict]:
         """Duplicate widget instance
 
         Duplicate widget instance based on existing instance uuid
@@ -402,7 +533,7 @@ class WidgetManager:
 
         """
         # get existing instance
-        instance = self.instances[uuid]
+        instance = self._instances[uuid]
         # duplicate instance
         widget_class = instance.__class__
         new_instance = widget_class()
@@ -418,7 +549,7 @@ class WidgetManager:
         # add new instance to instances list
         new_uuid = str(uuid1())
         new_instance.uuid = new_uuid
-        self.instances[new_uuid] = new_instance
+        self._instances[new_uuid] = new_instance
         details = {
             "uid": uid,
             "class_name": widget_class.name,
@@ -428,21 +559,12 @@ class WidgetManager:
         self._invoke_widget_lifecyle_method(new_instance, "on_post_create")
         return new_uuid, details
 
-    def recreate_widget_instances(self, data: dict) -> None:
-        """Recreate widget instances
-
-        Recreate widget instances from state file
-
-        Parameters
-        ----------
-        data: dict
-            Data of the instances that need to be recreated
-
-        """
+    def _recreate_instances(self, data: dict) -> None:
+        """Internal: Recreate widget instances"""
         ret = True
         for widget_uuid, widget in data.items():
             try:
-                widget_class = self.classes[widget["class_name"]]
+                widget_class = self._classes[widget["class_name"]]
                 instance = widget_class()
                 instance.uid = widget["uid"]
                 instance.uuid = widget_uuid
@@ -453,7 +575,7 @@ class WidgetManager:
                     setattr(instance, attribute, _input["value"])
                     if _input["error"] is not None:
                         instance._set_input_state(attribute, _input["error"])
-                self.instances[widget_uuid] = instance
+                self._instances[widget_uuid] = instance
                 # invoke the on_post_create handler
                 self._invoke_widget_lifecyle_method(instance, "on_post_create")
             except KeyError:
@@ -461,82 +583,26 @@ class WidgetManager:
                 ret = False
         return ret
 
-    def delete_widget_instance(self, uuid: str) -> str | None:
-        """Remove widget instance
-
-        Remove widget instance based on uuid returned during
-        the instance creation using :meth:`add_widget_instance`
-
-        Parameters
-        ----------
-        uuid: str
-            The uuid of the instance to be removed
-
-        Returns
-        -------
-        uuid of instance deleted or None
-
-        """
-        if uuid in self.instances:
-            del self.instances[uuid]
+    def _remove_widget_instance(self, uuid: str) -> str | None:
+        """Internal: Remove a widget instance"""
+        if uuid in self._instances:
+            del self._instances[uuid]
             return uuid
         return None
 
-    def get_inputs(self, uuid: str) -> list:
-        """Get inputs for widget instance
-
-        Parameters
-        ----------
-        uuid: str
-            The uuid of the widget instance
-
-        Returns
-        -------
-        response: list
-            List of input dicts
-
-        """
-        widget = self.instances[uuid]
+    def _get_widget_inputs(self, uuid: str) -> list:
+        """Internal: Get a widget inputs"""
+        widget = self._instances[uuid]
         return widget._get_inputs()
 
-    def get_notes(self, uuid: str) -> str:
-        """Get notes for widget instance
-
-        Parameters
-        ----------
-        uuid: str
-            The uuid of the widget instance
-
-        Returns
-        -------
-        response: str
-            The notes string of the widget
-
-        """
-        widget = self.instances[uuid]
+    def _get_widget_notes(self, uuid: str) -> str:
+        """Internal: Get notes for widget instance"""
+        widget = self._instances[uuid]
         return widget._get_notes()
 
-    def set_input(self, uuid: str, attribute: str, value: Any) -> bool:
-        """Set input for a widget instance attribute
-
-        Parameters
-        ----------
-        uuid: str
-            The uuid of the widget instance
-
-        attribute: str
-            The input attribute to set
-
-        value: Any
-            The value to set for the attribute
-
-        Returns
-        -------
-        response: bool
-            True or False to indicate if input validation succeeded
-
-        """
-        widget = self.instances[uuid]
+    def _set_widget_input(self, uuid: str, attribute: str, value: Any) -> bool:
+        """Internal: Set a widget input"""
+        widget = self._instances[uuid]
         old_value = getattr(widget, attribute, value)
         old_type = type(old_value)
         # set input using the same existing type
@@ -550,7 +616,17 @@ class WidgetManager:
         return False
 
     def update_n_jobs(self, data: dict) -> None:
-        """Update n_jobs for joblib.Parallel"""
+        """Update n_jobs for ``joblib.Parallel``
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            n_jobs: int
+                The number of parallel jobs
+
+        """
         self.n_jobs = data["n_jobs"]
 
     @staticmethod
@@ -572,7 +648,8 @@ class WidgetManager:
         IMDReader.__getstate__ = custom_getstate
 
     @staticmethod
-    def with_reset_frame(func, *args, **kwargs):
+    def _with_reset_frame(func, *args, **kwargs):
+        """Internal: Reset frame to the most recent one"""
         instance = func.__self__
         instance._reset_frame_latest()
         return func(*args, **kwargs)
@@ -582,7 +659,7 @@ class WidgetManager:
         parallel_jobs = []
         for widget in parallel_widgets:
             func, args, kwargs = widget.get_parallel_job()
-            parallel_jobs.append((self.with_reset_frame, (func,) + args, kwargs))
+            parallel_jobs.append((self._with_reset_frame, (func,) + args, kwargs))
         try:
             # without max_nbytes=None, np arrays passed / returned
             # are marked read-only in subsequent calls (eg: msd case)
@@ -612,7 +689,7 @@ class WidgetManager:
         # collect widgets that need to be run
         parallel_widgets = []
         serial_widgets = []
-        for widget in self.instances.values():
+        for widget in self._instances.values():
             # only run widget if there are no input errors
             if widget.uid != uid or widget._input_errors:
                 continue
@@ -647,11 +724,11 @@ class WidgetManager:
                     logger.exception("Serial run failed for widget %s", widget.uuid)
             if widget_outputs is not None:
                 # custom code widget returns outputs directly
-                self.comm_handler.send(
+                self._comms.send(
                     {"widget_outputs": {"uuid": widget.uuid, "outputs": widget_outputs}}
                 )
             elif captured_outputs:
-                self.comm_handler.send(
+                self._comms.send(
                     {
                         "widget_outputs": {
                             "uuid": widget.uuid,
@@ -668,7 +745,7 @@ class WidgetManager:
                 with _capture_outputs() as captured_outputs:
                     widget.apply_parallel_results(parallel_results[i])
                 if captured_outputs:
-                    self.comm_handler.send(
+                    self._comms.send(
                         {
                             "widget_outputs": {
                                 "uuid": widget.uuid,
@@ -691,10 +768,20 @@ class WidgetManager:
         outputs.extend(capture)
         return outputs
 
-    def execute_code(self, data: dict) -> dict:
-        """Execute code in this kernel"""
+    def execute_code(self, data: dict) -> None:
+        """Execute code in the kernel
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            code: str
+                The code to execute in the kernel
+
+        """
         outputs = self._run_cell(data["code"])
-        self.comm_handler.send({"outputs": outputs})
+        self._comms.send({"outputs": outputs})
 
 
 @contextmanager

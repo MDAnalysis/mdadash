@@ -202,7 +202,7 @@ class UniverseManager:
 
     """
 
-    def __init__(self, _wm: WidgetManager, _comm_handler: CommHandler):
+    def __init__(self, _comms: CommHandler):
         self._universes = []
         self._universe_configs = []
         self._streaming = False
@@ -210,8 +210,8 @@ class UniverseManager:
         self._iter_loop_running = False
         self._iter_loop_resumed = asyncio.Event()
         self._iter_loop_resumed.clear()
-        self._wm = _wm
-        self._comm_handler = _comm_handler
+        self._wm: WidgetManager = None
+        self._comms = _comms
         self._connected = False
         self._running = False
 
@@ -315,14 +315,14 @@ class UniverseManager:
             self._iter_loop_running = True
             self._iter_loop_task = asyncio.create_task(self._iter_loop())
             self._connected = True
-            self._comm_handler.send({"status": "ok"})
+            self._comms.send({"status": "ok"})
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("Failed to connect to simulations")
-            self._comm_handler.send({"status": "error", "message": str(e)})
+            self._comms.send({"status": "error", "message": str(e)})
 
     def _send_tsdata(self, u: mda.Universe):
         """Internal: Send timestep data out"""
-        self._comm_handler.send(
+        self._comms.send(
             {
                 "tsinfo": {
                     "frame": u.trajectory.frame,
@@ -332,11 +332,13 @@ class UniverseManager:
         )
 
     def _send_sessioninfo(self, u: mda.Universe):
-        self._comm_handler.send(
+        """Internal: Send session info from imdclient"""
+        self._comms.send(
             {"sessioninfo": asdict(u.trajectory._imdclient.get_imdsessioninfo())}
         )
 
     def _disconnect_from_simulations(self):
+        """Internal: Cancel iteration loop and close trajectories"""
         self._iter_loop_running = False
         if self._iter_loop_task is not None:
             self._iter_loop_task.cancel()
@@ -355,21 +357,21 @@ class UniverseManager:
         """Disconnect from MD simulations"""
         self._disconnect_from_simulations()
         self._wm._invoke_lifecycle_method("on_post_disconnect")
-        self._comm_handler.send({"status": "ok"})
+        self._comms.send({"status": "ok"})
 
     def pause_simulations(self, _data: dict) -> None:
         """Pause MD simulations"""
         self._iter_loop_resumed.clear()
         self._running = False
         self._wm._invoke_lifecycle_method("on_post_pause")
-        self._comm_handler.send({"status": "ok"})
+        self._comms.send({"status": "ok"})
 
     def resume_simulations(self, _data: dict) -> None:
         """Resume MD simulations"""
         self._wm._invoke_lifecycle_method("on_pre_resume")
         self._iter_loop_resumed.set()
         self._running = True
-        self._comm_handler.send({"status": "ok"})
+        self._comms.send({"status": "ok"})
 
     def _trajectory_next(self, u, step):
         """Internal: Iterate trajectory by `step` frame(s)"""
@@ -415,141 +417,35 @@ class UniverseManager:
             pass
 
 
-class WidgetsComm:
-    """Widgets Communication
-
-    This class is responsible for handling communications related to widgets.
-    It uses :class:`~mdadash.backend.widgets.base.WidgetManager` instance and
-    communicates via :class:`CommHandler` back to the server from this kernel.
-
-    """
-
-    def __init__(
-        self, _um: UniverseManager, _wm: WidgetManager, _comm_handler: CommHandler
-    ):
-        self._um = _um
-        self._wm = _wm
-        self._comm_handler = _comm_handler
-
-    def get_available_widgets(self, _data: dict):
-        """Send list of available widgets - name and description"""
-        widgets = []
-        for widget_class in self._wm.classes.values():
-            widgets.append(
-                {
-                    "name": widget_class.name,
-                    "description": getattr(widget_class, "description", None),
-                }
-            )
-        self._comm_handler.send({"widgets": widgets})
-
-    def add_instance(self, data: dict) -> dict:
-        """Add widget instance based on registered widget name"""
-        uid = data["uid"]
-        widget_name = data["name"]
-        uuid, details = self._wm.add_widget_instance(uid, widget_name)
-        if uuid is not None:
-            if self._um._connected:
-                # set the universe for the new widget instance
-                self._wm._set_universe(uid, self._um._universes[uid], uuid)
-            self._comm_handler.send(
-                {
-                    "status": "ok",
-                    "uuid": uuid,
-                    "details": details,
-                }
-            )
-        else:
-            self._comm_handler.send(
-                {
-                    "status": "error",
-                    "message": f"Failed to add widget instance for {widget_name}",
-                }
-            )
-
-    def duplicate_instance(self, data: dict) -> None:
-        """Duplicate widget instance based on instance uuid"""
-        uid = data["uid"]
-        new_uuid, details = self._wm.duplicate_widget_instance(uid, data["uuid"])
-        if self._um._connected:
-            # set the universe for the new widget instance
-            self._wm._set_universe(uid, self._um._universes[uid], new_uuid)
-        self._comm_handler.send(
-            {
-                "status": "ok",
-                "uuid": new_uuid,
-                "details": details,
-            }
-        )
-
-    def recreate_instances(self, data: dict) -> dict:
-        """Recreate widget instances from state file"""
-        ret = self._wm.recreate_widget_instances(data)
-        self._comm_handler.send({"status": "ok" if ret else "error"})
-
-    def remove_instance(self, data: dict) -> dict:
-        """Remove widget instance based on uuid"""
-        uuid = self._wm.delete_widget_instance(data["uuid"])
-        if uuid is not None:
-            self._comm_handler.send({"status": "ok"})
-        else:
-            self._comm_handler.send(
-                {
-                    "status": "error",
-                    "message": f"Failed to remove widget instance with uuid {uuid}",
-                }
-            )
-
-    def get_inputs(self, data: dict) -> list:
-        """Get the inputs for a widget instance"""
-        uuid = data["uuid"]
-        self._comm_handler.send(
-            {
-                "status": "ok",
-                "inputs": self._wm.get_inputs(uuid),
-                "notes": self._wm.get_notes(uuid),
-            }
-        )
-
-    def set_input(self, data: dict) -> list:
-        """Set an input for a widget instance"""
-        ret = self._wm.set_input(data["uuid"], data["attribute"], data["value"])
-        self._comm_handler.send({"status": "ok" if ret else "error"})
-
-
 def init_n_universes(data: dict) -> None:
     """Initialize `n` universes in :class:`UniverseManager`"""
     um.init_n_universes(data["n"])
 
 
-comm_handler = CommHandler()
-wm = WidgetManager(comm_handler)
-um = UniverseManager(wm, comm_handler)
-widgets_comm = WidgetsComm(um, wm, comm_handler)
+comms = CommHandler()
+wm = WidgetManager(comms)
+um = UniverseManager(comms)
 
+# link
+um._wm = wm  # WidgetManager to UniverseManager
+wm._um = um  # UniverseManager to WidgetManager
 # register handlers
-comm_handler.register_handler("init_n_universes", init_n_universes)
-comm_handler.register_handler("connect_to_simulations", um.connect_to_simulations)
-comm_handler.register_handler(
-    "disconnect_from_simulations", um.disconnect_from_simulations
-)
-comm_handler.register_handler("pause_simulations", um.pause_simulations)
-comm_handler.register_handler("resume_simulations", um.resume_simulations)
-comm_handler.register_handler(
-    "widgets:get_available_widgets", widgets_comm.get_available_widgets
-)
-comm_handler.register_handler("widgets:add_instance", widgets_comm.add_instance)
-comm_handler.register_handler(
-    "widgets:duplicate_instance", widgets_comm.duplicate_instance
-)
-comm_handler.register_handler(
-    "widgets:recreate_instances", widgets_comm.recreate_instances
-)
-comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
-comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
-comm_handler.register_handler("widget:set_input", widgets_comm.set_input)
-comm_handler.register_handler("execute_code", wm.execute_code)
-comm_handler.register_handler("update_n_jobs", wm.update_n_jobs)
+# for universe manager
+comms.register_handler("init_n_universes", init_n_universes)
+comms.register_handler("connect_to_simulations", um.connect_to_simulations)
+comms.register_handler("disconnect_from_simulations", um.disconnect_from_simulations)
+comms.register_handler("pause_simulations", um.pause_simulations)
+comms.register_handler("resume_simulations", um.resume_simulations)
+# for widget manager
+comms.register_handler("widgets:get_available_widgets", wm.get_available_widgets)
+comms.register_handler("widgets:recreate_instances", wm.recreate_instances)
+comms.register_handler("widgets:remove_instance", wm.remove_widget_instance)
+comms.register_handler("widget:get_inputs", wm.get_widget_inputs)
+comms.register_handler("widget:set_input", wm.set_widget_input)
+comms.register_handler("execute_code", wm.execute_code)
+comms.register_handler("update_n_jobs", wm.update_n_jobs)
+comms.register_handler("widgets:add_instance", wm.add_widget_instance)
+comms.register_handler("widgets:duplicate_instance", wm.duplicate_widget_instance)
 
 # disable jedi for code complete in macOS python 3.12
 # this times out when used with AsyncKernelManager
