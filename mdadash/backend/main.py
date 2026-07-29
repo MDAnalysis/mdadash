@@ -260,7 +260,7 @@ class MDADash:
                 code=data["code"],
                 cursor_pos=data["cursor_pos"],
                 reply=True,
-                timeout=1.0,
+                timeout=2.0,
             )
             return response["content"]  # pragma: no cover
         except TimeoutError:  # pragma: no cover
@@ -274,7 +274,7 @@ class MDADash:
                 cursor_pos=data["cursor_pos"],
                 detail_level=0,
                 reply=True,
-                timeout=1.0,
+                timeout=2.0,
             )
             return response["content"]  # pragma: no cover
         except TimeoutError:  # pragma: no cover
