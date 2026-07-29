@@ -315,9 +315,22 @@ describe('DashboardView.vue', () => {
     // send widget output from server
     await socketListeners['widgets:output']({
       uuid: 'uuid1',
-      data: { 'image/jpeg': 'image_data' },
+      data: [
+        { type: 'text', content: 'text' },
+        { type: 'error', content: 'error' },
+        { type: 'image', content: 'image' },
+      ],
     })
     await flushPromises() // needed for v-img to show up
+    // check v-img now exists in widget card
+    components = dashboard.findAllComponents({ name: 'VImg' })
+    expect(components[0]).toBeDefined()
+    // test single image output
+    await socketListeners['widgets:output']({
+      uuid: 'uuid1',
+      data: [{ type: 'image', content: 'image' }],
+    })
+    await flushPromises()
     // check v-img now exists in widget card
     components = dashboard.findAllComponents({ name: 'VImg' })
     expect(components[0]).toBeDefined()

@@ -174,7 +174,11 @@ describe('WidgetView.vue', () => {
     // update widget output
     await socketListeners['widgets:output']({
       uuid: 'uuid1',
-      data: { 'image/jpeg': 'image_data' },
+      data: [
+        { type: 'text', content: 'text' },
+        { type: 'error', content: 'error' },
+        { type: 'image', content: 'image' },
+      ],
     })
     await flushPromises() // needed for v-img to show up
     // check v-img now exists in widget card

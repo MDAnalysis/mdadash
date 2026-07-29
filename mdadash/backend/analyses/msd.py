@@ -1,3 +1,7 @@
+"""
+MSD Analysis
+"""
+
 import logging
 from typing import ClassVar
 

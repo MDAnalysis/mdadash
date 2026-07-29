@@ -1,5 +1,5 @@
 """
-Janin plot
+Janin plot (Dihedral angles analysis)
 """
 
 import logging

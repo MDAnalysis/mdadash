@@ -7,6 +7,7 @@ import asyncio
 import copy
 import logging
 import numbers
+import sys
 from collections import deque
 from dataclasses import asdict
 
@@ -303,6 +304,8 @@ class UniverseManager:
                     if self._streaming:
                         self._send_sessioninfo(u)
                 self._universes[uid] = u
+                # set variable u to point to the first universe
+                IPython.get_ipython().run_cell("u=core.um[0]")
                 # set universe for the widget instances with this uid
                 self._wm._set_universe(uid, u)
             # save universe configs
@@ -519,16 +522,6 @@ def init_n_universes(data: dict) -> None:
     um.init_n_universes(data["n"])
 
 
-def execute_code(data: dict) -> dict:
-    """Execute code in this kernel"""
-    with IPython.utils.capture.capture_output() as output:
-        result = IPython.get_ipython().run_cell(data["code"])
-        if result.success:
-            comm_handler.send({"output": output.stdout})
-        else:
-            comm_handler.send({"output": str(result.error_in_exec)})
-
-
 comm_handler = CommHandler()
 wm = WidgetManager(comm_handler)
 um = UniverseManager(wm, comm_handler)
@@ -555,5 +548,10 @@ comm_handler.register_handler(
 comm_handler.register_handler("widgets:remove_instance", widgets_comm.remove_instance)
 comm_handler.register_handler("widget:get_inputs", widgets_comm.get_inputs)
 comm_handler.register_handler("widget:set_input", widgets_comm.set_input)
-comm_handler.register_handler("execute_code", execute_code)
+comm_handler.register_handler("execute_code", wm.execute_code)
 comm_handler.register_handler("update_n_jobs", wm.update_n_jobs)
+
+# disable jedi for code complete in macOS python 3.12
+# this times out when used with AsyncKernelManager
+if sys.platform == "darwin" and sys.version == (3, 12):  # pragma: no cover
+    IPython.get_ipython().Completer.use_jedi = False

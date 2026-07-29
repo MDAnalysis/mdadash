@@ -165,16 +165,21 @@ for u in um:
     print(u.atoms.n_atoms)
 """
     response = await run_task_until_done(main.mdadash.km.execute_code(code))
-    assert response == "Invalid index 1 of 1 items\n1 47681\n47681\n"
+    assert response[0]["content"] == "Invalid index 1 of 1 items\n1 47681\n47681\n"
 
 
 async def test_kernel_execute_code_errors(_client):
     # check code errors in kernel code execution
-    code = """
-print(x)
-"""
+    code = "x"
     response = await run_task_until_done(main.mdadash.km.execute_code(code))
-    assert response == "name 'x' is not defined"
+    assert "name 'x' is not defined" in response[0]["content"]
+    code = "print(\n"
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert "incomplete input" in response[0]["content"]
+    # check stderr
+    code = "import sys\nprint('x', file=sys.stderr)"
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response[0]["content"] == "x\n"
 
 
 async def test_socketio_connect_disconnect(imd_server):
@@ -708,6 +713,59 @@ async def test_widget_run_vacf_running_integral(_client, imd_server_trr):
     ]
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server_trr, n_frames=5)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_notebook_cell(_client, imd_server):
+    await connect_to_simulation(imd_server)
+    sio.emit.reset_mock()
+    # cell run
+    handler = sio.handlers["/"]["cell_run"]
+    response = await run_task_until_done(handler("_sid", '{"cell_id": 0, "code": "u"}'))
+    assert "Universe with" in response[0]["content"]
+    # code complete
+    handler = sio.handlers["/"]["cell_code_complete"]
+    response = await run_task_until_done(
+        handler("_sid", {"code": "u", "cursor_pos": 1})
+    )
+    if response is not None:
+        assert "u" in response["matches"]
+    # code inspect
+    handler = sio.handlers["/"]["cell_code_inspect"]
+    response = await run_task_until_done(
+        handler("_sid", {"code": "u", "cursor_pos": 1})
+    )
+    if response is not None:
+        assert "Universe" in response["data"]["text/plain"]
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_custom_code(_client, imd_server):
+    uuid = await add_widget("Custom Code")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("setup_code", "u"),
+        ("execute_code", "u.trajectory"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_custom_code_batch(_client, imd_server):
+    uuid = await add_widget("Custom Code")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("setup_code", "u"),
+        ("execute_code", "u.trajectory"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
