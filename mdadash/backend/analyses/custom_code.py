@@ -42,7 +42,7 @@ class CustomCode(WidgetBase):
     >>> print(f"Box Volume = {u.trajectory.ts.volume:.2f} Å³")
 
     To print / display the Kinetic Energy of an ``AtomGroup`` a simple KE function can
-    defined in the **Setup code** as follows (executes only once):
+    be defined in the **Setup code** as follows (executes only once):
 
     >>> import numpy as np
     >>> def ke(ag):
