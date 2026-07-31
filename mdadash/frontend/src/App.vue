@@ -1,7 +1,12 @@
 <template>
   <v-app>
     <v-app-bar color="primary" elevation="1" scroll-behavior="hide">
-      <v-btn :icon="mdiViewDashboard" @click="$router.push('/')"></v-btn>
+      <!-- v8 ignore start -->
+      <v-btn
+        :icon="appBarTitle === 'Notebook' ? mdiArrowLeft : mdiViewDashboard"
+        @click="appBarTitle === 'Notebook' ? router.back() : router.push('/')"
+      ></v-btn>
+      <!-- v8 ignore stop -->
       <v-app-bar-title>{{ appBarTitle }}</v-app-bar-title>
 
       <!-- app bar icons -->
@@ -40,7 +45,10 @@
           <!-- Disconnect Confirmation Dialog -->
           <!-- v8 ignore start -->
           <v-dialog v-model="showConfirm" max-width="400">
-            <v-card :prepend-icon="mdiAlert" title="Confirm">
+            <v-card title="Confirm">
+              <template v-slot:prepend>
+                <v-icon :icon="mdiAlert" color="warning"></v-icon>
+              </template>
               <v-card-text>Are you sure you want to disconnect from the simulation?</v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
@@ -124,7 +132,7 @@
     <!-- Main content -->
     <v-main class="bg-grey-lighten-5">
       <router-view v-slot="{ Component }">
-        <keep-alive :exclude="['WidgetView', 'AlertsView']">
+        <keep-alive :exclude="['WidgetView', 'AlertsView', 'NotebooksView', 'NotebookView']">
           <component :is="Component" />
         </keep-alive>
       </router-view>
@@ -153,11 +161,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, computed, onMounted, onBeforeUnmount, provide } from 'vue'
 import {
   mdiAlert,
+  mdiArrowLeft,
   mdiBellOutline,
   mdiCog,
   mdiDotsVertical,
   mdiLanConnect,
   mdiLanDisconnect,
+  mdiNotebookMultiple,
   mdiPause,
   mdiPlay,
   mdiViewDashboard,
@@ -169,6 +179,7 @@ const router = useRouter()
 const appBarTitle = computed(() => route.meta.title)
 const appBarMenuItems = [
   { name: 'Dashboard', icon: mdiViewDashboardOutline, path: '/' },
+  { name: 'Notebooks', icon: mdiNotebookMultiple, path: '/notebooks' },
   { name: 'Settings', icon: mdiCog, path: '/settings' },
 ]
 const runningState = ref({

@@ -37,7 +37,10 @@
           <v-icon :icon="mdiChartTimelineVariant" color="primary" />
         </template>
         <template v-slot:append>
-          <v-btn :icon="isEnergiesExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+          <v-btn
+            :icon="isEnergiesExpanded ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
+            variant="text"
+          ></v-btn>
         </template>
       </v-card-item>
       <v-expand-transition>
@@ -139,7 +142,10 @@
       <!-- Save Layout Confirmation Dialog -->
       <!-- v8 ignore start -->
       <v-dialog v-model="showSaveLayoutConfirm" max-width="400">
-        <v-card :prepend-icon="mdiAlert" title="Confirm">
+        <v-card title="Confirm">
+          <template v-slot:prepend>
+            <v-icon :icon="mdiAlert" color="warning"></v-icon>
+          </template>
           <v-card-text>Are you sure you want to overwrite the default layout?</v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
@@ -288,7 +294,7 @@
                     ></v-btn>
                   </template>
                   <!-- Widget actions -->
-                  <v-list>
+                  <v-list density="compact" class="py-0">
                     <v-list-item
                       v-for="(action, i) in widgetMenuItems"
                       :key="i"
@@ -297,7 +303,7 @@
                       <template v-slot:prepend>
                         <v-icon
                           :icon="action.icon"
-                          :color="action.icon == mdiDelete ? 'error' : 'undefined'"
+                          :color="action.icon == mdiDeleteOutline ? 'error' : 'undefined'"
                         ></v-icon>
                       </template>
                       <v-list-item-title>{{ action.title }}</v-list-item-title>
@@ -359,10 +365,7 @@ import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useRouter } from 'vue-router'
 import {
   mdiChartTimelineVariant,
-  mdiChevronDown,
-  mdiChevronUp,
   mdiContentDuplicate,
-  mdiDelete,
   mdiDotsVertical,
   mdiPencil,
   mdiTrendingDown,
@@ -371,6 +374,9 @@ import {
   mdiClose,
   mdiContentSaveOutline,
   mdiAlert,
+  mdiDeleteOutline,
+  mdiUnfoldLessHorizontal,
+  mdiUnfoldMoreHorizontal,
 } from '@mdi/js'
 
 const gridPresetIcons = {
@@ -442,7 +448,7 @@ const energies = [
 const widgetMenuItems = [
   { title: 'Edit', icon: mdiPencil },
   { title: 'Duplicate', icon: mdiContentDuplicate },
-  { title: 'Delete', icon: mdiDelete },
+  { title: 'Delete', icon: mdiDeleteOutline },
 ]
 
 const isEnergiesExpanded = ref(true)

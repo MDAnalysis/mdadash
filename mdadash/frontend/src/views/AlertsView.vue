@@ -20,7 +20,7 @@
       </template>
       <!-- No alerts -->
       <template v-slot:no-data>
-        <v-list class="mt-4" elevation="1">
+        <v-list class="mt-4" elevation="1" lines="two">
           <v-list-item>
             <v-list-item-title class="text-grey text-center py-4"> No alerts </v-list-item-title>
           </v-list-item>
@@ -28,10 +28,16 @@
       </template>
       <!-- Alerts list -->
       <template v-slot:default>
-        <v-list class="mt-4" elevation="1">
-          <v-list-item v-for="(item, index) in paginatedAlerts" :key="item.id" class="alert-item">
+        <v-list class="mt-4 py-0" elevation="1">
+          <v-list-item
+            v-for="(item, index) in paginatedAlerts"
+            :key="item.id"
+            class="alert-item py-2"
+            link
+            :ripple="false"
+          >
             <template v-slot:prepend>
-              <v-chip size="small" class="me-3">{{ getAbsoluteIndex(index) + 1 }}</v-chip>
+              <span class="mr-4">{{ getAbsoluteIndex(index) + 1 }}.</span>
             </template>
             <v-list-item-title class="text-wrap">{{ item.message }}</v-list-item-title>
             <template v-slot:append>
@@ -86,6 +92,9 @@
     <!-- v8 ignore start -->
     <v-dialog v-model="confirmDeleteAll" max-width="400">
       <v-card title="Delete all alerts?">
+        <template v-slot:prepend>
+          <v-icon :icon="mdiAlert" color="warning"></v-icon>
+        </template>
         <v-card-text> Are you sure you want to delete all alerts? </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -104,7 +113,7 @@
 <script setup>
 import { socket } from '@/socket'
 import { ref, computed, inject, onMounted, watch } from 'vue'
-import { mdiDeleteOutline, mdiMagnify } from '@mdi/js'
+import { mdiAlert, mdiDeleteOutline, mdiMagnify } from '@mdi/js'
 
 const search = ref('')
 const page = ref(1)

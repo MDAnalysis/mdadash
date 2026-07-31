@@ -97,6 +97,15 @@ class MDADash:
         self.sio.on("cell_run")(self.on_cell_run)
         self.sio.on("cell_code_complete")(self.on_cell_code_complete)
         self.sio.on("cell_code_inspect")(self.on_cell_code_inspect)
+        self.sio.on("notebooks:get_notebooks")(self.on_get_notebooks)
+        self.sio.on("notebooks:add_notebook")(self.on_add_notebook)
+        self.sio.on("notebooks:remove_notebook")(self.on_remove_notebook)
+        self.sio.on("notebooks:duplicate_notebook")(self.on_duplicate_notebook)
+        self.sio.on("notebooks:get_notebook")(self.on_get_notebook)
+        self.sio.on("notebook:run_on_launch")(self.on_notebook_run_on_launch)
+        self.sio.on("notebook:name_desc_change")(self.on_notebook_name_desc_change)
+        self.sio.on("notebook:cell_change")(self.on_notebook_cell_change)
+        self.sio.on("notebook:update_cells")(self.on_notebook_update_cells)
 
     async def emit_running_state(self, sid: Any = None) -> None:
         """Emit current dashboard running state"""
@@ -233,28 +242,28 @@ class MDADash:
         )
 
     async def on_get_alerts(self, _sid):
-        """get_alerts"""
+        """get_alerts handler"""
         return self.sm.alerts
 
     async def on_delete_alert(self, _sid, _id):
-        """delete_alert"""
+        """delete_alert handler"""
         self.sm.alerts[:] = [a for a in self.sm.alerts if a["id"] != _id]
         await self.emit_alerts_count()
         await self.sm.save()
 
     async def on_delete_all_alerts(self, _sid):
-        """delete_all_alerts"""
+        """delete_all_alerts handler"""
         self.sm.alerts.clear()
         await self.emit_alerts_count()
         await self.sm.save()
 
     async def on_cell_run(self, _sid, data):
-        """cell_run"""
+        """cell_run handler"""
         cell_data = json.loads(data)
         return await self.km.execute_code(cell_data["code"])
 
     async def on_cell_code_complete(self, _sid, data):
-        """cell_code_complete"""
+        """cell_code_complete handler"""
         try:
             response = await self.km.kc.complete(
                 code=data["code"],
@@ -267,7 +276,7 @@ class MDADash:
             return None
 
     async def on_cell_code_inspect(self, _sid, data):
-        """cell_code_inspect"""
+        """cell_code_inspect handler"""
         try:
             response = await self.km.kc.inspect(
                 code=data["code"],
@@ -279,6 +288,56 @@ class MDADash:
             return response["content"]  # pragma: no cover
         except TimeoutError:  # pragma: no cover
             return None
+
+    async def on_get_notebooks(self, _sid):
+        """notebooks:get_notebooks handler"""
+        return [
+            {
+                "uuid": uuid,
+                "name": notebook["name"],
+                "description": notebook["description"],
+                "run_on_launch": notebook["run_on_launch"],
+            }
+            for uuid, notebook in self.sm.notebooks.items()
+        ]
+
+    async def on_add_notebook(self, _sid):
+        """notebooks:add_notebook handler"""
+        return await self.sm.add_notebook()
+
+    async def on_remove_notebook(self, _sid, uuid):
+        """notebooks:remove_notebook handler"""
+        return await self.sm.remove_notebook(uuid)
+
+    async def on_duplicate_notebook(self, _sid, uuid):
+        """notebooks:duplicate_notebook handler"""
+        return await self.sm.duplicate_notebook(uuid)
+
+    async def on_get_notebook(self, _sid, uuid):
+        """notebooks:get_notebook handler"""
+        return self.sm.notebooks.get(uuid)
+
+    async def on_notebook_run_on_launch(self, _sid, uuid, run_on_launch):
+        """notebook:run_on_launch handler"""
+        self.sm.notebooks[uuid].update({"run_on_launch": run_on_launch})
+        await self.sm.save()
+
+    async def on_notebook_name_desc_change(self, _sid, uuid, name, description):
+        """notebook:name_desc_change handler"""
+        self.sm.notebooks[uuid].update({"name": name, "description": description})
+        await self.sm.save()
+
+    async def on_notebook_cell_change(self, _sid, uuid, _id, code):
+        """notebook:cell_change handler"""
+        notebook = self.sm.notebooks[uuid]
+        cell = next((c for c in notebook["cells"] if c["id"] == _id), None)
+        cell["code"] = code
+        await self.sm.save()
+
+    async def on_notebook_update_cells(self, _sid, uuid, cells):
+        """notebook:update_cells handler"""
+        self.sm.notebooks[uuid]["cells"] = cells
+        await self.sm.save()
 
 
 def start_server():

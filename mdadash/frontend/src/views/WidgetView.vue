@@ -44,7 +44,10 @@
         @click="isInputsExpanded = !isInputsExpanded"
       >
         <template v-slot:append>
-          <v-btn :icon="isInputsExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+          <v-btn
+            :icon="isInputsExpanded ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
+            variant="text"
+          ></v-btn>
         </template>
       </v-card-item>
       <v-divider />
@@ -97,7 +100,10 @@
         @click="isOutputExpanded = !isOutputExpanded"
       >
         <template v-slot:append>
-          <v-btn :icon="isOutputExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+          <v-btn
+            :icon="isOutputExpanded ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
+            variant="text"
+          ></v-btn>
         </template>
       </v-card-item>
       <v-divider />
@@ -139,7 +145,7 @@
 import { socket } from '@/socket'
 import { useRoute } from 'vue-router'
 import { ref, onMounted, onBeforeUnmount, inject } from 'vue'
-import { mdiChevronDown, mdiChevronUp } from '@mdi/js'
+import { mdiUnfoldLessHorizontal, mdiUnfoldMoreHorizontal } from '@mdi/js'
 import { VTextField, VSelect, VNumberInput, VSwitch, VBtnToggle } from 'vuetify/components'
 import NotebookCell from '@/components/NotebookCell.vue'
 

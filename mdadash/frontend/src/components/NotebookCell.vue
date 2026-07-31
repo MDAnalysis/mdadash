@@ -17,7 +17,7 @@
           ></v-icon>
           <!-- Show / Hide cell -->
           <v-btn
-            :icon="show ? mdiChevronUp : mdiChevronDown"
+            :icon="show ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
             variant="text"
             size="small"
             color="grey-darken-1"
@@ -26,6 +26,26 @@
           ></v-btn>
           <span class="text-caption font-weight-bold text-grey-darken-1">{{ label }}</span>
           <v-spacer></v-spacer>
+          <!-- Move up -->
+          <v-btn
+            v-if="showMove"
+            :icon="mdiChevronUp"
+            color="grey-darken-1"
+            variant="text"
+            size="small"
+            @click="$emit('move-up')"
+            v-tooltip:bottom="'Move up'"
+          ></v-btn>
+          <!-- Move down -->
+          <v-btn
+            v-if="showMove"
+            :icon="mdiChevronDown"
+            color="grey-darken-1"
+            variant="text"
+            size="small"
+            @click="$emit('move-down')"
+            v-tooltip:bottom="'Move down'"
+          ></v-btn>
           <!-- Run cell -->
           <v-btn
             :icon="mdiPlayOutline"
@@ -43,7 +63,7 @@
             color="error"
             variant="text"
             size="small"
-            @click="$emit('delete-cell', id)"
+            @click="deleteCell()"
             :disabled="isRunning"
             v-tooltip:bottom="'Delete cell'"
           ></v-btn>
@@ -89,7 +109,7 @@
         </v-expand-transition>
       </v-card>
       <!-- Add Cell button -->
-      <div v-if="addCell" class="add-cell-container my-0">
+      <div v-if="showAddCell" class="add-cell-container my-0">
         <v-btn
           :prepend-icon="mdiPlus"
           variant="flat"
@@ -118,8 +138,10 @@ import {
   mdiDeleteOutline,
   mdiPlayOutline,
   mdiPlus,
-  mdiChevronDown,
+  mdiUnfoldLessHorizontal,
+  mdiUnfoldMoreHorizontal,
   mdiChevronUp,
+  mdiChevronDown,
 } from '@mdi/js'
 import { Codemirror } from 'vue-codemirror'
 import { python } from '@codemirror/lang-python'
@@ -132,32 +154,30 @@ import { AnsiUp } from 'ansi_up'
 const settings = inject('settings')
 const ansiUp = new AnsiUp()
 ansiUp.escape_for_html = true
+const code = defineModel()
+const show = ref(true)
+const outputs = ref([])
+const isRunning = ref(false)
+let originalCode = code.value
 
 const props = defineProps({
-  id: {
-    type: String,
-    default: 'id',
-  },
+  id: String,
   label: String,
-  showDrag: {
-    type: Boolean,
-    default: false,
-  },
-  showDelete: {
-    type: Boolean,
-    default: false,
-  },
-  addCell: {
-    type: Boolean,
-    default: false,
-  },
+  showDrag: Boolean,
+  showMove: Boolean,
+  showDelete: Boolean,
+  showAddCell: Boolean,
   hint: String,
 })
 
-const emit = defineEmits(['change', 'add-cell', 'delete-cell'])
-
-const code = defineModel()
-const show = ref(true)
+const emit = defineEmits([
+  'change',
+  'add-cell',
+  'delete-cell',
+  'move-up',
+  'move-down',
+  'focus-next',
+])
 
 // v8 ignore next
 const autoComplete = () => {
@@ -231,6 +251,7 @@ const getExtensions = () => {
           key: 'Shift-Enter',
           run: () => {
             runCell()
+            emit('focus-next')
             return true
           },
         },
@@ -238,10 +259,6 @@ const getExtensions = () => {
     ),
   ]
 }
-
-const outputs = ref([])
-const isRunning = ref(false)
-let originalCode = code.value
 
 // v8 ignore next
 const emitChange = () => {
@@ -264,6 +281,12 @@ const runCell = async () => {
   } finally {
     isRunning.value = false
   }
+}
+
+const deleteCell = () => {
+  code.value = ''
+  outputs.value = []
+  emit('delete-cell')
 }
 </script>
 
@@ -310,6 +333,7 @@ const runCell = async () => {
   padding-left: 16px;
 }
 </style>
+
 <style>
 /* Codemirror - complete and inspect response styles */
 .cm-tooltip-autocomplete {
@@ -328,5 +352,10 @@ const runCell = async () => {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+/* a height of 100px for codemirror code complete stuff gets added
+  by default at bottom of layout. Suppress this */
+[class^='ͼ'] {
+  min-height: 0 !important;
 }
 </style>
