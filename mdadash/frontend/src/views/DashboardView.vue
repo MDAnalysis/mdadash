@@ -221,6 +221,7 @@
               v-else
               :menu="isAddWidgetOpen"
               :menu-props="{ maxWidth: '100%' }"
+              :list-props="{ class: 'py-0' }"
               @update:menu="setAddWidgetMenuState"
               :items="addWidgetItems"
               item-title="name"

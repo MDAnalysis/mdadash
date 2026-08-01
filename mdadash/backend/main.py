@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from .kernel.manager import KernelManager
 from .state.manager import StateManager
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +67,10 @@ class MDADash:
 
     """
 
-    def __init__(self, _sio, state_file):
+    def __init__(self, _sio, state_file, log_level=30):
         self.sio = _sio
         self.sm = StateManager(state_file)
-        self.km = KernelManager(self.sm, self.sio)
+        self.km = KernelManager(self.sm, self.sio, log_level)
         self.register_sio_events()
 
     def register_sio_events(self) -> None:
@@ -381,9 +381,9 @@ def start_server():
     parser.add_argument(
         "--log-level",
         type=str,
-        default="INFO",
+        default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level (default: INFO)",
+        help="Set the logging level (default: WARNING)",
     )
     parser.add_argument(
         "-v",
@@ -398,7 +398,7 @@ def start_server():
     logging.getLogger().setLevel(log_level)
     logger.info("State file: %s", args.state_file)
     # create mdadash instance
-    mdadash = MDADash(sio, args.state_file)
+    mdadash = MDADash(sio, args.state_file, log_level)
     # clear alerts if specified
     if args.clear_alerts:
         mdadash.sm.alerts.clear()

@@ -21,7 +21,7 @@ from MDAnalysis.transformations import NoJump
 
 from mdadash.backend.widgets.base import WidgetManager
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.WARNING)
 
 logger = logging.getLogger(__name__)
 

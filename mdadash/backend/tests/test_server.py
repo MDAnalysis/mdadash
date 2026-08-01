@@ -902,3 +902,47 @@ async def test_notebooks_run_on_launch(_client):
         {"type": "error", "content": "name 'x2' is not defined"},
         {"type": "text", "content": "5\n"},
     ]
+
+
+async def test_custom_widget(_client, imd_server):
+    code = """
+    from mdadash.backend.widgets.base import WidgetBase
+    class _CustomWidget1(WidgetBase):
+        name = "Custom Widget"
+
+        _inputs = [
+            {
+                "attribute": "input1",
+                "name": "Input 1",
+                "type": "bool",
+            },
+        ]
+
+        def __init__(self):
+            super().__init__()
+            self.input1 = False
+
+        def run_every_frame(self):
+            pass
+    """
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == []
+    uuid1 = await add_widget("Custom Widget")
+    uuid2 = await add_widget("Absolute Temperature")
+    await connect_to_simulation(imd_server)
+    code = """
+    from mdadash.backend.widgets.base import WidgetBase
+    class _CustomWidget1(WidgetBase):
+        name = "Custom Widget"
+        _override_name = True
+
+        def run_every_frame(self):
+            print(self.u)
+    """
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == []
+    await remove_widget(uuid2)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid1)
+    await disconnect_from_simulation()
