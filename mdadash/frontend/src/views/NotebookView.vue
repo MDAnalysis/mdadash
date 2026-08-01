@@ -2,6 +2,41 @@
   <v-container>
     <!-- Notebook actions -->
     <v-row class="justify-end d-flex ga-0">
+      <!-- Keyboard shortcuts -->
+      <v-menu
+        id="kbShortcuts"
+        v-model="kbShortcutsOpen"
+        :close-on-content-click="false"
+        location="bottom end"
+      >
+        <template #activator="{ props }">
+          <v-btn
+            :icon="mdiKeyboardOutline"
+            v-bind="props"
+            variant="text"
+            v-tooltip="{
+              text: 'Keyboard shortcuts',
+              location: 'bottom',
+              disabled: kbShortcutsOpen,
+            }"
+          />
+        </template>
+        <v-card class="pa-4 border" elevation="3">
+          <v-card-title class="d-flex align-center px-0 pt-0 font-weight-bold">
+            Keyboard shortcuts
+          </v-card-title>
+          <v-divider class="mb-3"></v-divider>
+          <v-card-text class="pa-0">
+            <ul class="pl-4">
+              <li class="mb-2"><strong>Ctrl / Cmd + Enter</strong>: Run cell</li>
+              <li class="mb-2">
+                <strong>Shift + Enter</strong>: Run cell and advance to next cell
+              </li>
+            </ul>
+          </v-card-text>
+        </v-card>
+      </v-menu>
+      <!-- Run on Launch -->
       <v-tooltip
         :text="notebook.run_on_launch ? 'Disable run on launch' : 'Enable run on launch'"
         location="bottom"
@@ -16,6 +51,7 @@
           />
         </template>
       </v-tooltip>
+      <!-- Delete -->
       <v-btn
         :icon="mdiDeleteOutline"
         variant="text"
@@ -106,7 +142,7 @@ import { inject, ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NotebookCell from '@/components/NotebookCell.vue'
-import { mdiAlert, mdiDeleteOutline, mdiRun } from '@mdi/js'
+import { mdiAlert, mdiDeleteOutline, mdiKeyboardOutline, mdiRun } from '@mdi/js'
 
 const route = useRoute()
 const router = useRouter()
@@ -115,6 +151,7 @@ const isLoading = ref(false)
 const uuid = route.query.uuid
 const notebook = ref({})
 const confirmDelete = ref(false)
+const kbShortcutsOpen = ref(false)
 
 function onNameDescChange() {
   socket.emit('notebook:name_desc_change', uuid, notebook.value.name, notebook.value.description)

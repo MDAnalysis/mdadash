@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, expect, describe, it, vi } from 'vitest'
 import NotebookView from '@/views/NotebookView.vue'
+import { VMenu } from 'vuetify/components'
 
 const settings = ref({
   dashboard_config: {
@@ -123,6 +124,9 @@ describe('NotebookView.vue', () => {
     })
     expect(wrapper.exists()).toBe(true)
     wrapper.vm.notebook = notebook
+    // kb shortcuts
+    const vMenus = wrapper.findAllComponents(VMenu)
+    vMenus[0].setValue(true)
     // update cells
     wrapper.vm.updateCells()
     expect(mockEmit).toHaveBeenCalledWith('notebook:update_cells', 'uuid1', notebook.cells)
