@@ -13,7 +13,10 @@
             <v-icon :icon="mdiViewDashboard" color="primary" />
           </template>
           <template v-slot:append>
-            <v-btn :icon="isDCExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+            <v-btn
+              :icon="isDCExpanded ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
+              variant="text"
+            ></v-btn>
           </template>
         </v-card-item>
         <v-expand-transition>
@@ -75,7 +78,10 @@
             <v-icon :icon="mdiEarth" color="primary" />
           </template>
           <template v-slot:append>
-            <v-btn :icon="isUCExpanded ? mdiChevronUp : mdiChevronDown" variant="text"></v-btn>
+            <v-btn
+              :icon="isUCExpanded ? mdiUnfoldLessHorizontal : mdiUnfoldMoreHorizontal"
+              variant="text"
+            ></v-btn>
           </template>
         </v-card-item>
         <v-expand-transition>
@@ -256,11 +262,11 @@ import { ref, inject, watch } from 'vue'
 import { socket } from '@/socket'
 import {
   mdiViewDashboard,
-  mdiChevronUp,
-  mdiChevronDown,
   mdiDelete,
   mdiEarth,
   mdiPlus,
+  mdiUnfoldLessHorizontal,
+  mdiUnfoldMoreHorizontal,
 } from '@mdi/js'
 
 const runningState = inject('runningState')

@@ -83,7 +83,7 @@ describe('NotebookCell.vue', () => {
       props: {
         showDrag: true,
         showDelete: true,
-        addCell: true,
+        showAddCell: true,
         hint: 'hint',
       },
     })
@@ -97,8 +97,9 @@ describe('NotebookCell.vue', () => {
       },
       props: {
         showDrag: true,
+        showMove: true,
         showDelete: true,
-        addCell: true,
+        showAddCell: true,
         hint: 'hint',
         code: 'x = 5',
       },

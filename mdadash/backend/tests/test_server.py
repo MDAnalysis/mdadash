@@ -796,3 +796,74 @@ def test_state_load(tmp_path):
     # test alerts related keys
     assert sm._alertID == 0
     assert len(sm.alerts) == 0
+
+
+async def test_notebooks_add_del_dup(_client):
+    sio.emit.reset_mock()
+    # check add notebook 1
+    handler = sio.handlers["/"]["notebooks:add_notebook"]
+    uuid1 = await run_task_until_done(handler("_sid"))
+    assert uuid1 is not None
+    # check add notebook 2
+    handler = sio.handlers["/"]["notebooks:add_notebook"]
+    uuid2 = await run_task_until_done(handler("_sid"))
+    assert uuid2 is not None
+    # check get notebooks
+    handler = sio.handlers["/"]["notebooks:get_notebooks"]
+    response = await run_task_until_done(handler("_sid"))
+    assert len(response) == 2
+    # delete notebook 2
+    handler = sio.handlers["/"]["notebooks:remove_notebook"]
+    response = await run_task_until_done(handler("_sid", uuid2))
+    # check get notebooks
+    handler = sio.handlers["/"]["notebooks:get_notebooks"]
+    response = await run_task_until_done(handler("_sid"))
+    assert len(response) == 1
+    # duplicate notebook 1
+    handler = sio.handlers["/"]["notebooks:duplicate_notebook"]
+    response = await run_task_until_done(handler("_sid", uuid1))
+    # check get notebooks
+    handler = sio.handlers["/"]["notebooks:get_notebooks"]
+    response = await run_task_until_done(handler("_sid"))
+    assert len(response) == 2
+
+
+async def test_notebook_updates(_client):
+    sio.emit.reset_mock()
+    # check add notebook 1
+    handler = sio.handlers["/"]["notebooks:add_notebook"]
+    uuid1 = await run_task_until_done(handler("_sid"))
+    assert uuid1 is not None
+    # check get notebook 1
+    handler = sio.handlers["/"]["notebooks:get_notebook"]
+    notebook = await run_task_until_done(handler("_sid", uuid1))
+    assert notebook["uuid"] == uuid1
+    assert len(notebook["cells"]) == 1
+    cell0_id = notebook["cells"][0]["id"]
+    # update run on launch
+    handler = sio.handlers["/"]["notebook:run_on_launch"]
+    await run_task_until_done(handler("_sid", uuid1, True))
+    # update name and desc
+    handler = sio.handlers["/"]["notebook:name_desc_change"]
+    await run_task_until_done(handler("_sid", uuid1, "name1", "description1"))
+    # update cell 0
+    handler = sio.handlers["/"]["notebook:cell_change"]
+    await run_task_until_done(handler("_sid", uuid1, cell0_id, "u"))
+    # check get notebook 1
+    handler = sio.handlers["/"]["notebooks:get_notebook"]
+    notebook = await run_task_until_done(handler("_sid", uuid1))
+    assert notebook["run_on_launch"]
+    assert notebook["name"] == "name1"
+    assert notebook["description"] == "description1"
+    assert notebook["cells"][0]["code"] == "u"
+    # update cells
+    handler = sio.handlers["/"]["notebook:update_cells"]
+    cells = [
+        {"id": "id1", "code": "code1"},
+        {"id": "id2", "code": "code2"},
+    ]
+    await run_task_until_done(handler("_sid", uuid1, cells))
+    # check get notebook 1
+    handler = sio.handlers["/"]["notebooks:get_notebook"]
+    notebook = await run_task_until_done(handler("_sid", uuid1))
+    assert len(notebook["cells"]) == 2

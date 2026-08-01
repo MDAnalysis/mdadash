@@ -3,9 +3,11 @@ Manager that manages the dashboard state
 """
 
 import asyncio
+import copy
 import json
 import logging
 from pathlib import Path
+from uuid import uuid1
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +67,7 @@ class StateManager:
         """Internal: Write state to json file"""
         if self._state_file is not None:
             with open(self._state_file, "w", encoding="utf-8") as file:
-                json.dump(self.state, file, indent=4, sort_keys=True)
+                json.dump(self.state, file, indent=4)
 
     async def save(self):
         """Save state"""
@@ -123,6 +125,7 @@ class StateManager:
             "widgets": {},
             "alertID": 0,
             "alerts": [],
+            "notebooks": {},
         }
 
     @property
@@ -156,7 +159,7 @@ class StateManager:
         return self._state["settings"]["universe_configs"]
 
     @property
-    def widgets_layout(self) -> dict:
+    def widgets_layout(self) -> list:
         """The widgets layout array of the dashboard"""
         return self._state["widgets_layout"]
 
@@ -173,7 +176,7 @@ class StateManager:
         return self._state["alertID"]
 
     @property
-    def alerts(self) -> dict:
+    def alerts(self) -> list:
         """Alerts array"""
         if "alerts" not in self._state:
             self._state["alerts"] = []
@@ -184,4 +187,45 @@ class StateManager:
         data["id"] = self._alertID
         self.alerts.append(data)
         self._state["alertID"] += 1
+        await self.save()
+
+    @property
+    def notebooks(self) -> dict:
+        """Notebooks dict"""
+        if "notebooks" not in self._state:  # pragma: no cover
+            self._state["notebooks"] = {}
+        return self._state["notebooks"]
+
+    async def add_notebook(self):
+        """Add new notebook to notebooks dict"""
+        uuid = str(uuid1())
+        notebook = {
+            "uuid": uuid,
+            "name": "Untitled",
+            "description": "",
+            "run_on_launch": False,
+            "cells": [
+                {
+                    "id": str(uuid1()),
+                    "code": "",
+                },
+            ],
+        }
+        self.notebooks[uuid] = notebook
+        await self.save()
+        return uuid
+
+    async def duplicate_notebook(self, uuid):
+        """Duplicate notebook"""
+        new_uuid = str(uuid1())
+        new_notebook = copy.deepcopy(self.notebooks[uuid])
+        new_notebook["uuid"] = new_uuid
+        new_notebook["name"] = f"Copy of {new_notebook['name']}"
+        self.notebooks[new_uuid] = new_notebook
+        await self.save()
+        return new_uuid
+
+    async def remove_notebook(self, uuid):
+        """Remove notebook from notebooks dict"""
+        del self.notebooks[uuid]
         await self.save()
