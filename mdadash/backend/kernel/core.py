@@ -306,6 +306,9 @@ class UniverseManager:
                 self._universes[uid] = u
                 # set variable u to point to the first universe
                 IPython.get_ipython().run_cell("u=core.um[0]")
+                # run custom universe setup code
+                if "custom_universe_setup" in config:
+                    IPython.get_ipython().run_cell(config["custom_universe_setup"])
                 # set universe for the widget instances with this uid
                 self._wm._set_universe(uid, u)
             # save universe configs

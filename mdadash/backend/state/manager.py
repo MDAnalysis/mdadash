@@ -117,6 +117,7 @@ class StateManager:
                         "step": 1,
                         "total_steps": None,
                         "batch_size": 10,
+                        "custom_universe_setup": "",
                         "kwargs": [],
                     },
                 ],

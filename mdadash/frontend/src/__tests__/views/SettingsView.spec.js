@@ -108,6 +108,7 @@ describe('SettingsView.vue', () => {
       VCheckbox: true,
       VSelect: '',
       VSwitch: true,
+      NotebookCell: '',
     }
     const keys = Object.keys(dataMap)
     for (const name of keys) {

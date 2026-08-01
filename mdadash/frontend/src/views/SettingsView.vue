@@ -201,6 +201,14 @@
                 persistent-hint
               ></v-number-input>
 
+              <NotebookCell
+                v-model="settings.universe_configs[0].custom_universe_setup"
+                v-bind="$attrs"
+                id="customUniverseSetup"
+                label="Custom Universe Setup"
+                hint="Custom code to setup the Universe (like adding transformations)"
+              />
+
               <!-- Key value pairs -->
               <div class="d-flex flex-column">
                 <v-label class="mt-4">Additional keyword arguments</v-label>
@@ -268,6 +276,7 @@ import {
   mdiUnfoldLessHorizontal,
   mdiUnfoldMoreHorizontal,
 } from '@mdi/js'
+import NotebookCell from '@/components/NotebookCell.vue'
 
 const runningState = inject('runningState')
 const settings = inject('settings')

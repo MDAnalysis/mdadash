@@ -1,7 +1,7 @@
 <template>
   <v-container class="pa-0">
     <div :id="id" class="mb-0">
-      <v-card class="border rounded-lg">
+      <v-card class="border rounded-lg" :disabled="isFormDisabled">
         <v-card-actions
           @dblclick="show = !show"
           style="user-select: none"
@@ -79,6 +79,7 @@
                 :extensions="getExtensions()"
                 :style="{ minHeight: '100px' }"
                 @blur="emitChange"
+                :disabled="isFormDisabled"
               />
               <!-- Output -->
               <v-card-text v-if="outputs?.length" class="bg-white border-t pa-4 font-mono">
@@ -132,7 +133,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { inject, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 import {
   mdiDrag,
   mdiDeleteOutline,
@@ -159,6 +160,11 @@ const show = ref(true)
 const outputs = ref([])
 const isRunning = ref(false)
 let originalCode = code.value
+
+const vuetifyForm = inject(Symbol.for('vuetify:form'), null)
+const isFormDisabled = computed(() => {
+  return vuetifyForm?.isDisabled?.value ?? false
+})
 
 const props = defineProps({
   id: String,
