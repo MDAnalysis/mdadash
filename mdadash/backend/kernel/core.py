@@ -422,6 +422,17 @@ def init_n_universes(data: dict) -> None:
     um.init_n_universes(data["n"])
 
 
+def run_notebooks(notebooks: dict) -> None:
+    """Run notebooks from loaded state file"""
+    ipy = IPython.get_ipython()
+    for notebook in notebooks.values():
+        if not notebook["run_on_launch"]:
+            continue
+        for cell in notebook["cells"]:
+            ipy.run_cell(cell["code"])
+    comms.send({"status": "ok"})
+
+
 comms = CommHandler()
 wm = WidgetManager(comms)
 um = UniverseManager(comms)
@@ -430,8 +441,10 @@ um = UniverseManager(comms)
 um._wm = wm  # WidgetManager to UniverseManager
 wm._um = um  # UniverseManager to WidgetManager
 # register handlers
-# for universe manager
+# for core
 comms.register_handler("init_n_universes", init_n_universes)
+comms.register_handler("notebooks:run", run_notebooks)
+# for universe manager
 comms.register_handler("connect_to_simulations", um.connect_to_simulations)
 comms.register_handler("disconnect_from_simulations", um.disconnect_from_simulations)
 comms.register_handler("pause_simulations", um.pause_simulations)

@@ -295,7 +295,7 @@ async def test_recreate_widget_instances(_client):
             },
         },
     )
-    response = await main.mdadash.km.recreate_widget_instances()
+    response = await run_task_until_done(main.mdadash.km.recreate_widget_instances())
     assert response["status"] == "ok"
     await remove_widget("uuid")
     # test invalid state
@@ -306,7 +306,7 @@ async def test_recreate_widget_instances(_client):
             },
         },
     )
-    response = await main.mdadash.km.recreate_widget_instances()
+    response = await run_task_until_done(main.mdadash.km.recreate_widget_instances())
     assert response["status"] == "error"
 
 
@@ -867,3 +867,38 @@ async def test_notebook_updates(_client):
     handler = sio.handlers["/"]["notebooks:get_notebook"]
     notebook = await run_task_until_done(handler("_sid", uuid1))
     assert len(notebook["cells"]) == 2
+
+
+async def test_notebooks_run_on_launch(_client):
+    main.mdadash.sm.notebooks.update(
+        {
+            "uuid1": {
+                "uuid": "uuid1",
+                "run_on_launch": True,
+                "cells": [
+                    {
+                        "id": "id1",
+                        "code": "x1 = 5",
+                    },
+                ],
+            },
+            "uuid2": {
+                "uuid": "uuid2",
+                "run_on_launch": False,
+                "cells": [
+                    {
+                        "id": "id1",
+                        "code": "x2 = 5",
+                    },
+                ],
+            },
+        },
+    )
+    response = await run_task_until_done(main.mdadash.km.run_notebooks())
+    assert response["status"] == "ok"
+    code = "print(x1)\nprint(x2)"
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == [
+        {"type": "error", "content": "name 'x2' is not defined"},
+        {"type": "text", "content": "5\n"},
+    ]

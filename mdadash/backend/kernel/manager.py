@@ -80,6 +80,8 @@ class KernelManager:
         await self.send_message(
             "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
+        # run notebooks from state
+        await self.run_notebooks()
         # re-create widget instances from state
         response = await self.recreate_widget_instances()
         if response["status"] != "ok":  # pragma: no cover
@@ -651,7 +653,13 @@ class KernelManager:
         await self.sm.save()
         return response
 
-    async def recreate_widget_instances(self) -> None:
+    async def run_notebooks(self) -> None:
+        """Run notebooks from loaded state"""
+        return await self.send_message_await_response(
+            "notebooks:run", self.sm.notebooks
+        )
+
+    async def recreate_widget_instances(self) -> dict:
         """Recreate widget instances from loaded state"""
         return await self.send_message_await_response(
             "widgets:recreate_instances", self.sm.widgets
