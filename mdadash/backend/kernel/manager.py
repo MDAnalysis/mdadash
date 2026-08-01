@@ -34,11 +34,17 @@ class KernelManager:
     sio: :class:`socketio.AsyncServer`
         Instance of the socket.io server
 
+    log_level: int
+        The logging level (Default: 30, WARNING)
+
     """
 
-    def __init__(self, sm: StateManager, sio: socketio.AsyncServer):
+    def __init__(
+        self, sm: StateManager, sio: socketio.AsyncServer, log_level: int = 30
+    ):
         self.sm = sm
         self.sio = sio
+        self.log_level = log_level
         self.km = AsyncKernelManager(kernel_name="python3")
         self.kc = None
         self._pending_futures = {}
@@ -72,6 +78,9 @@ class KernelManager:
         self.listen_task = asyncio.create_task(self._start_listening())
         # initialize the kernel core
         self.kc.execute("from mdadash.backend.kernel import core")
+        self.kc.execute(
+            f"import logging\nlogging.getLogger().setLevel({self.log_level})"
+        )
         self.kc.execute("u = None")
         # open comms with the kernel
         self._comm_open()

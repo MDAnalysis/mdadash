@@ -63,7 +63,7 @@ class WidgetBase(ABC):
 
     def _get_inputs(self):
         """Internal: Get the current instance inputs"""
-        inputs = getattr(self, "_inputs", None)
+        inputs = getattr(self, "_inputs", [])
         if inputs is not None:
             for _input in inputs:
                 # set the value and error states
@@ -236,14 +236,23 @@ class WidgetManager:
 
     """
 
-    _classes: ClassVar = {}
-    _instances: ClassVar = {}
+    _instance: ClassVar = None
+    _widget_classes: ClassVar = {}
+    _widget_instances: ClassVar = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self, comms: "CommHandler"):
+        if hasattr(self, "_initialized"):
+            return
         self._comms = comms
         self._um: UniverseManager = None
         self.n_jobs = 2
         self._patch_IMDReader()
+        self._initialized = True
 
     @classmethod
     def register_class(cls, widget_class: WidgetBase) -> None:
@@ -256,7 +265,10 @@ class WidgetManager:
 
         """
         cls._validate_widget_class(widget_class)
-        cls._classes[widget_class.name] = widget_class
+        WidgetManager._widget_classes[widget_class.name] = widget_class
+        if WidgetManager._instance is not None:
+            # refresh any existing instances of this class name
+            WidgetManager._instance._refresh_instances(widget_class.name)
 
     @classmethod
     def _validate_widget_class(cls, widget_class: WidgetBase) -> None:
@@ -266,8 +278,14 @@ class WidgetManager:
         if not hasattr(widget_class, "name"):
             raise ValueError("name not specified in widget class")
         widget_name = widget_class.name
-        if widget_name in cls._classes:
-            raise ValueError(f"Widget name '{widget_name}' already registered")
+        if widget_name in WidgetManager._widget_classes:
+            if hasattr(widget_class, "_override_name") and widget_class._override_name:
+                logger.warning("Overriding widget class for '%s'", widget_name)
+            else:
+                raise ValueError(
+                    f"Widget name '{widget_name}' already registered. "
+                    f"Use `_override_name` attribute set to `True` to force registration"
+                )
         # check for one of the run methods to exist with correct params
         run_methods = {
             "run_every_frame": 1,
@@ -318,15 +336,15 @@ class WidgetManager:
     def _set_universe(self, uid: int, u: mda.Universe, uuid: str | None = None) -> None:
         """Internal: Set the universe for all or given widget"""
         if uuid is None:
-            for widget in self._instances.values():
+            for widget in WidgetManager._widget_instances.values():
                 self._set_widget_universe(widget, uid, u)
         else:
-            widget = self._instances[uuid]
+            widget = WidgetManager._widget_instances[uuid]
             self._set_widget_universe(widget, uid, u)
 
     def _invoke_lifecycle_method(self, method: str) -> None:
         """Internal: Invoke given lifecycle method for all instances"""
-        for widget in self._instances.values():
+        for widget in WidgetManager._widget_instances.values():
             self._invoke_widget_lifecyle_method(widget, method)
 
     def _get_inputs_state(self, inputs):
@@ -343,7 +361,7 @@ class WidgetManager:
 
         """
         widgets = []
-        for widget_class in self._classes.values():
+        for widget_class in WidgetManager._widget_classes.values():
             widgets.append(
                 {
                     "name": widget_class.name,
@@ -372,9 +390,6 @@ class WidgetManager:
         widget_name = data["name"]
         uuid, details = self._add_widget_instance(uid, widget_name)
         if uuid is not None:
-            if self._um._connected:
-                # set the universe for the new widget instance
-                self._set_universe(uid, self._um._universes[uid], uuid)
             self._comms.send(
                 {
                     "status": "ok",
@@ -394,9 +409,6 @@ class WidgetManager:
         """Duplicate widget instance based on instance uuid"""
         uid = data["uid"]
         new_uuid, details = self._duplicate_widget_instance(uid, data["uuid"])
-        if self._um._connected:
-            # set the universe for the new widget instance
-            self._set_universe(uid, self._um._universes[uid], new_uuid)
         self._comms.send(
             {
                 "status": "ok",
@@ -496,14 +508,14 @@ class WidgetManager:
         uuid of instance added and input details or None, None
 
         """
-        if widget_name in self._classes:
-            widget_class = self._classes[widget_name]
+        if widget_name in WidgetManager._widget_classes:
+            widget_class = WidgetManager._widget_classes[widget_name]
             uuid = str(uuid1())
             instance = widget_class()
             instance.uid = uid
             instance.uuid = uuid
             instance._wm = self
-            self._instances[uuid] = instance
+            WidgetManager._widget_instances[uuid] = instance
             details = {
                 "uid": uid,
                 "class_name": widget_name,
@@ -511,6 +523,9 @@ class WidgetManager:
             }
             # invoke the on_post_create handler
             self._invoke_widget_lifecyle_method(instance, "on_post_create")
+            # set the universe for the new widget instance
+            if self._um._connected:
+                self._set_universe(uid, self._um._universes[uid], uuid)
             return uuid, details
         return None, None
 
@@ -533,7 +548,7 @@ class WidgetManager:
 
         """
         # get existing instance
-        instance = self._instances[uuid]
+        instance = WidgetManager._widget_instances[uuid]
         # duplicate instance
         widget_class = instance.__class__
         new_instance = widget_class()
@@ -549,7 +564,7 @@ class WidgetManager:
         # add new instance to instances list
         new_uuid = str(uuid1())
         new_instance.uuid = new_uuid
-        self._instances[new_uuid] = new_instance
+        WidgetManager._widget_instances[new_uuid] = new_instance
         details = {
             "uid": uid,
             "class_name": widget_class.name,
@@ -557,6 +572,9 @@ class WidgetManager:
         }
         # invoke the on_post_create handler
         self._invoke_widget_lifecyle_method(new_instance, "on_post_create")
+        # set the universe for the new widget instance
+        if self._um._connected:
+            self._set_universe(uid, self._um._universes[uid], uuid)
         return new_uuid, details
 
     def _recreate_instances(self, data: dict) -> None:
@@ -564,7 +582,7 @@ class WidgetManager:
         ret = True
         for widget_uuid, widget in data.items():
             try:
-                widget_class = self._classes[widget["class_name"]]
+                widget_class = WidgetManager._widget_classes[widget["class_name"]]
                 instance = widget_class()
                 instance.uid = widget["uid"]
                 instance.uuid = widget_uuid
@@ -575,7 +593,7 @@ class WidgetManager:
                     setattr(instance, attribute, _input["value"])
                     if _input["error"] is not None:
                         instance._set_input_state(attribute, _input["error"])
-                self._instances[widget_uuid] = instance
+                WidgetManager._widget_instances[widget_uuid] = instance
                 # invoke the on_post_create handler
                 self._invoke_widget_lifecyle_method(instance, "on_post_create")
             except KeyError:
@@ -585,24 +603,52 @@ class WidgetManager:
 
     def _remove_widget_instance(self, uuid: str) -> str | None:
         """Internal: Remove a widget instance"""
-        if uuid in self._instances:
-            del self._instances[uuid]
+        if uuid in WidgetManager._widget_instances:
+            del WidgetManager._widget_instances[uuid]
             return uuid
         return None
 
+    def _refresh_instances(self, class_name: str) -> None:
+        """Internal: Recreate widget instances when class is updated"""
+        widget_class = WidgetManager._widget_classes[class_name]
+        for instance in WidgetManager._widget_instances.values():
+            if instance.name != class_name:
+                continue
+            # create new instance
+            new_instance = widget_class()
+            uid = instance.uid
+            new_instance.uid = uid
+            new_instance._wm = self
+            # set inputs for new instance
+            inputs = instance._get_inputs()
+            for _input in inputs:
+                attribute = _input["attribute"]
+                setattr(new_instance, attribute, _input["value"])
+                if _input["error"] is not None:  # pragma: no cover
+                    new_instance._set_input_state(attribute, _input["error"])
+            # update new instance in instances list
+            uuid = instance.uuid
+            new_instance.uuid = uuid
+            WidgetManager._widget_instances[uuid] = new_instance
+            # invoke the on_post_create handler
+            self._invoke_widget_lifecyle_method(new_instance, "on_post_create")
+            # set the universe for the new widget instance
+            if self._um._connected:
+                self._set_universe(uid, self._um._universes[uid], uuid)
+
     def _get_widget_inputs(self, uuid: str) -> list:
         """Internal: Get a widget inputs"""
-        widget = self._instances[uuid]
+        widget = WidgetManager._widget_instances[uuid]
         return widget._get_inputs()
 
     def _get_widget_notes(self, uuid: str) -> str:
         """Internal: Get notes for widget instance"""
-        widget = self._instances[uuid]
+        widget = WidgetManager._widget_instances[uuid]
         return widget._get_notes()
 
     def _set_widget_input(self, uuid: str, attribute: str, value: Any) -> bool:
         """Internal: Set a widget input"""
-        widget = self._instances[uuid]
+        widget = WidgetManager._widget_instances[uuid]
         old_value = getattr(widget, attribute, value)
         old_type = type(old_value)
         # set input using the same existing type
@@ -689,7 +735,7 @@ class WidgetManager:
         # collect widgets that need to be run
         parallel_widgets = []
         serial_widgets = []
-        for widget in self._instances.values():
+        for widget in WidgetManager._widget_instances.values():
             # only run widget if there are no input errors
             if widget.uid != uid or widget._input_errors:
                 continue
