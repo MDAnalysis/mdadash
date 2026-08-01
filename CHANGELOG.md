@@ -33,6 +33,7 @@ The rules for this file:
 - Added widget for Velocity Autocorrelation Function (VACF) (PR #36)
 - Added widget for custom code (PR #43)
 - Added Notebooks support (PR #46)
+- Added custom universe setup support (PR #47)
 
 ### Fixed
 
