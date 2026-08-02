@@ -184,5 +184,83 @@ describe('NotebooksView.vue', () => {
     // delete - actual
     menuItems[2].trigger('click')
     expect(wrapper.vm.notebooks.length).toStrictEqual(1)
+    // handleCloneWidgetClick - not open - for coverage
+    wrapper.vm.handleCloneWidgetClick(false)
+  })
+
+  it('test clone widget search', async () => {
+    const wrapper = mount(NotebooksView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    // search using invalid query
+    let ret = wrapper.vm.customCloneWidgetFilter('value', null, {
+      raw: { name: 'name1', description: 'desc1' },
+    })
+    expect(ret).toBe(undefined)
+    // search by name
+    ret = wrapper.vm.customCloneWidgetFilter('value', 'name1', {
+      raw: { name: 'name1', description: 'desc1' },
+    })
+    expect(ret).toBe(true)
+    // search by description
+    ret = wrapper.vm.customCloneWidgetFilter('value', 'desc1', {
+      raw: { name: 'name1', description: 'desc1' },
+    })
+    expect(ret).toBe(true)
+    // search not matching
+    ret = wrapper.vm.customCloneWidgetFilter('value', 'query', {
+      raw: {},
+    })
+    expect(ret).toBe(false)
+  })
+
+  it('test clone widget', async () => {
+    const wrapper = mount(NotebooksView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    // click clone widget button
+    const cloneWidgetsBtn = wrapper.find('#clone-widget-btn')
+    expect(cloneWidgetsBtn).toBeDefined()
+    wrapper.vm.setCloneWidgetMenuState(true)
+    const clonableWidgetsList = [
+      { name: 'name1', description: 'desc1', class_name: 'class1' },
+      { name: 'name2', description: 'desc2', class_name: 'class2' },
+    ]
+    mockEmitWithAck.mockResolvedValueOnce(clonableWidgetsList).mockResolvedValueOnce('uuid1')
+    await cloneWidgetsBtn.trigger('click')
+    await nextTick()
+    expect(mockTimeout).toHaveBeenNthCalledWith(2, 5000)
+    expect(mockEmitWithAck).toHaveBeenNthCalledWith(2, 'notebooks:get_clonable_widgets')
+    await nextTick()
+    // check the list of widgets
+    expect(wrapper.vm.cloneWidgetItems).toStrictEqual(clonableWidgetsList)
+    // select a widget from list
+    const components = wrapper.findAllComponents({ name: 'VAutocomplete' })
+    const autocomplete = components[0]
+    expect(autocomplete).toBeDefined()
+    await autocomplete.vm.$emit('update:modelValue', {
+      name: 'name1',
+      description: 'desc1',
+      class_name: 'class1',
+    })
+    expect(mockEmitWithAck).toHaveBeenNthCalledWith(
+      3,
+      'notebooks:clone_widget',
+      'name1',
+      'desc1',
+      'class1',
+    )
+    // check page moves to notebook view
+    expect(mockPush).toHaveBeenCalledWith({
+      path: '/notebook',
+      query: { uuid: 'uuid1' },
+    })
+    wrapper.vm.setCloneWidgetMenuState(false)
   })
 })

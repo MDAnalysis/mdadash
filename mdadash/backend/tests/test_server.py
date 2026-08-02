@@ -946,3 +946,18 @@ async def test_custom_widget(_client, imd_server):
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid1)
     await disconnect_from_simulation()
+
+
+async def test_notebooks_clone_widget(_client):
+    sio.emit.reset_mock()
+    # check get clonable widgets
+    handler = sio.handlers["/"]["notebooks:get_clonable_widgets"]
+    widgets = await run_task_until_done(handler("_sid"))
+    assert widgets
+    # add notebook with cloned widget code
+    widget = widgets[0]
+    handler = sio.handlers["/"]["notebooks:clone_widget"]
+    uuid = await run_task_until_done(
+        handler("_sid", widget["name"], widget["description"], widget["class_name"])
+    )
+    assert uuid is not None

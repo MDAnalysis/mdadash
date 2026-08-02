@@ -34,6 +34,7 @@ The rules for this file:
 - Added widget for custom code (PR #43)
 - Added Notebooks support (PR #46)
 - Added custom universe setup support (PR #47)
+- Added support for cloning built-in widget code into Notebooks (PR #49)
 
 ### Fixed
 
