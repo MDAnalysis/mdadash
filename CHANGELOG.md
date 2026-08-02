@@ -29,13 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added widget for MSD Analysis (PR #35)
-- Added widget for Velocity Autocorrelation Function (VACF) (PR #36)
-- Added widget for custom code (PR #43)
-- Added Notebooks support (PR #46)
-- Added custom universe setup support (PR #47)
-- Added support for cloning built-in widget code into Notebooks (PR #49)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -51,6 +44,33 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.0.7]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+08/02/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added widget for MSD Analysis (PR #35)
+- Added widget for generic Autocorrelation Function (ACF) (PR #37)
+- Added config setting for NoJump transformation (PR #38)
+- Added widget for custom code (PR #43)
+- Added Notebooks support (PR #46)
+- Added custom universe setup support (PR #47)
+- Added support for auto refresh of widgets when class code changes (PR #48)
+- Added support for cloning built-in widget code into Notebooks (PR #49)
+
+### Changed
+
+<!-- Changes in existing functionality -->
+
+- Refactored code between kernel core and widget manager (PR #45)
 
 ## [0.0.6]
 
