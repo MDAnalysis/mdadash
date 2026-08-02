@@ -1,5 +1,6 @@
 import argparse
 import copy
+import inspect
 import json
 import logging
 import os
@@ -13,8 +14,10 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .analyses.energies import EnergyWidgetBase
 from .kernel.manager import KernelManager
 from .state.manager import StateManager
+from .widgets.base import WidgetBase
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -106,6 +109,8 @@ class MDADash:
         self.sio.on("notebook:name_desc_change")(self.on_notebook_name_desc_change)
         self.sio.on("notebook:cell_change")(self.on_notebook_cell_change)
         self.sio.on("notebook:update_cells")(self.on_notebook_update_cells)
+        self.sio.on("notebooks:get_clonable_widgets")(self.on_get_clonable_widgets)
+        self.sio.on("notebooks:clone_widget")(self.on_notebook_clone_widget)
 
     async def emit_running_state(self, sid: Any = None) -> None:
         """Emit current dashboard running state"""
@@ -338,6 +343,33 @@ class MDADash:
         """notebook:update_cells handler"""
         self.sm.notebooks[uuid]["cells"] = cells
         await self.sm.save()
+
+    async def on_get_clonable_widgets(self, _sid):
+        """notebooks:get_clonable_widgets handler"""
+        widgets = [
+            subclass
+            for subclass in WidgetBase.__subclasses__()
+            if EnergyWidgetBase not in subclass.__mro__
+        ]
+        return [
+            {
+                "name": w.name,
+                "description": getattr(w, "description", None),
+                "class_name": w.__name__,
+            }
+            for w in widgets
+        ]
+
+    async def on_notebook_clone_widget(self, _sid, name, description, class_name):
+        """notebooks:clone_widget handler"""
+        widget_class = next(
+            (cls for cls in WidgetBase.__subclasses__() if cls.__name__ == class_name),
+            None,
+        )
+        source_file = inspect.getsourcefile(widget_class)
+        with open(source_file, "r", encoding="utf-8") as file:  # noqa: ASYNC230
+            code = file.read()
+        return await self.sm.add_notebook(name, description, code)
 
 
 def start_server():

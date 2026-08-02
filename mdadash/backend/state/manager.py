@@ -197,18 +197,18 @@ class StateManager:
             self._state["notebooks"] = {}
         return self._state["notebooks"]
 
-    async def add_notebook(self):
+    async def add_notebook(self, name="Untitled", description="", code=""):
         """Add new notebook to notebooks dict"""
         uuid = str(uuid1())
         notebook = {
             "uuid": uuid,
-            "name": "Untitled",
-            "description": "",
+            "name": name,
+            "description": description,
             "run_on_launch": False,
             "cells": [
                 {
                     "id": str(uuid1()),
-                    "code": "",
+                    "code": code,
                 },
             ],
         }

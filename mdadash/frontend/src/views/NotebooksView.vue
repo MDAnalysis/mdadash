@@ -21,9 +21,72 @@
           >
           </v-text-field>
           <!-- Buttons -->
-          <div class="d-flex align-center">
-            <!-- Add Notebook -->
-            <v-btn color="primary" height="100%" @click="addNotebook"> Add Notebook </v-btn>
+          <div class="d-flex align-center ga-1">
+            <!-- New -->
+            <v-btn color="primary" height="100%" @click="addNotebook">
+              <v-icon :icon="mdiPlus" class="me-2"></v-icon>
+              New
+            </v-btn>
+            <!-- Clone Widget -->
+            <div class="text-center">
+              <v-btn
+                id="clone-widget-btn"
+                color="primary"
+                class="flex-shrink-0"
+                height="56"
+                elevation="1"
+                @click="handleCloneWidgetClick"
+              >
+                <v-icon :icon="mdiContentDuplicate" class="me-2"></v-icon>
+                Clone Widget
+              </v-btn>
+              <v-menu
+                :model-value="isCloneWidgetOpen"
+                @update:model-value="setCloneWidgetMenuState"
+                activator="#clone-widget-btn"
+                :close-on-content-click="false"
+                :transition="false"
+              >
+                <v-card width="350">
+                  <!-- Loading spinner -->
+                  <div v-if="isCloneWidgetLoading" class="d-flex justify-center align-center py-4">
+                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                    <span class="ms-2 text-caption text-grey">Loading Widgets...</span>
+                  </div>
+                  <!-- Clone widgets - items -->
+                  <v-autocomplete
+                    v-else
+                    :menu="isCloneWidgetOpen"
+                    :menu-props="{ maxWidth: '100%' }"
+                    :list-props="{ class: 'py-0' }"
+                    @update:menu="setCloneWidgetMenuState"
+                    :items="cloneWidgetItems"
+                    item-title="name"
+                    label="Search Widgets..."
+                    :custom-filter="customCloneWidgetFilter"
+                    return-object
+                    ref="cloneWidgetAutoCompleteRef"
+                    hide-details
+                    variant="solo"
+                    class="border"
+                    @update:model-value="onCloneWidgetSelected"
+                    :loading="isCloneWidgetLoading"
+                    clearable
+                  >
+                    <!-- custom template to show both name and description -->
+                    <template #item="{ props, item }">
+                      <v-list-item
+                        v-bind="props"
+                        :title="item.name"
+                        :subtitle="item.description"
+                        lines="two"
+                      ></v-list-item>
+                      <v-divider class="my-0"></v-divider>
+                    </template>
+                  </v-autocomplete>
+                </v-card>
+              </v-menu>
+            </div>
           </div>
         </div>
       </template>
@@ -141,7 +204,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { computed, ref, inject, onMounted } from 'vue'
+import { computed, ref, inject, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   mdiAlert,
@@ -150,6 +213,7 @@ import {
   mdiDotsVertical,
   mdiMagnify,
   mdiPencil,
+  mdiPlus,
   mdiRun,
 } from '@mdi/js'
 
@@ -163,11 +227,69 @@ const notebooks = ref([])
 const confirmDelete = ref(false)
 const deleteItem = ref()
 
+const isCloneWidgetOpen = ref(false)
+const isCloneWidgetLoading = ref(true)
+const cloneWidgetItems = ref([])
+const cloneWidgetAutoCompleteRef = ref(null)
+
 const notebookMenuItems = [
   { title: 'Edit', icon: mdiPencil },
   { title: 'Duplicate', icon: mdiContentDuplicate },
   { title: 'Delete', icon: mdiDeleteOutline },
 ]
+
+function setCloneWidgetMenuState(value) {
+  isCloneWidgetOpen.value = value
+}
+
+const onCloneWidgetSelected = async (obj) => {
+  const uuid = await socket
+    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+    .emitWithAck('notebooks:clone_widget', obj.name, obj.description, obj.class_name)
+  router.push({
+    path: '/notebook',
+    query: { uuid: uuid },
+  })
+}
+
+const customCloneWidgetFilter = (value, query, item) => {
+  // Filter widgets list based on name or description
+  if (query) {
+    const searchText = query.toLowerCase()
+    return (
+      (item.raw.name || '').toLowerCase().includes(searchText) ||
+      (item.raw.description || '').toLowerCase().includes(searchText)
+    )
+  }
+}
+
+async function handleCloneWidgetClick(isOpen) {
+  if (!isOpen) return
+  try {
+    // Get list of clonable widgets
+    const widgets = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('notebooks:get_clonable_widgets')
+    cloneWidgetItems.value = widgets
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
+  } finally {
+    isCloneWidgetLoading.value = false
+    // Focus on the 'Search Widgets' autocomplete item
+    await nextTick()
+    // v8 ignore next
+    if (cloneWidgetAutoCompleteRef.value) {
+      cloneWidgetAutoCompleteRef.value.focus()
+      setTimeout(() => {
+        const nativeInput = cloneWidgetAutoCompleteRef.value?.$el.querySelector('input')
+        if (nativeInput) {
+          nativeInput.focus()
+        }
+      }, 50)
+    }
+  }
+}
 
 const filteredNotebooks = computed(() => {
   if (!search.value) return notebooks.value

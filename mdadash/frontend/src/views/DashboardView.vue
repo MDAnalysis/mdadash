@@ -229,12 +229,12 @@
               :custom-filter="customAddWidgetFilter"
               return-object
               ref="addWidgetAutoCompleteRef"
-              v-focus-input
               hide-details
               variant="solo"
               class="border"
               @update:model-value="onAddWidgetSelected"
               :loading="isAddWidgetLoading"
+              clearable
             >
               <!-- custom template to show both name and description -->
               <template #item="{ props, item }">
@@ -554,13 +554,6 @@ const customAddWidgetFilter = (value, query, item) => {
   }
 }
 
-const vFocusInput = {
-  // Custom focus input needed for autocomplete elements
-  mounted: (el) => {
-    el.querySelector('input').focus()
-  },
-}
-
 async function handleAddWidgetClick(isOpen) {
   if (!isOpen) return
   try {
@@ -578,8 +571,9 @@ async function handleAddWidgetClick(isOpen) {
     await nextTick()
     // v8 ignore next
     if (addWidgetAutoCompleteRef.value) {
+      addWidgetAutoCompleteRef.value.focus()
       setTimeout(() => {
-        const nativeInput = addWidgetAutoCompleteRef.value.$el.querySelector('input')
+        const nativeInput = addWidgetAutoCompleteRef.value?.$el.querySelector('input')
         if (nativeInput) {
           nativeInput.focus()
         }
