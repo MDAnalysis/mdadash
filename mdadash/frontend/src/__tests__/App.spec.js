@@ -124,6 +124,10 @@ describe('App', () => {
     })
     expect(confirmBtn).toBeDefined()
     await confirmBtn.trigger('click')
+    // disconnect - Enter to confirm
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 
   it('app bar navigation', async () => {

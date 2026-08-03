@@ -357,7 +357,7 @@ class MDADash:
                 "description": getattr(w, "description", None),
                 "class_name": w.__name__,
             }
-            for w in widgets
+            for w in sorted(widgets, key=lambda w: w.name.lower())
         ]
 
     async def on_notebook_clone_widget(self, _sid, name, description, class_name):

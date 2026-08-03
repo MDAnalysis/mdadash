@@ -72,13 +72,15 @@ describe('AlertsView.vue', () => {
     vi.clearAllMocks()
   })
 
-  it('mounts', () => {
+  it('mounts and unmounts', () => {
     const wrapper = mount(AlertsView, {
       global: {
         provide: allProvides,
       },
     })
     expect(wrapper.exists()).toBe(true)
+    // unmount
+    wrapper.unmount()
   })
 
   it('renders', async () => {
@@ -136,5 +138,11 @@ describe('AlertsView.vue', () => {
     deleteAllAlerts.trigger('click')
     wrapper.vm.deleteAllAlerts()
     expect(mockEmit).toHaveBeenCalledWith('delete_all_alerts')
+    // delete - Enter to confirm
+    wrapper.vm.confirmDeleteAll = true
+    await nextTick()
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 })

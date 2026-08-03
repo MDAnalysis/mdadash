@@ -1,7 +1,10 @@
 <template>
   <v-container class="pa-0">
     <div :id="id" class="mb-0">
-      <v-card class="border rounded-lg" :disabled="isFormDisabled">
+      <v-card
+        :disabled="isFormDisabled"
+        :class="['border', 'rounded-lg', { 'opacity-40': isFormDisabled }]"
+      >
         <v-card-actions
           @dblclick="show = !show"
           style="user-select: none"
@@ -124,7 +127,7 @@
         </v-btn>
       </div>
       <!-- Hint -->
-      <div v-if="hint" class="hint">
+      <div v-if="hint" class="hint" :class="{ 'opacity-60': isFormDisabled }">
         {{ hint }}
       </div>
     </div>

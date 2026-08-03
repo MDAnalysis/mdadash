@@ -2,6 +2,8 @@
 Utils
 """
 
+from .core import comms, um
+
 
 class EMATrend:
     """Exponential Moving Average (EMA) based Trend
@@ -43,3 +45,55 @@ class EMATrend:
             (1.0 - self.alpha_long) * self.ema_long
         )
         return 1 if self.ema_short >= self.ema_long else -1
+
+
+def _get_alert_timestamp() -> dict:
+    """Internal: Get dict containing the current ts info to use as timestamp"""
+    u = um[0]
+    return {
+        "frame": u.trajectory.frame,
+        "time": u.trajectory.ts.data.get("time"),
+        "step": u.trajectory.ts.data.get("step"),
+    }
+
+
+def alert(message: str) -> None:
+    """Create an alert
+
+    A timestamp based on the current timestep is automatically added.
+
+    Parameters
+    ----------
+    message: str
+        The string message used for the alert
+
+    """
+    comms.send(
+        {
+            "alert": {
+                "tsinfo": _get_alert_timestamp(),
+                "message": message,
+            }
+        }
+    )
+
+
+def pause_simulation(message: str = "Paused simulation") -> None:
+    """Pause the simulation
+
+    Pause simulation and add an alert.
+
+    Parameters
+    ----------
+    message: str
+        The string message used for the alert
+
+    """
+    comms.send(
+        {
+            "pause_simulation": {
+                "tsinfo": _get_alert_timestamp(),
+                "message": message,
+            }
+        }
+    )

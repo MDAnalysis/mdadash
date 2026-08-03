@@ -361,7 +361,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { computed, ref, inject, nextTick, onActivated, onDeactivated, h } from 'vue'
+import { computed, ref, inject, nextTick, onActivated, onDeactivated, h, watch } from 'vue'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useRouter } from 'vue-router'
 import {
@@ -610,6 +610,20 @@ function layoutUpdate() {
   }
 }
 
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    saveLayoutAsDefault()
+  }
+}
+
+watch(showSaveLayoutConfirm, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
 function saveLayoutAsDefault() {
   showSaveLayoutConfirm.value = false
   gridPresetIcon.value = gridPresetIcons.editable
@@ -644,6 +658,7 @@ onDeactivated(() => {
   socket.off('sessionInfo')
   socket.off('widgets:layout')
   socket.off('widgets:output')
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

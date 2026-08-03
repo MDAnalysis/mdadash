@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, expect, describe, it, vi } from 'vitest'
 import NotebookView from '@/views/NotebookView.vue'
@@ -76,13 +76,15 @@ describe('NotebookView.vue', () => {
     vi.clearAllMocks()
   })
 
-  it('check mount', async () => {
+  it('check mount and unmount', async () => {
     const wrapper = mount(NotebookView, {
       global: {
         provide: allProvides,
       },
     })
     expect(wrapper).toBeDefined()
+    // unmount
+    wrapper.unmount()
   })
 
   it('loads details', async () => {
@@ -162,5 +164,11 @@ describe('NotebookView.vue', () => {
     wrapper.vm.onDeleteNotebook()
     expect(mockTimeout).toHaveBeenNthCalledWith(2, 5000)
     expect(mockEmitWithAck).toHaveBeenNthCalledWith(2, 'notebooks:remove_notebook', 'uuid1')
+    // delete - Enter to confirm
+    wrapper.vm.confirmDelete = true
+    await nextTick()
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 })
