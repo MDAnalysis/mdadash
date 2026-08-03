@@ -57,7 +57,7 @@
                   <v-autocomplete
                     v-else
                     :menu="isCloneWidgetOpen"
-                    :menu-props="{ maxWidth: '100%' }"
+                    :menu-props="{ maxWidth: '100%', contentClass: 'rounded-t-0' }"
                     :list-props="{ class: 'py-0' }"
                     @update:menu="setCloneWidgetMenuState"
                     :items="cloneWidgetItems"
@@ -68,10 +68,11 @@
                     ref="cloneWidgetAutoCompleteRef"
                     hide-details
                     variant="solo"
-                    class="border"
+                    class="border flat-bottom"
                     @update:model-value="onCloneWidgetSelected"
                     :loading="isCloneWidgetLoading"
                     clearable
+                    no-data-text="No matching widgets"
                   >
                     <!-- custom template to show both name and description -->
                     <template #item="{ props, item }">
@@ -116,7 +117,14 @@
             </template>
             <!-- Actions -->
             <template v-slot:append>
-              <v-icon :icon="mdiRun" :color="item.run_on_launch ? 'primary' : 'grey'"></v-icon>
+              <v-icon
+                :icon="mdiRun"
+                :color="item.run_on_launch ? 'primary' : 'grey'"
+                v-tooltip="{
+                  text: item.run_on_launch ? 'Run on launch enabled' : 'Run on launch disabled',
+                  location: 'bottom',
+                }"
+              ></v-icon>
               <v-menu>
                 <template v-slot:activator="{ props }">
                   <v-btn
@@ -382,7 +390,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Bottom border for notebook item except last one */
 .notebook-item:not(:last-child) {
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+/* Make autocomplete search box have flat bottom */
+.flat-bottom :deep(.v-field) {
+  border-bottom-left-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
 }
 </style>

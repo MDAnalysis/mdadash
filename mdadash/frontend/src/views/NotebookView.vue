@@ -120,7 +120,7 @@
         <template v-slot:prepend>
           <v-icon :icon="mdiAlert" color="warning"></v-icon>
         </template>
-        <v-card-text> Are you sure you want to delete this Notebook'? </v-card-text>
+        <v-card-text> Are you sure you want to delete this Notebook? </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="confirmDelete = false">Cancel</v-btn>
@@ -252,6 +252,8 @@ onMounted(async () => {
       .emitWithAck('notebooks:get_notebook', uuid)
     if (response) {
       notebook.value = response
+    } else {
+      router.push({ path: '/notebooks' })
     }
   } finally {
     isLoading.value = false

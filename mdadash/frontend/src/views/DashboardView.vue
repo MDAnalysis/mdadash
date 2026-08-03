@@ -220,7 +220,7 @@
             <v-autocomplete
               v-else
               :menu="isAddWidgetOpen"
-              :menu-props="{ maxWidth: '100%' }"
+              :menu-props="{ maxWidth: '100%', contentClass: 'rounded-t-0' }"
               :list-props="{ class: 'py-0' }"
               @update:menu="setAddWidgetMenuState"
               :items="addWidgetItems"
@@ -231,10 +231,11 @@
               ref="addWidgetAutoCompleteRef"
               hide-details
               variant="solo"
-              class="border"
+              class="border flat-bottom"
               @update:model-value="onAddWidgetSelected"
               :loading="isAddWidgetLoading"
               clearable
+              no-data-text="No matching widgets"
             >
               <!-- custom template to show both name and description -->
               <template #item="{ props, item }">
@@ -669,13 +670,17 @@ onDeactivated(() => {
   min-height: 56px !important;
   height: 56px !important;
 }
-
 .custom-v-select-field-height :deep(.v-field__input) {
   min-height: 56px !important;
   height: 56px !important;
   padding-top: 0px !important;
   padding-bottom: 0px !important;
   align-items: center;
+}
+/* Make autocomplete search box have flat bottom */
+.flat-bottom :deep(.v-field) {
+  border-bottom-left-radius: 0px !important;
+  border-bottom-right-radius: 0px !important;
 }
 </style>
 

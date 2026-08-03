@@ -589,7 +589,7 @@ class KernelManager:
             "widget:get_inputs", {"uuid": widget_uuid}
         )
 
-    async def get_widget_details(self, widget_uuid: str) -> dict:
+    async def get_widget_details(self, widget_uuid: str) -> dict | None:
         """Get widget details
 
         Get the widget name, description and inputs
@@ -601,13 +601,16 @@ class KernelManager:
 
         Returns
         -------
-        response: dict
-            Response dict containing name, desc and inputs
+        response: dict | None
+            Response dict containing name, desc and inputs or None if
+            widget does not exist
 
         """
         widget = next(
             (w for w in self.sm.widgets_layout if w["i"] == widget_uuid), None
         )
+        if widget is None:  # pragma: no cover
+            return None
         response = await self._get_widget_inputs(widget_uuid)
         return {
             "uuid": widget_uuid,

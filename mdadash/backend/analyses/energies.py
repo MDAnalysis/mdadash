@@ -21,6 +21,11 @@ class EnergyWidgetBase:
     data_key = ""
     y_label = "Energy ( kJ / mol )"
 
+    _notes = (
+        "Energies are only available for streaming trajectories and only if the "
+        "simulation engine is configured to send them."
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "maxlen",
