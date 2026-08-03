@@ -1,5 +1,12 @@
 <template>
   <v-app>
+    <span
+      autofocus
+      tabindex="-1"
+      aria-hidden="true"
+      class="position-absolute"
+      style="opacity: 0; width: 0; height: 0"
+    ></span>
     <v-app-bar color="primary" elevation="1" scroll-behavior="hide">
       <!-- v8 ignore start -->
       <v-btn
@@ -83,7 +90,7 @@
             <template v-slot:activator="{ props }">
               <v-btn :icon="mdiDotsVertical" size="large" v-bind="props"></v-btn>
             </template>
-            <v-list>
+            <v-list class="py-0">
               <v-list-item v-for="(item, i) in appBarMenuItems" :key="i" :to="item.path">
                 <template v-slot:prepend>
                   <v-icon :icon="item.icon"></v-icon>
@@ -171,14 +178,13 @@ import {
   mdiPause,
   mdiPlay,
   mdiViewDashboard,
-  mdiViewDashboardOutline,
 } from '@mdi/js'
 
 const route = useRoute()
 const router = useRouter()
 const appBarTitle = computed(() => route.meta.title)
 const appBarMenuItems = [
-  { name: 'Dashboard', icon: mdiViewDashboardOutline, path: '/' },
+  { name: 'Dashboard', icon: mdiViewDashboard, path: '/' },
   { name: 'Notebooks', icon: mdiNotebookMultiple, path: '/notebooks' },
   { name: 'Settings', icon: mdiCog, path: '/settings' },
 ]

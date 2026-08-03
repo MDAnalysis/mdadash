@@ -15,7 +15,12 @@ const allProvides = {
   settings,
 }
 
+const mockPush = vi.fn()
+
 vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
   useRoute: () => ({
     query: { uuid: 'uuid1' },
   }),
@@ -156,6 +161,7 @@ describe('WidgetView.vue', () => {
     const ouputCardItem = outputCard.findComponent({ name: 'VCardItem' })
     expect(ouputCardItem).toBeDefined()
     await ouputCardItem.trigger('click')
+    await wrapper.find('form').trigger('submit')
   })
 
   it('loads details and output', async () => {

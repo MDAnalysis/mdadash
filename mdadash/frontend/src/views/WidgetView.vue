@@ -53,7 +53,7 @@
       <v-divider />
       <v-expand-transition>
         <div v-show="isInputsExpanded">
-          <v-form class="pa-4">
+          <v-form class="pa-4" @submit.prevent>
             <v-row v-for="input in widgetDetails.inputs" :key="input.attribute">
               <v-col cols="12">
                 <span v-if="input.type === 'toggle'">
@@ -143,13 +143,14 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onBeforeUnmount, inject } from 'vue'
 import { mdiUnfoldLessHorizontal, mdiUnfoldMoreHorizontal } from '@mdi/js'
 import { VTextField, VSelect, VNumberInput, VSwitch, VBtnToggle } from 'vuetify/components'
 import NotebookCell from '@/components/NotebookCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const uuid = route.query.uuid
 const settings = inject('settings')
 const isOutputExpanded = ref(true)
@@ -220,6 +221,8 @@ onMounted(async () => {
       .emitWithAck('widget:get_details', uuid)
     if (response) {
       widgetDetails.value = response
+    } else {
+      router.push({ path: '/' })
     }
   } finally {
     isLoading.value = false
