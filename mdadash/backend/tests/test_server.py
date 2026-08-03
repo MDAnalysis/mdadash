@@ -961,3 +961,26 @@ async def test_notebooks_clone_widget(_client):
         handler("_sid", widget["name"], widget["description"], widget["class_name"])
     )
     assert uuid is not None
+
+
+async def test_utils_alert_pause(_client, imd_server):
+    await connect_to_simulation(imd_server)
+    # delete all alerts
+    handler = sio.handlers["/"]["delete_all_alerts"]
+    await run_task_until_done(handler("_sid"))
+    # check there are no alerts
+    assert len(main.mdadash.sm.alerts) == 0
+    # generate alert from custom code
+    code = "utils.alert('test alert')"
+    await run_task_until_done(main.mdadash.km.execute_code(code))
+    # check alert generation
+    handler = sio.handlers["/"]["get_alerts"]
+    alerts = await run_task_until_done(handler("_sid"))
+    assert alerts[0]["message"] == "test alert"
+    # pause from custom code
+    code = "utils.pause_simulation('test pause')"
+    await run_task_until_done(main.mdadash.km.execute_code(code))
+    # cleanup - delete all alerts
+    handler = sio.handlers["/"]["delete_all_alerts"]
+    await run_task_until_done(handler("_sid"))
+    await disconnect_from_simulation()

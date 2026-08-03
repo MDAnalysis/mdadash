@@ -210,7 +210,7 @@
               />
 
               <!-- Key value pairs -->
-              <div class="d-flex flex-column">
+              <div class="d-flex flex-column" :class="{ 'opacity-40': runningState.connected }">
                 <v-label class="mt-4">Additional keyword arguments</v-label>
               </div>
               <v-row

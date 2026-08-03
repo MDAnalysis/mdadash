@@ -138,7 +138,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { inject, ref, onMounted, nextTick } from 'vue'
+import { inject, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NotebookCell from '@/components/NotebookCell.vue'
@@ -220,6 +220,20 @@ const onRunOnLaunchToggle = async () => {
   socket.emit('notebook:run_on_launch', uuid, notebook.value.run_on_launch)
 }
 
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    onDeleteNotebook()
+  }
+}
+
+watch(confirmDelete, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
 const onDeleteNotebook = async () => {
   confirmDelete.value = !confirmDelete.value
   if (!confirmDelete.value) {
@@ -242,6 +256,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

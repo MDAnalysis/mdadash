@@ -360,14 +360,15 @@ class WidgetManager:
         widgets to the client.
 
         """
-        widgets = []
-        for widget_class in WidgetManager._widget_classes.values():
-            widgets.append(
-                {
-                    "name": widget_class.name,
-                    "description": getattr(widget_class, "description", None),
-                }
+        widgets = [
+            {
+                "name": c.name,
+                "description": getattr(c, "description", None),
+            }
+            for c in sorted(
+                WidgetManager._widget_classes.values(), key=lambda c: c.name.lower()
             )
+        ]
         self._comms.send({"widgets": widgets})
 
     def recreate_instances(self, data: dict) -> None:

@@ -17,7 +17,7 @@
             placeholder="Search Notebooks..."
             :prepend-inner-icon="mdiMagnify"
             variant="solo"
-            class="flex-grow-1"
+            class="flex-grow-1 elevation-1"
           >
           </v-text-field>
           <!-- Buttons -->
@@ -204,7 +204,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { computed, ref, inject, nextTick, onMounted } from 'vue'
+import { computed, ref, inject, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   mdiAlert,
@@ -322,6 +322,20 @@ const addNotebook = async () => {
   })
 }
 
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    notebookFunction(deleteItem.value, { title: 'Delete' })
+  }
+}
+
+watch(confirmDelete, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
 async function notebookFunction(item, action) {
   if (action['title'] == 'Delete') {
     confirmDelete.value = !confirmDelete.value
@@ -360,6 +374,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

@@ -77,7 +77,7 @@ class KernelManager:
         # create task to listen on iopub and shell channels
         self.listen_task = asyncio.create_task(self._start_listening())
         # initialize the kernel core
-        self.kc.execute("from mdadash.backend.kernel import core")
+        self.kc.execute("from mdadash.backend.kernel import core, utils")
         self.kc.execute(
             f"import logging\nlogging.getLogger().setLevel({self.log_level})"
         )

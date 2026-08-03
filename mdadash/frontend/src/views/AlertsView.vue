@@ -112,7 +112,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { ref, computed, inject, onMounted, watch } from 'vue'
+import { ref, computed, inject, onMounted, onBeforeUnmount, watch } from 'vue'
 import { mdiAlert, mdiDeleteOutline, mdiMagnify } from '@mdi/js'
 
 const search = ref('')
@@ -159,6 +159,20 @@ const deleteAlert = (id) => {
   socket.emit('delete_alert', id)
 }
 
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    deleteAllAlerts()
+  }
+}
+
+watch(confirmDeleteAll, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
 const deleteAllAlerts = () => {
   alerts.value = []
   confirmDeleteAll.value = false
@@ -178,6 +192,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

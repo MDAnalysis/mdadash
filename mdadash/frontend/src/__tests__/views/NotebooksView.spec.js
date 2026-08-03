@@ -79,13 +79,15 @@ describe('NotebooksView.vue', () => {
     vi.clearAllMocks()
   })
 
-  it('check mount', async () => {
+  it('check mount and unmount', async () => {
     const wrapper = mount(NotebooksView, {
       global: {
         provide: allProvides,
       },
     })
     expect(wrapper).toBeDefined()
+    // unmount
+    wrapper.unmount()
   })
 
   it('loads details', async () => {
@@ -186,6 +188,12 @@ describe('NotebooksView.vue', () => {
     expect(wrapper.vm.notebooks.length).toStrictEqual(1)
     // handleCloneWidgetClick - not open - for coverage
     wrapper.vm.handleCloneWidgetClick(false)
+    // delete - Enter to confirm
+    wrapper.vm.confirmDelete = true
+    await nextTick()
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 
   it('test clone widget search', async () => {

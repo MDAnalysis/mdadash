@@ -429,5 +429,11 @@ describe('DashboardView.vue', () => {
     expect(dashboard.vm.gridEditable).toBe(false)
     await gridPresetSelect.setValue(dashboard.vm.gridPresetIcons.editable)
     expect(dashboard.vm.gridEditable).toBe(true)
+    // save layout - Enter to confirm
+    dashboard.vm.showSaveLayoutConfirm = true
+    await nextTick()
+    dashboard.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    dashboard.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 })

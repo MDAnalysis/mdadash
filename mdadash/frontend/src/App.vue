@@ -158,7 +158,7 @@
 <script setup>
 import { socket } from '@/socket'
 import { useRoute, useRouter } from 'vue-router'
-import { ref, computed, onMounted, onBeforeUnmount, provide } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, provide, watch } from 'vue'
 import {
   mdiAlert,
   mdiArrowLeft,
@@ -208,6 +208,20 @@ function handleConnectDisconnect() {
     socket.emit('connect_to_simulations')
   }
 }
+
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    confirmDisconnect()
+  }
+}
+
+watch(showConfirm, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
 
 function confirmDisconnect() {
   showConfirm.value = false
@@ -280,6 +294,7 @@ onBeforeUnmount(() => {
   socket.off('timestepInfo')
   socket.off('settings')
   socket.off('alertsCount')
+  document.removeEventListener('keydown', handleKeydown)
 })
 
 provide('runningState', runningState)
