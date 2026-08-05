@@ -29,9 +29,14 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added widget for RMSD (PR #54)
+
 ### Fixed
 
 <!-- Bug fixes -->
+
+- Miscellaneous fixes (PR #50)
+- Minor UI fixes (PR #51)
 
 ### Changed
 

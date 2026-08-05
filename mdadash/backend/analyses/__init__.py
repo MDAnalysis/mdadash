@@ -11,6 +11,7 @@ from . import (
     janin,
     msd,
     ramachandran,
+    rmsd,
     rog,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "janin",
     "msd",
     "ramachandran",
+    "rmsd",
     "rog",
 ]
