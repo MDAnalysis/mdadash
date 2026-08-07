@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 import sys
 from unittest.mock import ANY, AsyncMock
@@ -983,4 +984,22 @@ async def test_utils_alert_pause(_client, imd_server):
     # cleanup - delete all alerts
     handler = sio.handlers["/"]["delete_all_alerts"]
     await run_task_until_done(handler("_sid"))
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rmsd(_client, imd_server):
+    uuid = await add_widget("RMSD")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection", "protein"),
+        ("center", True),
+        ("superposition", True),
+        ("maxlen", -1),
+        ("x_type", "step"),
+        ("custom_title", "Title"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
     await disconnect_from_simulation()
