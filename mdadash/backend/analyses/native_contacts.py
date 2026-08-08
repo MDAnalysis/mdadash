@@ -17,6 +17,20 @@ logger = logging.getLogger(__name__)
 
 
 class NativeContacts(WidgetBase):
+    """
+
+    **Native Contacts Analysis**
+
+    This widget uses `MDAnalysis.analysis.contacts.Contacts`_ to calculate fraction
+    of native contacts between two contacting groups. The two contacting AtomGroups
+    in their reference conformation are created when this widget instance is created
+    or whenever the inputs for the above Class are updated.
+
+    .. _MDAnalysis.analysis.contacts.Contacts: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/contacts.html#MDAnalysis.analysis.contacts.Contacts
+
+    """
+
     name = "Native Contacts"
     description = "Native Contacts Analysis"
 
