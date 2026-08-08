@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added widget for RMSD (PR #54)
+- Added widget for Native Contacts (PR #59)
 
 ### Fixed
 
@@ -41,6 +42,8 @@ The rules for this file:
 ### Changed
 
 <!-- Changes in existing functionality -->
+
+- Changed color theme to MDA colors (PR #58)
 
 ### Deprecated
 
