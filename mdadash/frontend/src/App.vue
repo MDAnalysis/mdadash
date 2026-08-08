@@ -7,7 +7,7 @@
       class="position-absolute"
       style="opacity: 0; width: 0; height: 0"
     ></span>
-    <v-app-bar color="primary" elevation="1" scroll-behavior="hide">
+    <v-app-bar color="secondary" elevation="1" scroll-behavior="hide">
       <!-- v8 ignore start -->
       <v-btn
         :icon="appBarTitle === 'Notebook' ? mdiArrowLeft : mdiViewDashboard"
