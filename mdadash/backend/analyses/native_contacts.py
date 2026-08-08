@@ -1,5 +1,5 @@
 """
-Radii of Gyration
+Native Contacts Analysis
 """
 
 import logging
@@ -7,24 +7,38 @@ from collections import deque
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
-import numpy as np
 from IPython.display import display
 from joblib import delayed
+from MDAnalysis.analysis import contacts
 
 from mdadash.backend.widgets.base import WidgetBase
 
 logger = logging.getLogger(__name__)
 
 
-class ROG(WidgetBase):
-    """ROG
+class NativeContacts(WidgetBase):
+    """
 
-    Radii of Gyration of a selection
+    **Native Contacts Analysis**
+
+    This widget uses `MDAnalysis.analysis.contacts.Contacts`_ to calculate fraction
+    of native contacts between two contacting groups. The two contacting AtomGroups
+    in their reference conformation are created when this widget instance is created
+    or whenever the inputs for the above Class are updated.
+
+    .. _MDAnalysis.analysis.contacts.Contacts: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/contacts.html#MDAnalysis.analysis.contacts.Contacts
 
     """
 
-    name = "ROG"
-    description = "Radii of Gyration of a selection"
+    name = "Native Contacts"
+    description = "Native Contacts Analysis"
+
+    _notes = (
+        "The two contacting AtomGroups in their reference conformation are created "
+        "when this widget instance is created or whenever the inputs for the "
+        "MDAnalysis.analysis.contacts.Contacts class from below are updated."
+    )
 
     _inputs: ClassVar = [
         {
@@ -48,22 +62,40 @@ class ROG(WidgetBase):
             ],
         },
         {
-            "attribute": "selection",
-            "name": "Selection",
-            "description": "MDAnalysis selection phrase",
+            "attribute": "selection1",
+            "name": "Contacting Group 1",
+            "description": "MDAnalysis selection phrase of first group",
             "type": "str",
             "validations": ["required"],
         },
         {
-            "attribute": "periodic",
-            "name": "Periodic",
-            "description": "Select with periodic boundary conditions",
-            "type": "bool",
+            "attribute": "selection2",
+            "name": "Contacting Group 2",
+            "description": "MDAnalysis selection phrase of second group",
+            "type": "str",
+            "validations": ["required"],
         },
         {
-            "attribute": "updating",
-            "name": "Updating",
-            "description": "Update selection during each timestep",
+            "attribute": "radius",
+            "name": "Radius",
+            "description": "Radius within which contacts exist in refgroup",
+            "type": "float",
+        },
+        {
+            "attribute": "method",
+            "name": "Method",
+            "description": "Method to use for cut off",
+            "type": "select",
+            "items": [
+                "hard_cut",
+                "soft_cut",
+                "radius_cut",
+            ],
+        },
+        {
+            "attribute": "pbc",
+            "name": "PBC",
+            "description": "Uses periodic boundary conditions to calculate distances",
             "type": "bool",
         },
         {
@@ -91,11 +123,15 @@ class ROG(WidgetBase):
 
     def __init__(self):
         super().__init__()
-        self.selection = "protein"
-        self.periodic = True
-        self.updating = False
-        self.ag = None
-        self.title = "Radii of Gyration"
+        self.selection1 = "protein and name CA"
+        self.selection2 = "protein and name CA"
+        self.radius = 4.5
+        self.method = "hard_cut"
+        self.pbc = True
+        self.contacts = None
+        self.refgroup_ag1 = None
+        self.refgroup_ag2 = None
+        self.title = "Native Contacts"
         self.custom_title = None
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
@@ -107,10 +143,8 @@ class ROG(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
-        self.ax.set_ylabel("Radii (Å)")
-        labels = ["all", "x-axis", "y-axis", "z-axis"]
-        self.plots = [self.ax.plot([], [], label=label)[0] for label in labels]
-        self.ax.legend(loc="upper left")
+        (self.plot,) = self.ax.plot([], [])
+        self.ax.set_ylabel("Fraction of contacts")
         self.ax.grid(True)
         self._set_title()
 
@@ -137,13 +171,23 @@ class ROG(WidgetBase):
             self.x_values = self.times
         self.ax.set_xlabel(x_label)
 
-    def _update_selection(self):
-        """Update atom groups when selection phrase changes"""
-        self.ag = self.u.select_atoms(
-            self.selection, periodic=self.periodic, updating=self.updating
+    def _create_contacts(self):
+        """Update atom groups when selection phrases change"""
+        self.refgroup_ag1 = self.u.select_atoms(self.selection1)
+        self.refgroup_ag2 = self.u.select_atoms(self.selection2)
+        self.contacts = contacts.Contacts(
+            self.u,
+            select=(self.selection1, self.selection2),
+            refgroup=(self.refgroup_ag1, self.refgroup_ag2),
+            radius=self.radius,
+            method=self.method,
+            pbc=self.pbc,
         )
-        self.title = f"ROG of {self.selection}"
+        self.title = (
+            f"Native contacts between\n'{self.selection1}' and '{self.selection2}'"
+        )
         self._set_title()
+        self._update_plot(self._compute_current_frame())
 
     def on_post_create(self):
         """on_post_create handler"""
@@ -152,73 +196,64 @@ class ROG(WidgetBase):
 
     def on_post_connect(self):
         """on_post_connect handler"""
-        self._update_selection()
+        self._create_contacts()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
-        reset_plot = False
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
-            reset_plot = True
+            self._reset_plot_values()
         elif attribute == "x_type":
             self._set_x_values()
         elif attribute == "custom_title":
             self._set_title()
-        elif attribute == "selection":
-            self._update_selection()
-            reset_plot = True
-        elif attribute in ("periodic", "updating"):
-            self._update_selection()
-        if reset_plot:
+        elif attribute in (
+            "selection1",
+            "selection2",
+            "radius",
+            "method",
+            "pbc",
+        ):
             self._reset_plot_values()
+            self._create_contacts()
 
     def _compute_current_frame(self):
-        """Compute ROG values for current frame"""
-        masses = self.ag.masses
-        total_mass = np.sum(masses)
-        coordinates = self.ag.positions
-        # get squared distance from center
-        ri_sq = (coordinates - self.ag.center_of_mass()) ** 2
-        # sum the unweighted positions
-        sq = np.sum(ri_sq, axis=1)
-        sq_x = np.sum(ri_sq[:, [1, 2]], axis=1)  # sum over y and z
-        sq_y = np.sum(ri_sq[:, [0, 2]], axis=1)  # sum over x and z
-        sq_z = np.sum(ri_sq[:, [0, 1]], axis=1)  # sum over x and y
-        # make into array
-        sq_rs = np.array([sq, sq_x, sq_y, sq_z])
-        # weight positions
-        rog_sq = np.sum(masses * sq_rs, axis=1) / total_mass
-        # square root
-        rog = np.sqrt(rog_sq)
+        """Compute values for current frame"""
+        self.contacts.run(frames=[self.u.trajectory.frame])
         return (
             self.u.trajectory.ts.data["step"],
             self.u.trajectory.ts.data["time"],
-            rog,
+            self.contacts.results.timeseries[0][1],
         )
 
     def _compute_batch(self):
-        """Compute ROG values for current batch"""
+        """Compute values for current batch"""
+        self.contacts.run()
         values = []
-        for i in range(self.u.trajectory.buffer_size):
+        for i, (_, q) in enumerate(self.contacts.results.timeseries):
             _ = self.u.trajectory[i]
-            values.append(self._compute_current_frame())
+            values.append(
+                (
+                    self.u.trajectory.ts.data["step"],
+                    self.u.trajectory.ts.data["time"],
+                    q,
+                )
+            )
         return values
 
     def _update_plot(self, values):
-        """Append ROG values and update plot"""
+        """Append values and update plot"""
         if isinstance(values, tuple):
             values = [values]
         # update plot points
         for value in values:
-            (steps, times, rog) = value
+            (steps, times, v) = value
             self.steps.append(steps)
             self.times.append(times)
-            self.y_values.append(rog)
+            self.y_values.append(v)
         # update plot
-        data = np.array(self.y_values)
-        for plot, y_value in zip(self.plots, data.T):
-            plot.set_data(self.x_values, y_value)
+        self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()

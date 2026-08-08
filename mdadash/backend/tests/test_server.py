@@ -183,7 +183,7 @@ async def test_kernel_execute_code_errors(_client):
     assert response[0]["content"] == "x\n"
 
 
-async def test_socketio_connect_disconnect(imd_server):
+async def test_socketio_connect_disconnect(_client, imd_server):
     await connect_to_simulation(imd_server)
     # connect
     handler = sio.handlers["/"]["connect"]
@@ -529,6 +529,125 @@ async def test_widget_run_rog_parallel_every_frame(_client, imd_server):
 
 async def test_widget_run_rog_parallel_batch(_client, imd_server):
     uuid = await add_widget("ROG")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rmsd_serial_every_frame(_client, imd_server):
+    uuid = await add_widget("RMSD")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection", "protein"),
+        ("center", True),
+        ("superposition", True),
+        ("maxlen", -1),
+        ("x_type", "step"),
+        ("custom_title", "Title"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rmsd_serial_batch(_client, imd_server):
+    uuid = await add_widget("RMSD")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rmsd_parallel_every_frame(_client, imd_server):
+    uuid = await add_widget("RMSD")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_rmsd_parallel_batch(_client, imd_server):
+    uuid = await add_widget("RMSD")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_native_contacts_serial_every_frame(_client, imd_server):
+    uuid = await add_widget("Native Contacts")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection1", "protein and name CA"),
+        ("selection2", "protein and name CA"),
+        ("maxlen", -1),
+        ("x_type", "step"),
+        ("custom_title", "Title"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_native_contacts_serial_batch(_client, imd_server):
+    uuid = await add_widget("Native Contacts")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_native_contacts_parallel_every_frame(_client, imd_server):
+    uuid = await add_widget("Native Contacts")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_native_contacts_parallel_batch(_client, imd_server):
+    uuid = await add_widget("Native Contacts")
     inputs = [
         ("_run_frequency", "batch"),
         ("_run_mode", "parallel"),
@@ -984,22 +1103,4 @@ async def test_utils_alert_pause(_client, imd_server):
     # cleanup - delete all alerts
     handler = sio.handlers["/"]["delete_all_alerts"]
     await run_task_until_done(handler("_sid"))
-    await disconnect_from_simulation()
-
-
-async def test_widget_run_rmsd(_client, imd_server):
-    uuid = await add_widget("RMSD")
-    await connect_to_simulation(imd_server)
-    inputs = [
-        ("selection", "protein"),
-        ("center", True),
-        ("superposition", True),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
     await disconnect_from_simulation()

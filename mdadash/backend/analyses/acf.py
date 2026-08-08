@@ -143,7 +143,9 @@ class ACFAnalysis(WidgetBase):
             )
         else:
             title = f"{self.physical_property.title()} ACF of '{self.selection}'"
-        self.ax.set_title(self.custom_title if self.custom_title else title)
+        self.ax.set_title(
+            self.custom_title.replace("\\n", "\n") if self.custom_title else title
+        )
 
     def _set_y_label(self):
         """Set plot y label"""
