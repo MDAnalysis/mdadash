@@ -123,7 +123,9 @@ class ROG(WidgetBase):
 
     def _set_title(self):
         """Set plot title"""
-        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+        self.ax.set_title(
+            self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
+        )
 
     def _set_x_values(self):
         """Set the values for the x-axis"""

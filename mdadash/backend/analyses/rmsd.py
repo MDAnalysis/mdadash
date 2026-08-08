@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
+from joblib import delayed
 from MDAnalysis.analysis import rms
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -45,6 +46,26 @@ class RMSD(WidgetBase):
     )
 
     _inputs: ClassVar = [
+        {
+            "attribute": "_run_frequency",
+            "name": "Run frequency",
+            "description": "The frequency with which the widget is run",
+            "type": "select",
+            "items": [
+                "every-frame",
+                "batch",
+            ],
+        },
+        {
+            "attribute": "_run_mode",
+            "name": "Run mode",
+            "description": "The mode in which the widget is run",
+            "type": "select",
+            "items": [
+                "serial",
+                "parallel",
+            ],
+        },
         {
             "attribute": "selection",
             "name": "Selection",
@@ -122,7 +143,9 @@ class RMSD(WidgetBase):
 
     def _set_title(self):
         """Set plot title"""
-        self.ax.set_title(self.custom_title if self.custom_title else self.title)
+        self.ax.set_title(
+            self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
+        )
 
     def _set_x_values(self):
         """Set the values for the x-axis"""
@@ -140,6 +163,7 @@ class RMSD(WidgetBase):
         self.reference_positions = self.ag.positions.copy()
         self.title = f"RMSD of '{self.selection}'"
         self._set_title()
+        self._update_plot(self._compute_current_frame())
 
     def on_post_create(self):
         """on_post_create handler"""
@@ -152,35 +176,71 @@ class RMSD(WidgetBase):
 
     def on_input_change(self, attribute, _old_value, new_value):
         """on_input_change handler"""
-        reset_plot = False
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
-            reset_plot = True
+            self._reset_plot_values()
         elif attribute == "x_type":
             self._set_x_values()
         elif attribute == "custom_title":
             self._set_title()
         elif attribute in ("selection", "center", "superposition"):
-            self._update_selection()
-            reset_plot = True
-        if reset_plot:
             self._reset_plot_values()
+            self._update_selection()
 
-    def run_every_frame(self):
-        """every-frame run handler"""
+    def _compute_current_frame(self):
+        """Compute values for current frame"""
         rmsd_value = rms.rmsd(
             self.ag.positions,
             self.reference_positions,
             center=self.center,
             superposition=self.superposition,
         )
-        self.y_values.append(rmsd_value)
-        self.steps.append(self.u.trajectory.ts.data["step"])
-        self.times.append(self.u.trajectory.ts.data["time"])
+        return (
+            self.u.trajectory.ts.data["step"],
+            self.u.trajectory.ts.data["time"],
+            rmsd_value,
+        )
+
+    def _compute_batch(self):
+        """Compute values for current batch"""
+        values = []
+        for i in range(self.u.trajectory.buffer_size):
+            _ = self.u.trajectory[i]
+            values.append(self._compute_current_frame())
+        return values
+
+    def _update_plot(self, values):
+        """Append values and update plot"""
+        if isinstance(values, tuple):
+            values = [values]
+        # update plot points
+        for value in values:
+            (steps, times, v) = value
+            self.steps.append(steps)
+            self.times.append(times)
+            self.y_values.append(v)
         # update plot
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
         display(self.fig)
+
+    def run_every_frame(self):
+        """every-frame run handler"""
+        self._update_plot(self._compute_current_frame())
+
+    def run_batch(self):
+        """batch run handler"""
+        self._update_plot(self._compute_batch())
+
+    def get_parallel_job(self):
+        """get parallel job handler"""
+        if self._run_frequency == "batch":
+            return delayed(self._compute_batch)()
+        return delayed(self._compute_current_frame)()
+
+    def apply_parallel_results(self, values):
+        """apply parallel results handler"""
+        self._update_plot(values)

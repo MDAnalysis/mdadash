@@ -575,7 +575,7 @@ class WidgetManager:
         self._invoke_widget_lifecyle_method(new_instance, "on_post_create")
         # set the universe for the new widget instance
         if self._um._connected:
-            self._set_universe(uid, self._um._universes[uid], uuid)
+            self._set_universe(uid, self._um._universes[uid], new_uuid)
         return new_uuid, details
 
     def _recreate_instances(self, data: dict) -> None:
