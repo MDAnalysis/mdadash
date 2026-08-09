@@ -32,6 +32,7 @@ The rules for this file:
 - Added widget for RMSD (PR #54)
 - Added widget for Native Contacts (PR #59)
 - Added widget for Contacts within cutoff (PR #60)
+- Added widget for number of Hydrogen bonds (PR #61)
 
 ### Fixed
 
