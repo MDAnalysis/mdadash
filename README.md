@@ -26,7 +26,7 @@
 [url_conda]: https://anaconda.org/channels/conda-forge/packages/mdadash/overview
 [url_pypi]: https://pypi.org/project/mdadash/
 
-![MDAnalysis Dashboard](docs/source/_static/images/cover-image.png)
+![MDAnalysis Dashboard](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/cover-image.png)
 
 Dashboard for tracking and analyzing live MD simulations with streaming.
 
