@@ -102,3 +102,6 @@ The dashboard can be accessed by navigating to
 
    Note: Both the dashboard host and post can be customized using the
    ``mdadash`` command line options.
+
+.. image:: _static/images/cover-image.png
+   :alt: MDAnalysis Dashboard

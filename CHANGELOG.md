@@ -29,7 +29,35 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added widget for RMSD (PR #54)
+### Fixed
+
+<!-- Bug fixes -->
+
+### Changed
+
+<!-- Changes in existing functionality -->
+
+### Deprecated
+
+<!-- Soon-to-be removed features -->
+
+### Removed
+
+<!-- Removed features -->
+
+## [0.0.8]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+08/09/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added widget for RMSD (PR #56)
 - Added widget for Native Contacts (PR #59)
 - Added widget for Contacts within cutoff (PR #60)
 - Added widget for number of Hydrogen bonds (PR #61)
@@ -41,20 +69,13 @@ The rules for this file:
 
 - Miscellaneous fixes (PR #50)
 - Minor UI fixes (PR #51)
+- Preset icons issue on Safari
 
 ### Changed
 
 <!-- Changes in existing functionality -->
 
 - Changed color theme to MDA colors (PR #58)
-
-### Deprecated
-
-<!-- Soon-to-be removed features -->
-
-### Removed
-
-<!-- Removed features -->
 
 ## [0.0.7]
 
