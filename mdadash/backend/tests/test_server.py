@@ -780,6 +780,65 @@ async def test_widget_run_hbonds_parallel_batch(_client, imd_server):
     await disconnect_from_simulation()
 
 
+async def test_widget_run_helix_analysis_serial_every_frame(_client, imd_server):
+    uuid = await add_widget("Helix Analysis")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("selection", "resid 1:10 and name CA"),
+        ("property", "local_twists"),
+        ("maxlen", -1),
+        ("x_type", "step"),
+        ("custom_title", "Title"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_helix_analysis_serial_batch(_client, imd_server):
+    uuid = await add_widget("Helix Analysis")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_helix_analysis_parallel_every_frame(_client, imd_server):
+    uuid = await add_widget("Helix Analysis")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_helix_analysis_parallel_batch(_client, imd_server):
+    uuid = await add_widget("Helix Analysis")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
 async def test_widget_run_dssp_serial_every_frame(_client, imd_server):
     await connect_to_simulation(imd_server)
     uuid = await add_widget("DSSP Analysis")
