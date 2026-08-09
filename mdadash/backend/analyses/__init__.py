@@ -5,6 +5,7 @@ Module that has all the analyses widgets
 from . import (
     acf,
     com_distance,
+    contacts,
     custom_code,
     dssp,
     energies,
@@ -19,6 +20,7 @@ from . import (
 __all__ = [
     "acf",
     "com_distance",
+    "contacts",
     "custom_code",
     "dssp",
     "energies",
