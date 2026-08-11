@@ -26,10 +26,18 @@ class COMDistance(WidgetBase):
 
     **Inputs**
 
-    Selection 1
+    Run frequency
         .. compound::
-            First MDAnalysis selection phrase
-                Default: ``protein``
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Selection 1
+        First MDAnalysis selection phrase
+            Default: ``protein``
 
     Selection 2
         Second MDAnalysis selection phrase
@@ -73,6 +81,9 @@ class COMDistance(WidgetBase):
 
     .. figure:: /_static/images/com_distance_output.jpg
         :alt: COM Distance output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

@@ -18,8 +18,8 @@ and can run in parallel:
      - ✅
    * - :mod:`~mdadash.backend.analyses.com_distance`
      - Distance between two center-of-masses
-     - ❌
-     - ❌
+     - ✅
+     - ✅
    * - :mod:`~mdadash.backend.analyses.contacts`
      - Contacts within a cutoff
      - ✅
@@ -46,8 +46,8 @@ and can run in parallel:
      - ✅
    * - :mod:`~mdadash.backend.analyses.janin`
      - Janin plot (Dihedral angles analysis)
-     - ❌
-     - ❌
+     - —
+     - —
    * - :mod:`~mdadash.backend.analyses.msd`
      - MSD Analysis
      - —
@@ -58,8 +58,8 @@ and can run in parallel:
      - ✅
    * - :mod:`~mdadash.backend.analyses.ramachandran`
      - Ramachandran plot (Dihedral angles analysis)
-     - ❌
-     - ❌
+     - —
+     - —
    * - :mod:`~mdadash.backend.analyses.rmsd`
      - RMSD Analysis
      - ✅
