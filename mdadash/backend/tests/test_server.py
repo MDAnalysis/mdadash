@@ -428,9 +428,9 @@ async def test_widget_run_energies(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_com_distance(_client, imd_server):
-    uuid = await add_widget("COMDistance")
+async def test_widget_run_com_distance_serial_every_frame(_client, imd_server):
     await connect_to_simulation(imd_server)
+    uuid = await add_widget("COMDistance")
     inputs = [
         ("selection1", "resid 1"),
         ("selection2", "resid 2"),
@@ -442,6 +442,48 @@ async def test_widget_run_com_distance(_client, imd_server):
     await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_com_distance_serial_batch(_client, imd_server):
+    uuid = await add_widget("COMDistance")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_com_distance_parallel_every_frame(_client, imd_server):
+    uuid = await add_widget("COMDistance")
+    inputs = [
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_com_distance_parallel_batch(_client, imd_server):
+    uuid = await add_widget("COMDistance")
+    inputs = [
+        ("_run_frequency", "batch"),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    timeout = 30 if sys.platform == "win32" else 20
+    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
     await disconnect_from_simulation()
 
