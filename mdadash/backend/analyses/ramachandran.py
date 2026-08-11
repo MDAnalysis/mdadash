@@ -15,9 +15,35 @@ logger = logging.getLogger(__name__)
 
 
 class RamachandranPlot(WidgetBase):
-    """Ramachandran Plot
+    """
 
-    Dihedral angles analysis using Ramachandran plot
+    **Ramachandran Plot**
+
+    This widget uses `MDAnalysis.analysis.dihedrals.Ramachandran`_ for dihedral angles
+    analysis and creates a `Ramachandran plot`_.
+
+    .. _MDAnalysis.analysis.dihedrals.Ramachandran: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/dihedrals.html#MDAnalysis.analysis.dihedrals.Ramachandran
+
+    .. _Ramachandran plot: https://userguide.mdanalysis.org/stable/
+        examples/analysis/structure/dihedrals.html#Ramachandran-analysis
+
+    **Inputs**
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``protein``
+
+    Show reference
+        Show allowed and marginally allowed regions
+            Default: ``True``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/ramachandran_output.jpg
+        :alt: Ramachandran Plot output
 
     """
 

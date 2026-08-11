@@ -1,5 +1,5 @@
 """
-Module that has all the analyses widgets
+Module for all the built-in analyses widgets
 """
 
 from . import (

@@ -1,3 +1,3 @@
 """
-Kernel that runs and manages MDAnalysis analysis code for dashboard
+Module that manages async jupyter kernel and runs analysis code within
 """

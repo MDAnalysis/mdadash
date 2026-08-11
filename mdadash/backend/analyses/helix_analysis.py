@@ -22,9 +22,16 @@ class HelixAnalysis(WidgetBase):
 
     **Helix Analysis**
 
-    This widget uses `MDAnalysis.analysis.helix_analysis.HELANAL`_ to perform helix
-    analysis and plot different computed properties as per the MDAnalysis
-    `Helix analysis`_ examples.
+    This widget uses `MDAnalysis.analysis.helix_analysis.HELANAL`_ to perform `Helix
+    analysis`_ and plot different computed properties.
+
+    Plots can be chosen for the following computed properties:
+
+    * ``local_twists``
+    * ``local_nres_per_turn``
+    * ``local_bends``
+    * ``local_heights``
+    * ``local_screw_angles``
 
     .. _MDAnalysis.analysis.helix_analysis.HELANAL: https://docs.mdanalysis.org/
         stable/documentation_pages/analysis/helix_analysis.html
@@ -32,6 +39,50 @@ class HelixAnalysis(WidgetBase):
 
     .. _Helix analysis: https://userguide.mdanalysis.org/stable/examples/
         analysis/structure/helanal.html
+
+    **Inputs**
+
+    Run frequency
+        The frequency with which the widget is run - `every-frame` or `batch`
+            Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``resid 1:10 and name CA``
+
+        .. note::
+            HELANAL is designed to work on the alpha-carbon atoms of protein residues
+            and the selection must return at least 9 residues
+
+    Property
+        Computed property to plot
+            Default: ``local_twists``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/helix_analysis_output.jpg
+        :alt: Helix Analysis output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 
@@ -104,7 +155,7 @@ class HelixAnalysis(WidgetBase):
 
     def __init__(self):
         super().__init__()
-        self.selection = "resid 1:10"
+        self.selection = "resid 1:10 and name CA"
         self.property = "local_twists"
         self.ha = None
         self.title = "Helix Analysis"

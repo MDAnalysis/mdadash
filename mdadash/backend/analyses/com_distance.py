@@ -17,9 +17,61 @@ logger = logging.getLogger(__name__)
 
 
 class COMDistance(WidgetBase):
-    """COM Distance
+    """
 
-    Distance between two center-of-masses (COMs)
+    **COM Distance**
+
+    This widget shows the distance between two center-of-masses (COMs).
+
+    **Inputs**
+
+    Selection 1
+        .. compound::
+            First MDAnalysis selection phrase
+                Default: ``protein``
+
+    Selection 2
+        Second MDAnalysis selection phrase
+            Default: ``resid 1``
+
+    Periodic
+        Select with periodic boundary conditions
+            Default: ``True``
+
+    Updating
+        Update selection during each timestep
+            Default: ``False``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    Max distance
+        Max distance for alert check
+            Default: ``50.0``
+
+    Alert if distance > 'Max distance
+        Create an alert if the above condition is met
+            Default: ``False``
+
+    Pause simulation if distance > 'Max distance'
+        Pause the simulation if the above condition is met
+            Default: ``False``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/com_distance_output.jpg
+        :alt: COM Distance output
 
     """
 

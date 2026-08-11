@@ -17,15 +17,63 @@ logger = logging.getLogger(__name__)
 
 
 class Contacts(WidgetBase):
-    """
+    r"""
 
     **Contacts within a cutoff**
 
-    This widget uses `MDAnalysis.lib.distances.capped_distance`_ to calculate number
-    of contacts with a given cutoff between two groups.
+    This widget uses `MDAnalysis.lib.distances.capped_distance`_ to caclulate
+    `number of contacts within a cutoff`_ between two contacting groups.
+
+    .. _number of contacts within a cutoff: https://userguide.mdanalysis.org/
+        stable/examples/analysis/distances_and_contacts/contacts_within_cutoff.html
 
     .. _MDAnalysis.lib.distances.capped_distance: https://docs.mdanalysis.org/stable/
         documentation_pages/lib/distances.html#MDAnalysis.lib.distances.capped_distance
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Contacting Group 1
+        MDAnalysis selection phrase of first group
+            Default: ``(resname ASP GLU) and (name OE* OD*)``
+
+    Contacting Group 2
+        MDAnalysis selection phrase of second group
+            Default: ``(resname ARG LYS) and (name NH* NZ)``
+
+    Radius
+        Radius within which contacts exist
+            Default: ``4.5``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/contacts_output.jpg
+        :alt: Contacts output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

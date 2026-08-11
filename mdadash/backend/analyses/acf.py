@@ -19,6 +19,93 @@ logger = logging.getLogger(__name__)
 
 
 class ACFAnalysis(WidgetBase):
+    """
+
+    **Autocorrelation Function**
+
+    This widget calculates time-lag autocorrelation for different physical properties.
+
+    The following physical properties are supported:
+
+    * velocity
+    * position
+    * force
+
+    A custom :class:`SlidingWindowACF` is used to calculate autocorrelation of chosen
+    physical property for each new frame against the time-lag buffer / window of past frames.
+
+    .. important::
+        To correctly compute positional ACF using this widget, you must supply
+        coordinates in the unwrapped convention, also known as no-jump. That is,
+        when atoms pass the periodic boundary, they must not be wrapped back into
+        the primary simulation cell. You can enable NoJump for the universe in the
+        Universe Configuration section in the Settings page of the dashboard.
+
+    **Inputs**
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Physical property
+        The physical property to analyze - `velocity`, `position` or `force`
+            Default: ``velocity``
+
+    Selection
+        The MDAnalysis selection phrase to run this analysis on
+            Default: ``all``
+
+    Dimension type
+        The desired dimensions to include in the ACF -
+        `xyz`, `xy`, `yz`, `xz`, `x`, `y` or `z`
+
+            Default: ``xyz``
+
+    Centered
+        Use mean subtacted values to calculate ACF
+            Default: ``False``
+
+        .. caution::
+            A running updated mean based on data processed so far is used.
+            The number of data samples must be much greater than the lag-time
+            window for this to be accurate
+
+    Show running integral
+        Show running integral of the ACF
+            Default: ``False``
+
+        .. tip::
+            Using this option with the `velocity` physical property, i.e., (VACF)
+            can be used to observe the diffusion coefficient value in the output plot
+
+    Show particle ACFs
+        Show ACFs for individual particles of the selection in the plot
+            Default: ``False``
+
+        .. caution::
+            Enabling this option for large selections can slow down the
+            analysis and generation of the plot data
+
+    Normalize
+        Normalize the computed ACF values
+            Default: ``False``
+
+    Custom title
+        Custom title for the output plot
+            Default: ''
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/acf_output.jpg
+        :alt: ACF output
+
+    .. tip::
+        This widget can run in parallel
+
+    """
+
     name = "ACF"
     description = "Autocorrelation Function"
 
@@ -227,9 +314,13 @@ class ACFAnalysis(WidgetBase):
 
 
 class SlidingWindowACF:
-    """Sliding Window ACF
+    """
 
-    Calculate ACF for a sliding window of frames
+    **Sliding Window ACF**
+
+    This class computes the ACF of a physical property for each new frame
+    against the time-lag buffer / window of past N frames. The total number
+    of computations for each frame is O(N).
 
     """
 

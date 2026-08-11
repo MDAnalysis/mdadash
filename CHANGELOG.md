@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added built-in widgets documentation (PR #63)
+
 ### Fixed
 
 <!-- Bug fixes -->

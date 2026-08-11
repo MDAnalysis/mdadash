@@ -22,11 +22,7 @@ import mdadash  # noqa
 # -- Project information -----------------------------------------------------
 
 project = "mdadash"
-copyright = (
-    "2026, MDAnalysis. "
-    "Project structure based on the "
-    "MDAnalysis Cookiecutter version 0.1"
-)
+copyright = "2026, MDAnalysis. Project based on the MDAnalysis Cookiecutter version 0.1"
 author = "Pardhav Maradani"
 
 # The short X.Y version

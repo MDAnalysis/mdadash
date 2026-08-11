@@ -20,6 +20,51 @@ logger = logging.getLogger(__name__)
 
 
 class DSSPAnalysis(WidgetBase):
+    """
+
+    **DSSP**
+
+    This widget uses `MDAnalysis.analysis.dssp.dssp.DSSP`_ to assign secondary
+    structure of the protein using DSSP algorithm.
+
+    .. _MDAnalysis.analysis.dssp.dssp.DSSP: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/dssp.html#MDAnalysis.analysis.dssp.dssp.DSSP
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/dssp_output.jpg
+        :alt: DSSP output
+
+    .. tip::
+        This widget supports batching and can run in parallel
+
+    """
+
     name = "DSSP Analysis"
     description = "Secondary structure assignment of protein"
 

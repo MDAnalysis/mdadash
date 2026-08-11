@@ -21,13 +21,71 @@ class NativeContacts(WidgetBase):
 
     **Native Contacts Analysis**
 
-    This widget uses `MDAnalysis.analysis.contacts.Contacts`_ to calculate fraction
-    of native contacts between two contacting groups. The two contacting AtomGroups
-    in their reference conformation are created when this widget instance is created
-    or whenever the inputs for the above Class are updated.
+    This widget uses `MDAnalysis.analysis.contacts.Contacts`_ to calculate `Fraction
+    of native contacts`_ between two contacting groups.
+
+    .. note:: The two contacting AtomGroups in their reference conformation are created
+        when this widget instance is created or whenever the inputs for the above Class
+        from below are updated.
 
     .. _MDAnalysis.analysis.contacts.Contacts: https://docs.mdanalysis.org/stable/
         documentation_pages/analysis/contacts.html#MDAnalysis.analysis.contacts.Contacts
+
+    .. _Fraction of native contacts: https://userguide.mdanalysis.org/stable/
+        examples/analysis/distances_and_contacts/contacts_native_fraction.html
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Contacting Group 1
+        MDAnalysis selection phrase of first group
+            Default: ``protein and name CA``
+
+    Contacting Group 2
+        MDAnalysis selection phrase of second group
+            Default: ``protein and name CA``
+
+    Radius
+        Radius within which contacts exist in refgroup
+            Default: ``4.5``
+
+    Method
+        Method to use for cut off - `hard_cut`, `soft_cut` or `radius_cut`
+            Default: ``hard_cut``
+
+    PBC
+        Uses periodic boundary conditions to calculate distances
+            Default: ``True``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/native_contacts_output.jpg
+        :alt: Native Contacts output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

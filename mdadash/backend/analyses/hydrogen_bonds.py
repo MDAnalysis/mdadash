@@ -23,23 +23,82 @@ class HydrogenBonds(WidgetBase):
     **Number of Hydrogen bonds**
 
     This widget uses `MDAnalysis.analysis.hydrogenbonds.hbond_analysis.HydrogenBondAnalysis`_
-    to calculate the number of Hydrogen bonds based on donor, hydrogens and acceptor
+    to calculate the number of `Hydrogen bonds`_ based on donor, hydrogens and acceptor
     selections. If donors selection is empty, the Universe topology must contain bonding
     information. If hydrogens selection or acceptors selection is empty, they are guessed
     and the Universe must contain charge information for this to work.
 
-    It is highly recommended that a universe topology with bond information is used,
-    as this is the only way that guarantees the correct identification of donor-hydrogen pairs.
-
-    The number of Hydrogen bonds over time in this widget is calculated based on the
-    MDAnalysis `Calculating hydrogen bonds`_ example.
+    .. note::
+        It is highly recommended that a universe topology with bond information is used,
+        as this is the only way that guarantees the correct identification of donor-hydrogen pairs.
 
     .. _MDAnalysis.analysis.hydrogenbonds.hbond_analysis.HydrogenBondAnalysis: https://
         docs.mdanalysis.org/stable/documentation_pages/analysis/hydrogenbonds.html
         #MDAnalysis.analysis.hydrogenbonds.hbond_analysis.HydrogenBondAnalysis
 
-    .. _Calculating hydrogen bonds: https://userguide.mdanalysis.org/stable/
+    .. _Hydrogen bonds: https://userguide.mdanalysis.org/stable/
         examples/analysis/hydrogen_bonds/hbonds.html
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Donor atoms
+        MDAnalysis selection phrase of donor atoms
+            Default: ``name O* N*``
+
+    Hydrogen atoms
+        MDAnalysis selection phrase of hydrogen atoms
+            Default: ``name H*``
+
+    Acceptor atoms
+        MDAnalysis selection phrase of acceptor atoms
+            Default: ``name O* N*``
+
+    d_h_cutoff
+        Distance cutoff used for finding donor-hydrogen pairs
+            Default: ``1.2``
+
+    d_a_cutoff
+        Distance cutoff for hydrogen bonds
+            Default: ``3.0``
+
+    d_h_a_angle_cutoff
+        D-H-A angle cutoff for hydrogen bonds, in degrees
+            Default: ``150.0``
+
+    Update selections
+        Whether or not to update the selections every frame
+            Default: ``True``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/hydrogen_bonds_output.jpg
+        :alt: Hydrogen bonds output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

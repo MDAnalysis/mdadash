@@ -184,7 +184,7 @@ class WidgetBase(ABC):
         """run_every_frame handler
 
         This handler is called during every trajectory iteration if the run
-        frequency is set to `every-frame` (`_run_frequency='every-frame'`). The
+        frequency is set to `every-frame` (``_run_frequency='every-frame'``). The
         trajectory timestep is the current frame.
 
         """
@@ -194,9 +194,9 @@ class WidgetBase(ABC):
 
         This handler is called every time a new batch of timesteps is full
         and ready to be run if the run frequency is set to `batch`
-        (`_run_frequency='batch'`).
+        (``_run_frequency='batch'``).
 
-        `self.u.trajectory.buffer_size` is the size of the buffer / batch
+        ``self.u.trajectory.buffer_size`` is the size of the buffer / batch
         that can be used by the widget class.
 
         """
@@ -219,7 +219,7 @@ class WidgetBase(ABC):
 
         This handler is called with the results of the parallel job
         execution. This is invoked when the run mode is set to `parallel`
-        (`_run_mode='parallel'`) after the parallel job completes.
+        (``_run_mode='parallel'``) after the parallel job completes.
 
         Parameters
         ----------
