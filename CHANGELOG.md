@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Added built-in widgets documentation (PR #63)
+- Added batching and parallel support for com distance widget (PR #64)
 
 ### Fixed
 
