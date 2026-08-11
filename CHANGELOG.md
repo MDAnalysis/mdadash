@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added batching and parallel support for com distance widget (PR #64)
+
 ### Fixed
 
 <!-- Bug fixes -->

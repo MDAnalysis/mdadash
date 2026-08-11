@@ -8,6 +8,7 @@ from typing import ClassVar
 
 import matplotlib.pyplot as plt
 from IPython.display import display
+from joblib import delayed
 from MDAnalysis.exceptions import NoDataError
 from MDAnalysis.lib.distances import calc_bonds
 
@@ -27,6 +28,26 @@ class COMDistance(WidgetBase):
     description = "Distance between two COMs"
 
     _inputs: ClassVar = [
+        {
+            "attribute": "_run_frequency",
+            "name": "Run frequency",
+            "description": "The frequency with which the widget is run",
+            "type": "select",
+            "items": [
+                "every-frame",
+                "batch",
+            ],
+        },
+        {
+            "attribute": "_run_mode",
+            "name": "Run mode",
+            "description": "The mode in which the widget is run",
+            "type": "select",
+            "items": [
+                "serial",
+                "parallel",
+            ],
+        },
         {
             "attribute": "selection1",
             "name": "Selection 1",
@@ -182,8 +203,8 @@ class COMDistance(WidgetBase):
         if reset_plot:
             self._reset_plot_values()
 
-    def run_every_frame(self):
-        """every-frame run handler"""
+    def _compute_current_frame(self):
+        """Compute for current frame"""
         try:
             com1 = self.ag1.center_of_mass(unwrap=True)
             com2 = self.ag2.center_of_mass(unwrap=True)
@@ -191,18 +212,59 @@ class COMDistance(WidgetBase):
             # unwrap can fail if there is no bonds info
             com1 = self.ag1.center_of_mass()
             com2 = self.ag2.center_of_mass()
-        dist = calc_bonds(com1, com2, box=self.u.dimensions)
-        self.y_values.append(dist)
-        self.steps.append(self.u.trajectory.ts.data["step"])
-        self.times.append(self.u.trajectory.ts.data["time"])
-        # update plot
+        return (
+            self.u.trajectory.ts.data["step"],
+            self.u.trajectory.ts.data["time"],
+            calc_bonds(com1, com2, box=self.u.dimensions),
+        )
+
+    def _compute_batch(self):
+        """Compute for current batch"""
+        values = []
+        for i in range(self.u.trajectory.buffer_size):
+            _ = self.u.trajectory[i]
+            values.append(self._compute_current_frame())
+        return values
+
+    def _update_plot(self, values):
+        """Append values and update plot"""
+        if isinstance(values, tuple):
+            values = [values]
+        alerted = False
+        paused = False
+        for value in values:
+            (steps, times, dist) = value
+            self.steps.append(steps)
+            self.times.append(times)
+            self.y_values.append(dist)
+            if dist > self.max_distance:
+                if self.max_distance_alert and not alerted:
+                    self.alert(f"Distance between '{self.title}' > {self.max_distance}")
+                    alerted = True
+                if self.max_distance_pause and not paused:
+                    self.pause_simulation()
+                    paused = True
+        # update plot points
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
         display(self.fig)
-        if dist > self.max_distance:
-            if self.max_distance_alert:
-                self.alert(f"Distance between '{self.title}' > {self.max_distance}")
-            if self.max_distance_pause:
-                self.pause_simulation()
+
+    def run_every_frame(self):
+        """every-frame run handler"""
+        self._update_plot(self._compute_current_frame())
+
+    def run_batch(self):
+        """batch run handler"""
+        self._update_plot(self._compute_batch())
+
+    def get_parallel_job(self):
+        """get parallel job handler"""
+        if self._run_frequency == "batch":
+            return delayed(self._compute_batch)()
+        return delayed(self._compute_current_frame)()
+
+    def apply_parallel_results(self, values):
+        """apply parallel results handler"""
+        self._update_plot(values)
