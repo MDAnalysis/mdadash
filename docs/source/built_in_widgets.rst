@@ -26,7 +26,7 @@ and can run in parallel:
      - ✅
    * - :mod:`~mdadash.backend.analyses.custom_code`
      - Custom user-defined code
-     - —
+     - ✅
      - —
    * - :mod:`~mdadash.backend.analyses.dssp`
      - DSSP Analysis

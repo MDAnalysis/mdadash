@@ -101,6 +101,9 @@ class CustomCode(WidgetBase):
         Variables and Classes created in custom code blocks are common across the
         dashboard kernel and hence must be chosen to not overwrite each other.
 
+    .. tip::
+        This widget supports batching
+
     """
 
     name = "Custom Code"
@@ -142,13 +145,13 @@ class CustomCode(WidgetBase):
         self.execute_code = ""
 
     def on_post_connect(self):
-        """on_post_connect handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._run_code(self.setup_code)
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         return self._run_code(self.execute_code)
 
     def run_batch(self):
-        """batch run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` handler"""
         return self._run_code(self.execute_code)

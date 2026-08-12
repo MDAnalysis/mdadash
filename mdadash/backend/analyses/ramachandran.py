@@ -101,11 +101,11 @@ class RamachandranPlot(WidgetBase):
         self.title = f"{self.selection}"
 
     def on_post_connect(self):
-        """on_post_connect handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._update_selection()
 
     def on_input_change(self, attribute, _old_value, new_value):
-        """on_input_change handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "selection":
             self._update_selection()
 
@@ -113,7 +113,7 @@ class RamachandranPlot(WidgetBase):
         return None
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         self.rama.run(frames=[self.u.trajectory.frame])
         # update plot
         self.ax.clear()

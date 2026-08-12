@@ -176,12 +176,12 @@ class DSSPAnalysis(WidgetBase):
         self.ax.set_xlabel(x_label)
 
     def on_post_create(self):
-        """on_post_create handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_create` handler"""
         self._set_title()
         self._reset_plot_values()
 
     def on_post_connect(self):
-        """on_post_connect handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         protein = self.u.select_atoms("protein")
         # Fix for ValueError: Universe contains unequal numbers of (N,CA,C,O) atoms
         n_res = self.u.select_atoms("protein and name N").resids
@@ -201,7 +201,7 @@ class DSSPAnalysis(WidgetBase):
         self.ax.set_yticklabels(res_ids[::tick_spacing])
 
     def on_input_change(self, attribute, _old_value, new_value):
-        """on_input_change handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
@@ -269,19 +269,19 @@ class DSSPAnalysis(WidgetBase):
         display(self.fig)
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         self._update_plot(self._compute_current_frame())
 
     def run_batch(self):
-        """batch run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` handler"""
         self._update_plot(self._compute_batch())
 
     def get_parallel_job(self):
-        """get parallel job handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` handler"""
         if self._run_frequency == "batch":
             return delayed(self._compute_batch)()
         return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):
-        """apply parallel results handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` handler"""
         self._update_plot(values)

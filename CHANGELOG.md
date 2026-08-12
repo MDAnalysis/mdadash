@@ -31,6 +31,8 @@ The rules for this file:
 
 - Added built-in widgets documentation (PR #63)
 - Added batching and parallel support for com distance widget (PR #64)
+- Minor widget enhancements (PR #65)
+- Added custom widgets documentation (PR #66)
 
 ### Fixed
 

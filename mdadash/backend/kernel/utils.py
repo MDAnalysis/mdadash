@@ -60,7 +60,8 @@ def _get_alert_timestamp() -> dict:
 def alert(message: str) -> None:
     """Create an alert
 
-    A timestamp based on the current timestep is automatically added.
+    A timestamp based on the current timestep is automatically prepended
+    to the message.
 
     Parameters
     ----------

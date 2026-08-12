@@ -265,16 +265,16 @@ class ACFAnalysis(WidgetBase):
         self._set_y_label()
 
     def on_post_create(self):
-        """on_post_create handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_create` handler"""
         self._set_title()
         self._set_y_label()
 
     def on_post_connect(self):
-        """on_post_connect handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._create_acf()
 
     def on_input_change(self, attribute, _old_value, new_value):
-        """on_input_change handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "custom_title":
             self._set_title()
         elif attribute in ("normalized", "_run_mode"):
@@ -296,16 +296,16 @@ class ACFAnalysis(WidgetBase):
         display(self.fig)
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         x, y1, y2, _ = self._compute(normalized=self.normalized)
         self._update_plot(x, y1, y2)
 
     def get_parallel_job(self):
-        """get parallel job handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` handler"""
         return delayed(self._compute)(normalized=self.normalized, parallel=True)
 
     def apply_parallel_results(self, values):
-        """apply parallel results handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` handler"""
         x, y1, y2, (v1, v2, v3, v4, v5, v6) = values
         self._update_plot(x, y1, y2)
         # update acf state

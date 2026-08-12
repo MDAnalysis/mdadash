@@ -104,6 +104,9 @@ class WidgetBase(ABC):
     def alert(self, message: str) -> None:
         """Create an alert
 
+        A timestamp based on the current timestep is automatically prepended
+        to the message.
+
         Parameters
         ----------
         message: str
@@ -116,7 +119,11 @@ class WidgetBase(ABC):
             )
 
     def pause_simulation(self) -> None:
-        """Pause the simulation"""
+        """
+
+        Pause simulation and add an alert that this Widget (name) triggered the pause.
+
+        """
         if self._wm is not None and self._wm._comms is not None:
             self._wm._comms.send(
                 {
@@ -128,48 +135,70 @@ class WidgetBase(ABC):
             )
 
     def on_post_create(self) -> None:
-        """on_post_create handler
+        """
 
-        This handler is called after the widget instance is created
-        and after all the inputs are set.
-        (widget create, duplicate, re-create from state)
+        This handler is called after the widget instance is created and
+        after all the inputs are set (Widget create, duplicate, refresh
+        and re-create from state cases).
+
+        Since the inputs are set by the time this handler is invoked,
+        further initializations (that are not possible in ``__init__``) can
+        be handled here.
+
+        .. note::
+
+            The Universe (``self.u``) may or may not be available at this
+            stage as that depends on the simulation connected state. Use the
+            :meth:`on_post_connect` handler if you need the Universe to exist.
 
         """
 
     def on_post_connect(self) -> None:
-        """on_post_connect handler
+        """
 
-        This handler is called after connecting to the simulation
+        This handler is called everytime after connecting to the simulation.
+
+        The Universe (``self.u``) will be available and any ``AtomGroup`` selections
+        or MDAnalysis analysis class instances that depend on the Universe can be created
+        here.
 
         """
 
     def on_post_disconnect(self) -> None:
-        """on_post_disconnect handler
+        """
 
-        This handler is called after disconnection from simulation
+        This handler is called everytime after disconnect from the simulation.
 
         """
 
     def on_post_pause(self) -> None:
-        """on_post_pause handler
+        """
 
-        This handler is called after user pauses trajectory iteration
+        This handler is called everytime after the simulation is paused.
+
+        The pause could have been triggered by user clickling on the 'Pause'
+        button on the dashboard or by any other Widget triggering a pause using
+        :meth:`pause_simulation` or :meth:`mdadash.backend.kernel.utils.pause_simulation`.
 
         """
 
     def on_pre_resume(self) -> None:
-        """on_pre_resume handler
+        """
 
-        This handler is called after user resumes trajectory iteration
+        This handler is called before trajectory iteration is resumed.
+
+        The resume is usually triggered by user clicking on the 'Resume'
+        button on the dashboard.
 
         """
 
     def on_input_change(self, attribute: str, old_value: Any, new_value: Any) -> None:
-        """on_input_change handler
+        """
 
-        This handler is called after a widget input has changed.
-        Validations can be performed in this handler and any exceptions
-        raised with messages will show up as errors in the UI
+        This handler is called everytime a widget input changes from the dashboard UI.
+
+        Validations can be performed in this handler and any exceptions raised with
+        messages will show up as errors in the UI.
 
         Parameters
         ----------
@@ -182,48 +211,70 @@ class WidgetBase(ABC):
         new_value: Any
             The current value of this attribute
 
+
+        .. note::
+
+            This handler is **not** invoked when a Widget inputs are set when it is
+            duplicated or when it is recreated from the state file. Only changes from
+            the UI trigger this handler.
+
         """
 
     def run_every_frame(self) -> None:
-        """run_every_frame handler
+        """
 
-        This handler is called during every trajectory iteration if the run
-        frequency is set to `every-frame` (``_run_frequency='every-frame'``). The
-        trajectory timestep is the current frame.
+        This handler is called everytime after the trajectory iterates forward if the
+        run frequency is set to ``every-frame`` (``_run_frequency='every-frame'``).
+        The trajectory timestep in the handler will be the current timestep.
 
         """
 
     def run_batch(self) -> None:
-        """run_batch handler
+        """
 
-        This handler is called every time a new batch of timesteps is full
-        and ready to be run if the run frequency is set to `batch`
+        This handler is called every time after a new batch of timesteps is full
+        and ready to be run if the run frequency is set to ``batch``
         (``_run_frequency='batch'``).
 
-        ``self.u.trajectory.buffer_size`` is the size of the buffer / batch
-        that can be used by the widget class.
+        ``self.u.trajectory.buffer_size`` is the size of the buffer / batch (N)
+        that can be used by the widget class to iterate the last N frames.
 
         """
 
     def get_parallel_job(self) -> Any:
-        """get_parallel_job handler
+        """
 
-        This handler is called if the run mode is set to `parallel`
-        (`_run_mode='parallel'`) to get the parallel job to run.
+        This handler is called if the run mode is set to ``parallel``
+        (``_run_mode='parallel'``) to retrieve the parallel job to run from
+        the Widget class. The Widget class must return a ``joblib``'s ``delayed``
+        function as the return value.
 
         Returns
         -------
         job: Any
             A joblib's delayed function
 
+
+        .. note::
+
+            As the parallel job executes in a separate process, everything needed
+            by the Widget class must be explicitly returned by the job. See
+            :meth:`apply_parallel_results` on how these results are available back
+            to the Widget class. Any console outputs (like ``print``) or direct plot
+            outputs will not be captured by the widget run. They will have to be
+            returned and handled in :meth:`apply_parallel_results`.
+
         """
 
     def apply_parallel_results(self, values: Any) -> None:
-        """apply_parallel_results handler
+        """
 
         This handler is called with the results of the parallel job
-        execution. This is invoked when the run mode is set to `parallel`
+        execution. This is invoked when the run mode is set to ``parallel``
         (``_run_mode='parallel'``) after the parallel job completes.
+
+        Any update to the Widget class state or output plot creation etc will
+        have to happen in this handler.
 
         Parameters
         ----------

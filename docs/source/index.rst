@@ -14,6 +14,7 @@ Source code and contributing instructions for this project can be found in the `
 
    getting_started
    built_in_widgets
+   adding_custom_widgets
    api
 
 
