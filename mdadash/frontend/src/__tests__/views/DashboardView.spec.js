@@ -393,6 +393,14 @@ describe('DashboardView.vue', () => {
     })
     // click on the delete action
     components[2].trigger('click')
+    // confirm delete action
+    components[2].trigger('click')
+    // check remove widget sent to server
+    expect(mockEmit).toHaveBeenCalledWith('widgets:remove_widget', 'uuid1')
+    // delete widget - Enter to confirm
+    dashboard.vm.showWidgetDeleteConfirm = true
+    await nextTick()
+    dashboard.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
     // check remove widget sent to server
     expect(mockEmit).toHaveBeenCalledWith('widgets:remove_widget', 'uuid1')
   })

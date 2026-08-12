@@ -618,6 +618,7 @@ class KernelManager:
             "description": widget["description"],
             "inputs": response["inputs"],
             "notes": response["notes"],
+            "doclink": response["doclink"],
         }
 
     async def set_widget_input(

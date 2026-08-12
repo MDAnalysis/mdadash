@@ -80,6 +80,11 @@ class Contacts(WidgetBase):
     name = "Contacts"
     description = "Contacts within a cutoff"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.contacts.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

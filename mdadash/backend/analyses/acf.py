@@ -109,6 +109,11 @@ class ACFAnalysis(WidgetBase):
     name = "ACF"
     description = "Autocorrelation Function"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.acf.html"
+    )
+
     _notes = (
         "To correctly compute positional ACF using this widget, you must supply "
         "coordinates in the unwrapped convention, also known as no-jump. That is, "

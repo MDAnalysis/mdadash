@@ -75,6 +75,12 @@ class EnergyWidgetBase:
     data_key = ""
     y_label = "Energy ( kJ / mol )"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.energies.html"
+        "#mdadash.backend.analyses.energies.EnergyWidgetBase"
+    )
+
     _notes = (
         "Energies are only available for streaming trajectories and only if the "
         "simulation engine is configured to send them."
@@ -131,7 +137,7 @@ class EnergyWidgetBase:
 
     def _set_title(self):
         """Set plot title"""
-        self.ax.set_title(self.title, y=1.05)
+        self.ax.set_title(self.title)
 
     def _set_x_values(self):
         """Set the values for the x-axis"""

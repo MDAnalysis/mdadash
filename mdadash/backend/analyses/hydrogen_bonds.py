@@ -111,6 +111,11 @@ class HydrogenBonds(WidgetBase):
         "of donor-hydrogen pairs."
     )
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.hydrogen_bonds.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

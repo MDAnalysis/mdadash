@@ -356,6 +356,30 @@
       </grid-layout>
     </div>
 
+    <!-- Delete widget confirmation -->
+    <!-- v8 ignore start -->
+    <v-dialog v-model="showWidgetDeleteConfirm" max-width="400">
+      <v-card title="Delete Widget?">
+        <template v-slot:prepend>
+          <v-icon :icon="mdiAlert" color="warning"></v-icon>
+        </template>
+        <v-card-text>
+          Are you sure you want to delete Widget '{{ widgetDeleteItem.name }}'?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showWidgetDeleteConfirm = false">Cancel</v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            @click="widgetFunction(widgetDeleteItem, { title: 'Delete' })"
+            >Delete</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- v8 ignore stop -->
+
     <!-- TODO: rest of the dashboard -->
   </v-container>
 </template>
@@ -467,6 +491,8 @@ const widgetsGridKey = ref(0)
 const widgetOutputs = ref({})
 var displayedLayoutWidgets = ref([...layoutWidgets.value])
 const showSaveLayoutConfirm = ref(false)
+const showWidgetDeleteConfirm = ref(false)
+const widgetDeleteItem = ref()
 
 const isWidgetOutputSingleImage = (uuid) => {
   const widgetOutput = widgetOutputs.value[uuid]
@@ -586,7 +612,12 @@ async function handleAddWidgetClick(isOpen) {
 async function widgetFunction(item, action) {
   // Handle widget actions
   if (action['title'] == 'Delete') {
-    socket.emit('widgets:remove_widget', item.i)
+    showWidgetDeleteConfirm.value = !showWidgetDeleteConfirm.value
+    if (showWidgetDeleteConfirm.value) {
+      widgetDeleteItem.value = item
+    } else {
+      socket.emit('widgets:remove_widget', item.i)
+    }
   } else if (action['title'] == 'Edit') {
     router.push({
       path: '/widget',
@@ -613,12 +644,16 @@ function layoutUpdate() {
 
 const handleKeydown = (event) => {
   if (event.key === 'Enter') {
-    saveLayoutAsDefault()
+    if (showWidgetDeleteConfirm.value) {
+      widgetFunction(widgetDeleteItem.value, { title: 'Delete' })
+    } else {
+      saveLayoutAsDefault()
+    }
   }
 }
 
-watch(showSaveLayoutConfirm, (newVal) => {
-  if (newVal) {
+watch([showSaveLayoutConfirm, showWidgetDeleteConfirm], ([newVal1, newVal2]) => {
+  if (newVal1 || newVal2) {
     document.addEventListener('keydown', handleKeydown)
   } else {
     document.removeEventListener('keydown', handleKeydown)

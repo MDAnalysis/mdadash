@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, expect, describe, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { ref, nextTick, reactive } from 'vue'
 import { socket } from '@/socket'
 import { flushPromises } from '@vue/test-utils'
 import WidgetView from '@/views/WidgetView.vue'
@@ -16,14 +16,13 @@ const allProvides = {
 }
 
 const mockPush = vi.fn()
+const mockRoute = reactive({ query: { uuid: 'uuid1' } })
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
-  useRoute: () => ({
-    query: { uuid: 'uuid1' },
-  }),
+  useRoute: () => mockRoute,
 }))
 
 let socketListeners = {}
@@ -32,6 +31,7 @@ const widgetDetails = {
   name: 'name1',
   description: 'desc1',
   notes: 'notes',
+  doclink: 'doclink',
   inputs: [
     {
       attribute: 'selection',
@@ -223,5 +223,43 @@ describe('WidgetView.vue', () => {
       attribute: 'maxlen',
       value: 100,
     })
+  })
+
+  it('check events', async () => {
+    const wrapper = mount(WidgetView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    // delete widget - confirm
+    wrapper.vm.onDeleteWidget()
+    expect(wrapper.vm.confirmDelete).toBeTruthy()
+    // delete widget - actual
+    wrapper.vm.onDeleteWidget()
+    expect(mockTimeout).toHaveBeenNthCalledWith(2, 5000)
+    expect(mockEmitWithAck).toHaveBeenNthCalledWith(2, 'widgets:remove_widget', 'uuid1')
+    // delete - Enter to confirm
+    wrapper.vm.confirmDelete = true
+    await nextTick()
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
+  })
+
+  it('check duplicate', async () => {
+    const wrapper = mount(WidgetView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    // dup - valid response
+    mockEmitWithAck.mockResolvedValueOnce({ uuid: 'uuid2' })
+    wrapper.vm.onDuplicateWidget()
+    await nextTick()
+    mockRoute.query.uuid = 'uuid2'
+    // dup - no response
+    wrapper.vm.onDuplicateWidget()
   })
 })

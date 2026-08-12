@@ -89,6 +89,11 @@ class RMSD(WidgetBase):
     name = "RMSD"
     description = "RMSD of a selection"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.rmsd.html"
+    )
+
     _notes = (
         "If simulations are performed under periodic boundary conditions "
         "then you must make your molecules whole before performing RMSD "
