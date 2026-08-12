@@ -38,6 +38,10 @@ class RamachandranPlot(WidgetBase):
         Show allowed and marginally allowed regions
             Default: ``True``
 
+    Custom title
+        Custom title for the plot
+            Default: ''
+
     **Output**
 
     Here is an example output plot of this widget:
@@ -49,6 +53,11 @@ class RamachandranPlot(WidgetBase):
 
     name = "Ramachandran Plot"
     description = "Dihedral angles analysis using Ramachandran plot"
+
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.ramachandran.html"
+    )
 
     _inputs: ClassVar = [
         {
@@ -64,6 +73,12 @@ class RamachandranPlot(WidgetBase):
             "description": "Show allowed and marginally allowed regions",
             "type": "bool",
         },
+        {
+            "attribute": "custom_title",
+            "name": "Custom title",
+            "description": "Custom title for the plot",
+            "type": "str",
+        },
     ]
 
     def __init__(self):
@@ -71,17 +86,19 @@ class RamachandranPlot(WidgetBase):
         self.selection = "protein"
         self.ref = True
         self.rama = None
+        self.title = "protein"
+        self.custom_title = None
         self._setup_plot()
 
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
         (self.plot,) = self.ax.plot([], [])
-        self.ax.grid(True)
 
     def _update_selection(self):
         """Update atom groups when selection phrase changes"""
         self.rama = Ramachandran(self.u.select_atoms(self.selection))
+        self.title = f"{self.selection}"
 
     def on_post_connect(self):
         """on_post_connect handler"""
@@ -108,5 +125,8 @@ class RamachandranPlot(WidgetBase):
         self.rama.plot(ax=self.ax, color="black", marker=".", ref=self.ref)
         self.ax.set_xlabel(r"$\phi$ (degrees)")
         self.ax.set_ylabel(r"$\psi$ (degrees)")
+        self.ax.set_title(
+            self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
+        )
         self.fig.canvas.draw()
         display(self.fig)

@@ -106,6 +106,11 @@ class CustomCode(WidgetBase):
     name = "Custom Code"
     description = "Custom user-defined code"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.custom_code.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

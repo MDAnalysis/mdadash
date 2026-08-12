@@ -1,5 +1,33 @@
 <template>
   <v-container>
+    <!-- Widget actions -->
+    <v-row class="justify-end d-flex ga-0">
+      <!-- Docs link -->
+      <v-btn
+        v-if="widgetDetails.doclink"
+        :href="widgetDetails.doclink"
+        target="_blank"
+        rel="noopener noreferrer"
+        :icon="mdiBookOpenVariantOutline"
+        variant="text"
+        v-tooltip:bottom="'Documentation'"
+      ></v-btn>
+      <!-- Duplicate -->
+      <v-btn
+        :icon="mdiContentDuplicate"
+        variant="text"
+        @click="onDuplicateWidget"
+        v-tooltip:bottom="'Duplicate'"
+      ></v-btn>
+      <!-- Delete -->
+      <v-btn
+        :icon="mdiDeleteOutline"
+        variant="text"
+        color="error"
+        @click="onDeleteWidget"
+        v-tooltip:bottom="'Delete'"
+      ></v-btn>
+    </v-row>
     <!-- Widget notes (if any) -->
     <v-alert
       v-if="widgetDetails.notes"
@@ -135,6 +163,23 @@
         </div>
       </v-expand-transition>
     </v-card>
+    <!-- Delete widget confirmation -->
+    <!-- v8 ignore start -->
+    <v-dialog v-model="confirmDelete" max-width="400">
+      <v-card title="Delete Widget?">
+        <template v-slot:prepend>
+          <v-icon :icon="mdiAlert" color="warning"></v-icon>
+        </template>
+        <v-card-text> Are you sure you want to delete this Widget? </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="confirmDelete = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" @click="onDeleteWidget">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- v8 ignore stop -->
+    <!-- Loading overlay -->
     <v-overlay :model-value="isLoading" contained class="align-center justify-center" persistent>
       <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </v-overlay>
@@ -144,20 +189,28 @@
 <script setup>
 import { socket } from '@/socket'
 import { useRoute, useRouter } from 'vue-router'
-import { ref, onMounted, onBeforeUnmount, inject } from 'vue'
-import { mdiUnfoldLessHorizontal, mdiUnfoldMoreHorizontal } from '@mdi/js'
+import { ref, onMounted, onBeforeUnmount, inject, watch } from 'vue'
+import {
+  mdiAlert,
+  mdiBookOpenVariantOutline,
+  mdiContentDuplicate,
+  mdiDeleteOutline,
+  mdiUnfoldLessHorizontal,
+  mdiUnfoldMoreHorizontal,
+} from '@mdi/js'
 import { VTextField, VSelect, VNumberInput, VSwitch, VBtnToggle } from 'vuetify/components'
 import NotebookCell from '@/components/NotebookCell.vue'
 
 const route = useRoute()
 const router = useRouter()
-const uuid = route.query.uuid
+let uuid = route.query.uuid
 const settings = inject('settings')
 const isOutputExpanded = ref(true)
 const isInputsExpanded = ref(true)
 const widgetOutput = ref({})
 const widgetDetails = ref({})
 const isLoading = ref(false)
+const confirmDelete = ref(false)
 
 const componentMap = {
   str: VTextField,
@@ -203,6 +256,72 @@ function handleInputChange(input) {
   })
 }
 
+const handleKeydown = (event) => {
+  if (event.key === 'Enter') {
+    onDeleteWidget()
+  }
+}
+
+watch(confirmDelete, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleKeydown)
+  } else {
+    document.removeEventListener('keydown', handleKeydown)
+  }
+})
+
+const onDeleteWidget = async () => {
+  confirmDelete.value = !confirmDelete.value
+  if (!confirmDelete.value) {
+    await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('widgets:remove_widget', uuid)
+    router.push({ path: '/' })
+  }
+}
+
+const onDuplicateWidget = async () => {
+  const response = await socket
+    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+    .emitWithAck(
+      'widgets:duplicate_widget',
+      0,
+      uuid,
+      widgetDetails.value.name,
+      widgetDetails.value.description,
+    )
+  if (response) {
+    router.push({
+      path: '/widget',
+      query: { uuid: response.uuid },
+    })
+  }
+}
+
+const loadWidgetDetails = async (widget_uuid) => {
+  isLoading.value = true
+  try {
+    const response = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('widget:get_details', widget_uuid)
+    if (response) {
+      uuid = widget_uuid
+      widgetDetails.value = response
+    } else {
+      router.push({ path: '/' })
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+watch(
+  () => route.query.uuid,
+  (newUuid) => {
+    loadWidgetDetails(newUuid)
+  },
+)
+
 onMounted(async () => {
   socket.on('widget:details', (data) => {
     if (data['uuid'] == uuid) {
@@ -214,23 +333,12 @@ onMounted(async () => {
       widgetOutput.value = data['data']
     }
   })
-  isLoading.value = true
-  try {
-    const response = await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-      .emitWithAck('widget:get_details', uuid)
-    if (response) {
-      widgetDetails.value = response
-    } else {
-      router.push({ path: '/' })
-    }
-  } finally {
-    isLoading.value = false
-  }
+  loadWidgetDetails(uuid)
 })
 
 onBeforeUnmount(() => {
   socket.off('widget:details')
   socket.off('widgets:output')
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>

@@ -90,6 +90,11 @@ class COMDistance(WidgetBase):
     name = "COMDistance"
     description = "Distance between two COMs"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.com_distance.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

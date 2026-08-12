@@ -89,6 +89,11 @@ class HelixAnalysis(WidgetBase):
     name = "Helix Analysis"
     description = "Helix analysis using HELANAL"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.helix_analysis.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

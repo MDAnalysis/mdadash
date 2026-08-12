@@ -76,6 +76,11 @@ class ROG(WidgetBase):
     name = "ROG"
     description = "Radii of Gyration of a selection"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.rog.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

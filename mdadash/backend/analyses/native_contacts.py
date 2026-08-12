@@ -92,6 +92,11 @@ class NativeContacts(WidgetBase):
     name = "Native Contacts"
     description = "Native Contacts Analysis"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.native_contacts.html"
+    )
+
     _notes = (
         "The two contacting AtomGroups in their reference conformation are created "
         "when this widget instance is created or whenever the inputs for the "

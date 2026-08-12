@@ -68,6 +68,11 @@ class DSSPAnalysis(WidgetBase):
     name = "DSSP Analysis"
     description = "Secondary structure assignment of protein"
 
+    _doclink = (
+        "https://mdadash.readthedocs.io/en/latest/autosummary/"
+        "mdadash.backend.analyses.dssp.html"
+    )
+
     _inputs: ClassVar = [
         {
             "attribute": "_run_frequency",

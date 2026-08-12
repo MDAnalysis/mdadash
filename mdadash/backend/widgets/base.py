@@ -83,6 +83,10 @@ class WidgetBase(ABC):
         """Internal: Get the current instance notes"""
         return getattr(self, "_notes", None)
 
+    def _get_doclink(self):
+        """Internal: Get the current instance doclink"""
+        return getattr(self, "_doclink", None)
+
     def _get_tsinfo(self) -> dict:
         """Internal: Get the current timestep info"""
         return {
@@ -464,6 +468,7 @@ class WidgetManager:
                 "status": "ok",
                 "inputs": self._get_widget_inputs(uuid),
                 "notes": self._get_widget_notes(uuid),
+                "doclink": self._get_widget_doclink(uuid),
             }
         )
 
@@ -646,6 +651,11 @@ class WidgetManager:
         """Internal: Get notes for widget instance"""
         widget = WidgetManager._widget_instances[uuid]
         return widget._get_notes()
+
+    def _get_widget_doclink(self, uuid: str) -> str:
+        """Internal: Get doclink for widget instance"""
+        widget = WidgetManager._widget_instances[uuid]
+        return widget._get_doclink()
 
     def _set_widget_input(self, uuid: str, attribute: str, value: Any) -> bool:
         """Internal: Set a widget input"""
