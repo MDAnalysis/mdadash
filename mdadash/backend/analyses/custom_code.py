@@ -96,10 +96,10 @@ class CustomCode(WidgetBase):
     .. figure:: /_static/images/custom-code-widget-output.png
         :alt: Widget output
 
-    .. note::
+    .. caution::
 
-        Variables created in custom code blocks are common across the dashboard
-        kernel and hence must be chosen to not overwrite each other.
+        Variables and Classes created in custom code blocks are common across the
+        dashboard kernel and hence must be chosen to not overwrite each other.
 
     """
 

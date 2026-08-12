@@ -15,7 +15,12 @@ import comm
 import IPython
 import MDAnalysis as mda
 import numpy as np
-from MDAnalysis.coordinates.base import FrameIteratorAll, FrameIteratorBase, ProtoReader
+from MDAnalysis.coordinates.base import (
+    FrameIteratorAll,
+    FrameIteratorBase,
+    ProtoReader,
+    ReaderBase,
+)
 from MDAnalysis.coordinates.IMD import IMDReader
 from MDAnalysis.transformations import NoJump
 
@@ -29,13 +34,13 @@ logger = logging.getLogger(__name__)
 class BufferFrameIteratorIndices(FrameIteratorBase):
     """BufferFrameIteratorIndices
 
-    Iterable over the frames of a trajectory buffer listed as a sequence
-    of indices. This is very similar to `FrameIteratorIndices` in MDAnalysis,
-    but without `rewind()` and `__getitem__` as they aren't needed here.
+    Iterable over the frames of a trajectory buffer listed as a sequence of indices.
+    This is very similar to :class:`~MDAnalysis.coordinates.base.FrameIteratorIndices`
+    in MDAnalysis, but without ``rewind()`` and ``__getitem__`` as they aren't needed here.
 
     """
 
-    def __init__(self, trajectory, frames):
+    def __init__(self, trajectory: ReaderBase, frames: list):
         super().__init__(trajectory)
         self._frames = []
         for frame in frames:
@@ -63,12 +68,12 @@ class BufferedTrajectory:
     This class is a wrapper for the trajectory reader and provides
     buffered access to the last n timesteps.
 
-    `trajectory[index]` can be used to access individual frames. Index values
+    ``trajectory[index]`` can be used to access individual frames. Index values
     can range from 0 to the configured batch size.
 
     """
 
-    def __init__(self, trajectory: mda.Universe.trajectory, buffer_size: int):
+    def __init__(self, trajectory: ReaderBase, buffer_size: int):
         self._trajectory = trajectory
         self._buffer_size = buffer_size
         self._buffer = deque(maxlen=buffer_size)
@@ -178,7 +183,7 @@ class CommHandler:
         # set the handler for comm messages (comm_msg)
         self._comm.on_msg(self._handle_msg)
 
-    def _handle_msg(self, msg):
+    def _handle_msg(self, msg: dict):
         """Internal: Dispatch the message to the registered handler"""
         content_data = msg["content"]["data"]
         msg_type = content_data["msg_type"]
@@ -376,7 +381,7 @@ class UniverseManager:
         self._running = True
         self._comms.send({"status": "ok"})
 
-    def _trajectory_next(self, u, step):
+    def _trajectory_next(self, u: mda.Universe, step: int):
         """Internal: Iterate trajectory by `step` frame(s)"""
         try:
             # TODO: Modify this when `imdclient` and `IMDReader` are updated

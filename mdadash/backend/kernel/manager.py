@@ -1,5 +1,5 @@
 """
-Manager that manages the jupyter_client's AsyncKernelManager
+Manager for jupyter_client's AsyncKernelManager
 """
 
 import asyncio
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class KernelManager:
     """Kernel Manager
 
-    This class is responsible for managing the AsyncKernelManager (async kernel)
+    This class is responsible for managing the :class:`~jupyter_client.AsyncKernelManager`
     that runs all the MDAnalysis code. It takes care of starting the async
     kernel, stopping it and communicating with it. It interfaces with the
     :class:`~mdadash.backend.kernel.core.CommHandler` on the kernel side for messaging.

@@ -21,13 +21,68 @@ class RMSD(WidgetBase):
 
     **RMSD Analysis**
 
-    This widget uses `MDAnalysis.analysis.rms.rmsd`_ to calculate RMSD of a
+    This widget uses `MDAnalysis.analysis.rms.rmsd`_ to calculate `RMSD`_ of a
     selection. The reference positions used by this widget are the initial
     positions of the selection when the widget instance is created or the
     initial positions whenever the selection is updated.
 
+    .. note:: If you use trajectory data from simulations performed under periodic boundary
+        conditions then you must make your molecules whole before performing RMSD calculations so
+        that the centers of mass of the mobile and reference structure are properly superimposed.
+
+        You can add custom transformations to the universe in the Universe Configuration section
+        in the Settings page of the dasboard.
+
     .. _MDAnalysis.analysis.rms.rmsd: https://docs.mdanalysis.org/stable/
         documentation_pages/analysis/rms.html#MDAnalysis.analysis.rms.rmsd
+
+    .. _RMSD: https://userguide.mdanalysis.org/stable/
+        examples/analysis/alignment_and_rms/rmsd.html
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``protein``
+
+    Center
+        Subtract center of geometry before calculation
+            Default: ``False``
+
+    Superposition:
+        Perform a rotational and translational superposition with the fast QCP algorithm
+            Default: ``False``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/rmsd_output.jpg
+        :alt: RMSD output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

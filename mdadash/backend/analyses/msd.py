@@ -18,6 +18,73 @@ logger = logging.getLogger(__name__)
 
 
 class MSDAnalysis(WidgetBase):
+    """
+
+    **MSD Analysis**
+
+    This widget calculates the `Mean Squared Displacement`_ of a selection.
+
+    A custom :class:`SlidingWindowMSD` is used to calculate MSD of the selection for
+    each new frame against the time-lag buffer / window of past frames.
+
+    .. important::
+        To correctly compute MSD using this widget, you must supply coordinates
+        in the unwrapped convention, also known as no-jump. That is, when atoms
+        pass the periodic boundary, they must not be wrapped back into the primary
+        simulation cell. You can enable NoJump for the universe in the Universe
+        Configuration section in the Settings page.
+
+    .. _Mean Squared Displacement: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/msd.html
+
+    **Inputs**
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``all``
+
+    Dimension type
+        Desired dimensions to be included in the MSD -
+        `xyz`, `xy`, `yz`, `xz`, `x`, `y` or `z`
+
+            Default: ``xyz``
+
+    Show diffusion coefficient
+        Show self-diffusion coefficient calculated from MSD
+            Default: ``False``
+
+    Show particle MSDs
+        Show MSDs for individual particles of the selection
+            Default: ``False``
+
+        .. caution::
+            Enabling this option for large selections can slow down the
+            analysis and generation of the plot data
+
+    Log sale:
+        Use a log scale for the axes
+            Default: ``False``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/msd_output.jpg
+        :alt: MSD output
+
+    .. tip::
+        This widget can run in parallel
+
+    """
+
     name = "MSD Analysis"
     description = "Mean squared displacement analysis"
 
@@ -203,9 +270,13 @@ class MSDAnalysis(WidgetBase):
 
 
 class SlidingWindowMSD:
-    """Sliding Window MSD
+    """
 
-    Calculate MSD for a sliding window of frames
+    **Sliding Window MSD**
+
+    This class computes the MSD of the selection for each new frame
+    against the time-lag buffer / window of past N frames. The total number
+    of computations for each frame is O(N).
 
     """
 

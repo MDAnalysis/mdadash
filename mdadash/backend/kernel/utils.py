@@ -1,5 +1,5 @@
 """
-Utils
+Common utils for use in kernel core
 """
 
 from .core import comms, um

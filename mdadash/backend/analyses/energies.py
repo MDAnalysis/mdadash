@@ -15,7 +15,61 @@ logger = logging.getLogger(__name__)
 
 
 class EnergyWidgetBase:
-    "Base class for Energy Widgets"
+    """
+
+    **Base class for Energy Widgets**
+
+    This is the base class for all Energy widgets.
+
+    Energy values are extracted from `MDAnalysis.coordinates.timestep.Timestep.data`_.
+
+    The following keys are used for their respective plots:
+
+    * ``temperature`` - Absolute Temperature
+    * ``total_energy`` - Total Energy
+    * ``potential_energy`` - Potential Energy
+    * ``coulomb_energy`` - Coulomb Interaction Energy
+    * ``bonds_energy`` - Bonds Energy
+    * ``angles_energy`` - Angles Energy
+    * ``dihedrals_energy`` - Dihedrals Energy
+    * ``improper_dihedrals_energy`` - Improper Dihedrals Energy
+    * ``van_der_walls_energy`` - Van Der Waals Energy
+
+    .. note::
+        Energies are only available in the timestep data for streaming trajectories.
+        The simulation engine must also be explicitly configured to send them
+
+    .. _MDAnalysis.coordinates.timestep.Timestep.data: https://docs.mdanalysis.org/stable/
+        documentation_pages/coordinates/timestep.html#MDAnalysis.coordinates.timestep.Timestep.data
+
+    **Inputs**
+
+    Max values
+        .. compound::
+            Max values to show in plot
+                Default: ``100``
+
+    Title
+        Title for the plot
+            Default: ''
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Outputs**
+
+    Here is an example output plot of the **Absolute Temperature** widget:
+
+    .. figure:: /_static/images/absolute_temperature_output.jpg
+        :alt: Absolute Temperature output
+
+    Here is an example output plot of the **Total Energy** widget:
+
+    .. figure:: /_static/images/total_energy_output.jpg
+        :alt: Total Energy output
+
+    """
 
     name = ""
     data_key = ""
@@ -122,7 +176,11 @@ class EnergyWidgetBase:
 
 
 class AbsoluteTemperature(EnergyWidgetBase, WidgetBase):
-    """Absolute Temperature"""
+    """Absolute Temperature
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Absolute Temperature"
     description = "Plot of Absolute Temperature"
@@ -131,7 +189,11 @@ class AbsoluteTemperature(EnergyWidgetBase, WidgetBase):
 
 
 class TotalEnergy(EnergyWidgetBase, WidgetBase):
-    """Total Energy"""
+    """Total Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Total Energy"
     description = "Plot of Total Energy"
@@ -139,7 +201,11 @@ class TotalEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class PotentialEnergy(EnergyWidgetBase, WidgetBase):
-    """Potential energy"""
+    """Potential energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Potential energy"
     description = "Plot of Potential Energy"
@@ -147,7 +213,11 @@ class PotentialEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class VanDerWaalsEnergy(EnergyWidgetBase, WidgetBase):
-    """Van Der Waals Energy"""
+    """Van Der Waals Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Van Der Waals Energy"
     description = "Plot of Van Der Waals Energy"
@@ -155,7 +225,11 @@ class VanDerWaalsEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class CoulombInteractionEnergy(EnergyWidgetBase, WidgetBase):
-    """Coulomb Interaction Energy"""
+    """Coulomb Interaction Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Coulomb Interaction Energy"
     description = "Plot of Coulomb Interaction Energy"
@@ -163,7 +237,11 @@ class CoulombInteractionEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class BondsEnergy(EnergyWidgetBase, WidgetBase):
-    """Bonds Energy"""
+    """Bonds Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Bonds Energy"
     description = "Plot of Bonds Energy"
@@ -171,7 +249,11 @@ class BondsEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class AnglesEnergy(EnergyWidgetBase, WidgetBase):
-    """Angles Energy"""
+    """Angles Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Angles Energy"
     description = "Plot of Angles Energy"
@@ -179,7 +261,11 @@ class AnglesEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class DihedralsEnergy(EnergyWidgetBase, WidgetBase):
-    """Dihedrals Energy"""
+    """Dihedrals Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Dihedrals Energy"
     description = "Plot of Dihedrals Energy"
@@ -187,7 +273,11 @@ class DihedralsEnergy(EnergyWidgetBase, WidgetBase):
 
 
 class ImproperDihedralsEnergy(EnergyWidgetBase, WidgetBase):
-    """Improper Dihedrals Energy"""
+    """Improper Dihedrals Energy
+
+    See :class:`EnergyWidgetBase` for more details.
+
+    """
 
     name = "Improper Dihedrals Energy"
     description = "Plot of Improper Dihedrals Energy"

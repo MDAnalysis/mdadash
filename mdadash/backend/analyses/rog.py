@@ -17,9 +17,59 @@ logger = logging.getLogger(__name__)
 
 
 class ROG(WidgetBase):
-    """ROG
+    """
 
-    Radii of Gyration of a selection
+    **ROG**
+
+    This widget plots the `Radii of Gyration`_ of a selection.
+
+    .. _Radii of gyration: https://userguide.mdanalysis.org/stable/
+        examples/analysis/custom_trajectory_analysis.html#Radius-of-gyration
+
+    **Inputs**
+
+    Run frequency
+        .. compound::
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Run mode
+        The mode in which the widget is run - `serial` or `parallel`
+            Default: ``serial``
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``protein``
+
+    Periodic
+        Select with periodic boundary conditions
+            Default: ``True``
+
+    Updating
+        Update selection during each timestep
+            Default: ``False``
+
+    Custom title
+        Custom title for the plot
+            Default: ''
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
+
+    X-axis
+        X-axis value - `time` or `step`
+            Default: ``time``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/rog_output.jpg
+        :alt: ROG output
+
+    .. tip::
+        This widget supports batching and can run in parallel
 
     """
 

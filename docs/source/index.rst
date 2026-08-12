@@ -13,8 +13,8 @@ Source code and contributing instructions for this project can be found in the `
    :caption: Contents:
 
    getting_started
+   built_in_widgets
    api
-
 
 
 Indices and tables
@@ -22,4 +22,3 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

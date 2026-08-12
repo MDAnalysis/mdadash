@@ -15,9 +15,35 @@ logger = logging.getLogger(__name__)
 
 
 class JaninPlot(WidgetBase):
-    """Janin Plot
+    """
 
-    Dihedral angles analysis using Janin plot
+    **Janin Plot**
+
+    This widget uses `MDAnalysis.analysis.dihedrals.Janin`_ for dihedral angles
+    analysis and creates a `Janin plot`_.
+
+    .. _MDAnalysis.analysis.dihedrals.Janin: https://docs.mdanalysis.org/stable/
+        documentation_pages/analysis/dihedrals.html#MDAnalysis.analysis.dihedrals.Janin
+
+    .. _Janin plot: https://userguide.mdanalysis.org/stable/
+        examples/analysis/structure/dihedrals.html#Janin-analysis
+
+    **Inputs**
+
+    Selection
+        MDAnalysis selection phrase
+            Default: ``protein``
+
+    Show reference
+        Show allowed and marginally allowed regions
+            Default: ``True``
+
+    **Output**
+
+    Here is an example output plot of this widget:
+
+    .. figure:: /_static/images/janin_output.jpg
+        :alt: Janin Plot output
 
     """
 

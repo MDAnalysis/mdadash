@@ -1,5 +1,5 @@
 """
-Manager that manages the dashboard state
+Manager for the dashboard state
 """
 
 import asyncio
@@ -21,10 +21,10 @@ class StateManager:
 
     The state dictionary has the following keys:
 
-    running_state:
+    running_state: dict
         The running state of the dashboard
 
-    settings:
+    settings: dict
         All the values used in the dashboard settings page. This dict has the
         following keys:
 
@@ -32,6 +32,21 @@ class StateManager:
             An array of universe configurations required to create MDAnalysis
             universes. These include the topology, trajectory, imdclient related
             params and any additional user-defined kwargs setup in the UI
+
+    widgets: dict
+        All the details about widget instances
+
+    widgets_layout: list
+        The layout details of the widgets on the dashboard GUI
+
+    alertID: int
+        The next auto-incrementing ID to use for a new alert
+
+    alerts: list
+        List of all the alerts
+
+    notebooks: dict
+        All the details about notebooks created
 
     Attributes
     ----------
@@ -55,6 +70,12 @@ class StateManager:
 
     widgets: dict
         All the widget instances info
+
+    alerts: list
+        List of all the alerts
+
+    notebooks: dict
+        All the notebooks created
 
     """
 
