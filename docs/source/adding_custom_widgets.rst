@@ -51,22 +51,38 @@ for all Widgets (defaults shown below):
     _run_frequency = "every-frame"
     _run_mode = "serial"
 
-``_run_frequency`` specifies how often the widget is run. It takes one of two values:
-``every-frame`` or ``batch``.
+* ``_run_frequency`` specifies how often the widget is run. It takes one of two values:
 
-``_run_mode`` specifies how the widget code is run. It takes one of two values:
-``serial`` or ``parallel``.
+  * ``every-frame``
+  * ``batch``.
+
+* ``_run_mode`` specifies how the widget code is run. It takes one of two values:
+
+  * ``serial``
+  * ``parallel``.
 
 By default, all Widgets run every frame serially (due to defaults above) unless the above
 attributes are customized.
 
-Both these attributes can be configured independent of each other. Which method(s) in
-the Widget class gets invoked depend on both these attributes as described below.
+Both these attributes can be configured independent of each other. Which run method(s)
+in the Widget class gets invoked depend on both these attributes as described in the
+following sections.
+
+These available run methods are:
+
+* :meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame`
+* :meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch`
+* :meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job`
+* :meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results`
 
 .. note::
 
-    A Widget can make these attributes dynamically changeable at runtime as well by making
-    them as `Inputs`_, which then show corresponding options in the UI.
+    One of :meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` or
+    :meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` must be implemented by
+    the Widget class.
+
+    A Widget can make the ``_run_frequency`` and ``_run_mode`` attributes dynamically
+    changeable at runtime as well by making them as `Inputs`_.
 
 _run_frequency
 ~~~~~~~~~~~~~~
@@ -86,10 +102,10 @@ If the ``_run_mode`` is ``parallel``, see the next section to see what gets invo
 
 If the ``_run_mode`` is ``serial``:
 
-* When ``_run_frequency`` is ``every-frame``,
+* and ``_run_frequency`` is ``every-frame``,
   :meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` method is invoked.
 
-* When ``_run_frequency`` is ``batch``,
+* and ``_run_frequency`` is ``batch``,
   :meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` method is invoked.
 
 _run_mode
@@ -123,6 +139,9 @@ invoked by the dashboard framework at those stages.
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_pause`
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.on_pre_resume`
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change`
+
+All the lifecycle methods are optional and the Widget class can choose to implement them
+as they see fit.
 
 Inputs
 ------
@@ -212,9 +231,17 @@ shown below:
         "type": "cell",
     },
 
+Here is an example of how the different inputs show up in the UI based on their type:
+
+.. image:: _static/images/custom-widget-inputs.png
+   :alt: Custom Widget Inputs
+
 The :meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler gets invoked
 for any input change made from the dasboard UI. Any validation errors raised by the
 handler will show up as errors in the UI as well.
+
+Having inputs for the Widget is optional and the Widget class can choose to add them as
+they see fit.
 
 .. caution::
 
@@ -231,6 +258,19 @@ if required when any custom conditions are met in their code.
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.pause_simulation`
 
 
+Notes and Docs link
+-------------------
+
+Widget classes can add an optional ``_notes`` string attibute that will display the given
+string as Notes in the Widget details page as shown below:
+
+.. image:: _static/images/widget-notes.png
+   :alt: Widget Notes
+
+An optional ``_doclink`` string attribute can be provided with a link to the Widget class
+documentation and if present, it will be available as a button in the Widget details page
+as shown above (book icon).
+
 Automatic refresh
 -----------------
 
@@ -239,6 +279,48 @@ Widget class gets updated (typically through a Notebook cell execution in the da
 All existing inputs are retained as is. This allows updates to the Widget class code reflect
 immediately in existing Widget outputs.
 
+
+Examples
+--------
+
+Here is a simple Widget that has a single input made available in the UI to customize the
+MDAnalysis selection phrase and displays the center-of-mass of that selection every frame:
+
+.. code-block:: python
+
+    from mdadash.backend.widgets.base import WidgetBase
+
+    class CustomWidget(WidgetBase):
+        name = "Custom Widget"
+        _override_name = True
+
+        _inputs = [
+            {
+                "attribute": "selection",
+                "name": "Selection",
+                "description": "MDAnalysis selection phrase",
+                "type": "str",
+            },
+        ]
+
+        def __init__(self):
+            super().__init__()
+            self.selection = "protein"
+
+        def run_every_frame(self):
+            com = self.u.select_atoms(self.selection).center_of_mass()
+            print(f"COM of {self.selection} is ", com)
+
+The ``_override_name`` attribute set to ``True`` is added in the class above to make any
+code changes to the above class update in real-time.
+
+Here is an example of how this Widget shows up in the UI along with its output:
+
+.. image:: _static/images/custom-widget-output.png
+   :alt: Custom Widget Output
+
+All the :doc:`built_in_widgets` use the exact same framework described here and the sources
+for these are examples of more complex use cases.
 
 ----
 
