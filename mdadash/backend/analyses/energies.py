@@ -44,10 +44,14 @@ class EnergyWidgetBase:
 
     **Inputs**
 
-    Max values
+    Run frequency
         .. compound::
-            Max values to show in plot
-                Default: ``100``
+            The frequency with which the widget is run - `every-frame` or `batch`
+                Default: ``every-frame``
+
+    Max values
+        Max values to show in plot
+            Default: ``100``
 
     Title
         Title for the plot
@@ -87,6 +91,16 @@ class EnergyWidgetBase:
     )
 
     _inputs: ClassVar = [
+        {
+            "attribute": "_run_frequency",
+            "name": "Run frequency",
+            "description": "The frequency with which the widget is run",
+            "type": "select",
+            "items": [
+                "every-frame",
+                "batch",
+            ],
+        },
         {
             "attribute": "maxlen",
             "name": "Max values",
@@ -154,6 +168,10 @@ class EnergyWidgetBase:
         self._set_title()
         self._reset_plot_values()
 
+    def on_post_connect(self):
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
+        self._update_plot(self._compute_current_frame())
+
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "maxlen":
@@ -165,20 +183,47 @@ class EnergyWidgetBase:
         elif attribute == "x_type":
             self._set_x_values()
 
-    def run_every_frame(self):
-        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
+    def _compute_current_frame(self):
+        """Compute for current frame"""
         ts = self.u.trajectory.ts  # pylint: disable=no-member
-        if self.data_key not in ts.data:
-            return  # pragma: no cover
-        self.steps.append(ts.data["step"])
-        self.times.append(ts.data["time"])
-        self.y_values.append(ts.data[self.data_key])
-        # update plot
+        return (
+            ts.data["step"],
+            ts.data["time"],
+            ts.data.get(self.data_key),
+        )
+
+    def _compute_batch(self):
+        """Compute for current batch"""
+        u = self.u  # pylint: disable=no-member
+        values = []
+        for i in range(u.trajectory.buffer_size):
+            _ = u.trajectory[i]
+            values.append(self._compute_current_frame())
+        return values
+
+    def _update_plot(self, values):
+        """Append values and update plot"""
+        if isinstance(values, tuple):
+            values = [values]
+        for value in values:
+            (steps, times, v) = value
+            self.steps.append(steps)
+            self.times.append(times)
+            self.y_values.append(v)
+        # update plot points
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
         self.fig.canvas.draw()
         display(self.fig)
+
+    def run_every_frame(self):
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
+        self._update_plot(self._compute_current_frame())
+
+    def run_batch(self):
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` handler"""
+        self._update_plot(self._compute_batch())
 
 
 class AbsoluteTemperature(EnergyWidgetBase, WidgetBase):

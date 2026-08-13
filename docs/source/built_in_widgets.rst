@@ -34,7 +34,7 @@ and can run in parallel:
      - ✅
    * - :mod:`~mdadash.backend.analyses.energies`
      - Widgets for various simulation energies
-     - —
+     - ✅
      - —
    * - :mod:`~mdadash.backend.analyses.helix_analysis`
      - Helix Analysis

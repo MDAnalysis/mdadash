@@ -419,9 +419,22 @@ async def test_widget_invalid_inputs(_client, imd_server):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_energies(_client, imd_server):
+async def test_widget_run_energies_serial(_client, imd_server):
     uuid = await add_widget("Absolute Temperature")
     await connect_to_simulation(imd_server)
+    await resume_simulation(imd_server)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_energies_batch(_client, imd_server):
+    uuid = await add_widget("Absolute Temperature")
+    await connect_to_simulation(imd_server)
+    inputs = [
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
     await resume_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
