@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to ``mdadash`` documentation!
-=========================================================
+=====================================
 
 Source code and contributing instructions for this project can be found in the `GitHub Repository <https://github.com/MDAnalysis/mdadash>`_.
 
@@ -15,6 +15,8 @@ Source code and contributing instructions for this project can be found in the `
    getting_started
    built_in_widgets
    adding_custom_widgets
+   batching
+   parallelization
    api
 
 

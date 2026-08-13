@@ -84,6 +84,8 @@ These available run methods are:
     A Widget can make the ``_run_frequency`` and ``_run_mode`` attributes dynamically
     changeable at runtime as well by making them as `Inputs`_.
 
+.. _run-frequency:
+
 _run_frequency
 ~~~~~~~~~~~~~~
 
@@ -108,6 +110,8 @@ If the ``_run_mode`` is ``serial``:
 * and ``_run_frequency`` is ``batch``,
   :meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` method is invoked.
 
+.. _run-mode:
+
 _run_mode
 ~~~~~~~~~
 
@@ -117,7 +121,7 @@ If the ``_run_mode`` is ``parallel`` for a given widget instance, a
 :meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` method is invoked to
 retrieve the parallel job (a ``joblib.delayed`` tuple). A global "Parallel Jobs" under
 "Settings > Dashboard Configuration" in the dasboard controls the total number of jobs
-run in parallel during each iteration (``n_jobs`` param for ``joblib.Parallel`` call).
+run in parallel during each iteration (``n_jobs`` param for `joblib.Parallel`_ call).
 
 If a widget has ``_run_mode`` as ``parallel``, after the parallel job is completed, a
 :meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` method is invoked
@@ -336,3 +340,5 @@ for these are examples of more complex use cases.
 If you are adding a custom Widget that could be useful for others in the community, you can
 create a `pull request <https://github.com/MDAnalysis/mdadash/pulls>`_ to make it part of the
 :doc:`built_in_widgets`.
+
+.. _joblib.Parallel: https://joblib.readthedocs.io/en/stable/generated/joblib.Parallel.html
