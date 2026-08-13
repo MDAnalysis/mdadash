@@ -33,6 +33,7 @@ The rules for this file:
 - Added batching and parallel support for com distance widget (PR #64)
 - Minor widget enhancements (PR #65)
 - Added custom widgets documentation (PR #66)
+- Added batching and parallelization documentation (PR #67)
 
 ### Fixed
 
