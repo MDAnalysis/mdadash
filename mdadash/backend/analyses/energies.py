@@ -150,12 +150,12 @@ class EnergyWidgetBase:
         self.ax.set_xlabel(x_label)
 
     def on_post_create(self):
-        """on_post_create handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_create` handler"""
         self._set_title()
         self._reset_plot_values()
 
     def on_input_change(self, attribute, _old_value, new_value):
-        """on_input_change handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
@@ -166,7 +166,7 @@ class EnergyWidgetBase:
             self._set_x_values()
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         ts = self.u.trajectory.ts  # pylint: disable=no-member
         if self.data_key not in ts.data:
             return  # pragma: no cover

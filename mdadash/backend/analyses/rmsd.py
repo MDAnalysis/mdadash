@@ -226,16 +226,16 @@ class RMSD(WidgetBase):
         self._update_plot(self._compute_current_frame())
 
     def on_post_create(self):
-        """on_post_create handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_create` handler"""
         self._set_title()
         self._reset_plot_values()
 
     def on_post_connect(self):
-        """on_post_connect handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._update_selection()
 
     def on_input_change(self, attribute, _old_value, new_value):
-        """on_input_change handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "maxlen":
             if new_value < 0:
                 self.maxlen = self.default_maxlen
@@ -288,19 +288,19 @@ class RMSD(WidgetBase):
         display(self.fig)
 
     def run_every_frame(self):
-        """every-frame run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         self._update_plot(self._compute_current_frame())
 
     def run_batch(self):
-        """batch run handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_batch` handler"""
         self._update_plot(self._compute_batch())
 
     def get_parallel_job(self):
-        """get parallel job handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` handler"""
         if self._run_frequency == "batch":
             return delayed(self._compute_batch)()
         return delayed(self._compute_current_frame)()
 
     def apply_parallel_results(self, values):
-        """apply parallel results handler"""
+        """:meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` handler"""
         self._update_plot(values)
