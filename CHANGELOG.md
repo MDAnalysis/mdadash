@@ -34,6 +34,7 @@ The rules for this file:
 - Minor widget enhancements (PR #65)
 - Added custom widgets documentation (PR #66)
 - Added batching and parallelization documentation (PR #67)
+- Added Architecture documentation (PR #68)
 
 ### Fixed
 

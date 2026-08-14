@@ -19,6 +19,11 @@ A Widget class that supports a ``parallel`` :ref:`_run_mode <run-mode>` must imp
 :meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` and
 :meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` methods.
 
+Here is the Widget execution flow when there are parallel Widgets to be run:
+
+.. image:: _static/images/widget-execution.png
+   :alt: Widget Execution
+
 As mentioned in the docs for the
 :meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` and
 :meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` methods, everything

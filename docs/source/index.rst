@@ -17,6 +17,7 @@ Source code and contributing instructions for this project can be found in the `
    adding_custom_widgets
    batching
    parallelization
+   architecture
    api
 
 
