@@ -29,13 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added built-in widgets documentation (PR #63)
-- Added batching and parallel support for com distance widget (PR #64)
-- Minor widget enhancements (PR #65)
-- Added custom widgets documentation (PR #66)
-- Added batching and parallelization documentation (PR #67)
-- Added Architecture documentation (PR #68)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -51,6 +44,25 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.0.9]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+08/14/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added built-in widgets documentation (PR #63)
+- Added batching and parallel support for com distance widget (PR #64)
+- Minor widget enhancements (PR #65)
+- Added custom widgets documentation (PR #66)
+- Added batching and parallelization documentation (PR #67)
+- Added Architecture documentation (PR #68)
 
 ## [0.0.8]
 

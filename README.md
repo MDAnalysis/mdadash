@@ -123,7 +123,10 @@ options:
 The dashboard can be accessed by navigating to [`http://127.0.0.1:8000`](http://127.0.0.1:8000) from any browser.
 
 > Note:
+>
 > Both the dashboard host and post can be customized using the `mdadash` command line options.
+>
+> Setting `--dashboard-host 0.0.0.0` will make the dashboard server accessible from any machine over the network.
 
 ### Development
 
