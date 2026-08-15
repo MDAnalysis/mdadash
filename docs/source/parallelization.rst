@@ -1,19 +1,19 @@
 Parallelization
 ===============
 
-``mdadash`` supports running Widgets in parallel. It uses `Joblib`_ with the default
+`mdadash`_ supports running Widgets in parallel. It uses `Joblib`_ with the default
 ``loky`` backend to run the parallel jobs as separate processes. A global "Parallel Jobs"
 under "Settings > Dashboard Configuration" in the dasboard controls the total number of jobs
 that can run in parallel (``n_jobs`` param for `joblib.Parallel`_ call).
 
-All the analyses that run in ``mdadash`` are CPU-bound and hence a Process-based parallelism
+All the analyses that run in `mdadash`_ are CPU-bound and hence a Process-based parallelism
 is chosen instead of Thread-based parallelism.
 
 `IMDReader`_ uses `imdclient`_ to connect to a live MD simulation. Because of the use of a
-network socket within `imdclient`_, this is not serializable by default. ``mdadash`` patches
+network socket within `imdclient`_, this is not serializable by default. `mdadash`_ patches
 `IMDReader`_ to remove `imdclient`_ from the serialization state since the trajectory is never
 iterated using `imdclient`_ within a parallel job. This makes parallelization possible within
-``mdadash`` for streaming trajectories.
+`mdadash`_ for streaming trajectories.
 
 A Widget class that supports a ``parallel`` :ref:`_run_mode <run-mode>` must implement 
 :meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` and
@@ -45,6 +45,8 @@ Widgets.
 The list of all the Widgets that can be run in parallel can be found on the
 :doc:`built_in_widgets` page.
 
+
+.. _mdadash: https://github.com/MDAnalysis/mdadash
 
 .. _Joblib: https://joblib.readthedocs.io/en/stable/
 

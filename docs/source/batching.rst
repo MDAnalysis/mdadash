@@ -11,7 +11,7 @@ in `IMDReader`_.
 Buffered Access
 ---------------
 
-To support buffered, time-dependent analyses in ``mdadash``, a
+To support buffered, time-dependent analyses in `mdadash`_, a
 :class:`~mdadash.backend.kernel.core.BufferedTrajectory` is introduced.
 
 The original trajectory is wrapped by the :class:`~mdadash.backend.kernel.core.BufferedTrajectory`
@@ -95,6 +95,8 @@ shown in this example:
 The list of all the Widgets that support batching can be found on the
 :doc:`built_in_widgets` page.
 
+
+.. _mdadash: https://github.com/MDAnalysis/mdadash
 
 .. _IMDReader: https://docs.mdanalysis.org/stable/
     documentation_pages/coordinates/IMD.html

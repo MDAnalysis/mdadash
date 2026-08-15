@@ -1,12 +1,12 @@
 Getting Started
 ===============
 
-This page details how to get started with ``mdadash``.
+This page details how to get started with `mdadash`_.
 
 Installation
 ~~~~~~~~~~~~
 
-``mdadash`` can be installed in any of the following ways depending on
+`mdadash`_ can be installed in any of the following ways depending on
 your Python environment:
 
 .. code:: sh
@@ -41,7 +41,7 @@ To execute directly from an isolated environment without installing:
 Run
 ~~~
 
-Once the package is installed, it can be run using the ``mdadash``
+Once the package is installed, it can be run using the `mdadash`_
 command to start the dashboard server:
 
 .. code:: sh
@@ -107,3 +107,5 @@ The dashboard can be accessed by navigating to
 
 .. image:: _static/images/cover-image.png
    :alt: MDAnalysis Dashboard
+
+.. _mdadash: https://github.com/MDAnalysis/mdadash

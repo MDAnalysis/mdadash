@@ -3,10 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ``mdadash`` documentation!
+Welcome to `mdadash`_ documentation!
 =====================================
 
-Source code and contributing instructions for this project can be found in the `GitHub Repository <https://github.com/MDAnalysis/mdadash>`_.
+Source code and contributing instructions for this project can be found in the
+GitHub Repository: https://github.com/MDAnalysis/mdadash.
 
 .. toctree::
    :maxdepth: 2
@@ -26,3 +27,5 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
+
+.. _mdadash: https://github.com/MDAnalysis/mdadash
