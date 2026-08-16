@@ -162,7 +162,7 @@ class ROG(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
-        self.ax.set_ylabel("Radii (Å)")
+        self.ax.set_ylabel("Radius (Å)")
         labels = ["all", "x-axis", "y-axis", "z-axis"]
         self.plots = [self.ax.plot([], [], label=label)[0] for label in labels]
         self.ax.legend(loc="upper left")

@@ -386,7 +386,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { computed, ref, inject, nextTick, onActivated, onDeactivated, h, watch } from 'vue'
+import { computed, toRaw, ref, inject, nextTick, onActivated, onDeactivated, h, watch } from 'vue'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useRouter } from 'vue-router'
 import {
@@ -622,6 +622,7 @@ async function widgetFunction(item, action) {
     router.push({
       path: '/widget',
       query: { uuid: item.i },
+      state: { widgetOutput: toRaw(widgetOutputs.value[item.i]) },
     })
   } else {
     // (action['title'] == 'Duplicate')

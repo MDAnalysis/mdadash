@@ -361,6 +361,7 @@ describe('DashboardView.vue', () => {
       query: {
         uuid: 'uuid1',
       },
+      state: { widgetOutput: undefined },
     })
     components = widgetGridItem.findAllComponents({ name: 'VBtn' })
     // click on the widget action button

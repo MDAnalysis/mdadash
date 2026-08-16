@@ -323,6 +323,13 @@ watch(
 )
 
 onMounted(async () => {
+  // v8 ignore next
+  if (history.state?.widgetOutput) {
+    widgetOutput.value = history.state.widgetOutput
+    // remove so that refresh doesn't load old value
+    delete history.state.widgetOutput
+    history.replaceState(history.state, '')
+  }
   socket.on('widget:details', (data) => {
     if (data['uuid'] == uuid) {
       widgetDetails.value = data
