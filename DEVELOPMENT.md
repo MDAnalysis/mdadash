@@ -21,6 +21,10 @@ This page contains developer instructions to build and maintain `mdadash`.
 - [Build](#build)
 - [Verify GitHub actions locally](#verify-github-actions-locally)
 - [Docs](#docs)
+- [Publishing](#publishing)
+  - [TestPyPI](#testpypi)
+  - [PyPI](#pypi)
+  - [conda-forge](#conda-forge)
 
 ### Installation
 
@@ -225,3 +229,34 @@ make clean && make html
 ```
 
 Open `docs/_build/html/index.html` to view the docs in the browser.
+
+### Publishing
+
+#### TestPyPI
+
+Create a new tag to trigger TestPyPI deployment (needs to be done from command line as it is not possible from GitHub web UI directly):
+
+Example:
+
+```
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+After the action runs successfully, verify at: https://test.pypi.org/project/mdadash/
+
+#### PyPI
+
+Create a new release with the tag above after verifying on TestPyPI.
+
+After the action runs successfully, verify at: https://pypi.org/project/mdadash/
+
+#### conda-forge
+
+Feedstock repo: https://github.com/conda-forge/mdadash-feedstock
+
+A new PR will automatically get created by `regro-cf-autotick-bot` after a few hours of the new package version being available on PyPI.
+
+To manually trigger a version update:
+
+Create a new issue with the type `Bot commands` and enter `@conda-forge-admin, please update version` in the issue title. The bot will create a new PR immediately.
