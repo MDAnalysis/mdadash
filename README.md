@@ -30,7 +30,7 @@
 
 Dashboard for tracking and analyzing live MD simulations with streaming.
 
-mdadash is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md).
+`mdadash` is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md).
 
 ## Getting Started
 
@@ -74,15 +74,16 @@ Once the package is installed, it can be run using the `mdadash` command to star
 mdadash --topology <topology_filename> --trajectory <trajectory_url_or_file>
 ```
 
-Examples:
+`mdadash` supports both streaming and file based trajectories. Here are examples for
+both cases:
 
-Streaming:
+#### Streaming:
 
 ```sh
 mdadash --topology topology.tpr --trajectory imd://localhost:8889
 ```
 
-File based trajectories:
+#### File based trajectories:
 
 ```sh
 mdadash --topology topology.tpr --trajectory trajectory.xtc
@@ -128,13 +129,17 @@ The dashboard can be accessed by navigating to [`http://127.0.0.1:8000`](http://
 >
 > Setting `--dashboard-host 0.0.0.0` will make the dashboard server accessible from any machine over the network.
 
+### Documentation
+
+Documentation for `mdadash` is available at: https://mdadash.readthedocs.io/
+
 ### Development
 
 Developer instructions for this project can be found [here](DEVELOPMENT.md).
 
 ### Copyright
 
-The mdadash source code is hosted at https://github.com/MDAnalysis/mdadash
+The `mdadash` source code is hosted at https://github.com/MDAnalysis/mdadash
 and is available under the [MIT License](https://opensource.org/licenses/MIT) (see the file [LICENSE](https://github.com/MDAnalysis/mdadash/blob/main/LICENSE)).
 
 Copyright (c) 2026, MDAnalysis
@@ -143,4 +148,4 @@ Copyright (c) 2026, MDAnalysis
 
 Project based on the
 [MDAnalysis Cookiecutter](https://github.com/MDAnalysis/cookiecutter-mda) version 0.1.
-Please cite [MDAnalysis](https://github.com/MDAnalysis/mdanalysis#citation) when using mdadash in published work.
+Please cite [MDAnalysis](https://github.com/MDAnalysis/mdanalysis#citation) when using `mdadash` in published work.

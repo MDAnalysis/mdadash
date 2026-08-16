@@ -48,16 +48,19 @@ command to start the dashboard server:
 
    mdadash --topology <topology_filename> --trajectory <trajectory_url_or_file>
 
-Examples:
+`mdadash`_ supports both streaming and file based trajectories. Here are examples for
+both cases:
 
-Streaming:
+Streaming
+^^^^^^^^^
 
 .. code:: sh
 
    mdadash --topology topology.tpr --trajectory imd://localhost:8889
 
 
-File based trajectories:
+File based trajectories
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: sh
 

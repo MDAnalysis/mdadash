@@ -45,6 +45,23 @@ The rules for this file:
 
 <!-- Removed features -->
 
+## [0.1.0]
+
+This is the first minor release to mark the end of the official coding period for the GSoC 2026 [project](https://summerofcode.withgoogle.com/programs/2026/projects/DzTMshtu) that started `mdadash`.
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+08/16/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Show output when available on mount of widget details page (PR #69)
+  - This shows current output on widget edit even when simulation is paused
+
 ## [0.0.9]
 
 ### Authors
