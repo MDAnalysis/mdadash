@@ -657,6 +657,7 @@ class KernelManager:
             },
         )
         details = await self.get_widget_details(widget_uuid)
+        await self.sio.emit("widget:details", details)
         # save inputs state
         self.sm.widgets[widget_uuid]["inputs"] = [
             {k: i[k] for k in ("attribute", "value", "error") if k in i}
