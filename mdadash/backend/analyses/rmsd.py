@@ -217,10 +217,11 @@ class RMSD(WidgetBase):
             self.x_values = self.times
         self.ax.set_xlabel(x_label)
 
-    def _update_selection(self):
+    def _update_selection(self, reset_reference=True):
         """Update atom groups when selection phrase changes"""
         self.ag = self.u.select_atoms(self.selection)
-        self.reference_positions = self.ag.positions.copy()
+        if reset_reference or self.reference_positions is None:
+            self.reference_positions = self.ag.positions.copy()
         self.title = f"RMSD of '{self.selection}'"
         self._set_title()
         self._update_plot(self._compute_current_frame())
@@ -232,7 +233,7 @@ class RMSD(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
-        self._update_selection()
+        self._update_selection(reset_reference=False)
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
