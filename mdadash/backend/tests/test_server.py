@@ -10,6 +10,7 @@ from imdclient.tests.server import InThreadIMDServer
 from imdclient.tests.utils import create_default_imdsinfo_v3
 
 from mdadash.backend import main
+from mdadash.backend.analyses.rmsd import RMSD
 from mdadash.backend.kernel.core import BufferedTrajectory
 from mdadash.backend.main import MDADash, app, sio, start_server
 from mdadash.backend.state.manager import StateManager
@@ -613,6 +614,20 @@ async def test_widget_run_rmsd_serial_every_frame(_client, imd_server):
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
+
+
+def test_rmsd_reference_preserved_on_reconnect():
+    first_universe = mda.Universe(TPR, XTC)
+    first_universe.trajectory[5]
+    widget = RMSD()
+    widget.u = first_universe
+    widget.on_post_connect()
+    reference_positions = widget.reference_positions.copy()
+
+    widget.u = mda.Universe(TPR, XTC)
+    widget.on_post_connect()
+
+    assert (widget.reference_positions == reference_positions).all()
 
 
 async def test_widget_run_rmsd_serial_batch(_client, imd_server):
