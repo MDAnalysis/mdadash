@@ -5,6 +5,7 @@ Kernel core where MDAnalysis code runs
 import ast
 import asyncio
 import copy
+import io
 import logging
 import numbers
 import sys
@@ -22,6 +23,7 @@ from MDAnalysis.coordinates.base import (
     ReaderBase,
 )
 from MDAnalysis.coordinates.IMD import IMDReader
+from MDAnalysis.lib.util import NamedStream
 from MDAnalysis.transformations import NoJump
 
 from mdadash.backend.widgets.base import WidgetManager
@@ -219,6 +221,8 @@ class UniverseManager:
         self._comms = _comms
         self._connected = False
         self._running = False
+        self._3dview_selection = ""
+        self._3dview_selection_ag = None
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -259,6 +263,7 @@ class UniverseManager:
         except (ValueError, SyntaxError):
             return value
 
+    # pylint: disable=too-many-branches
     def connect_to_simulations(self, universe_configs: list[dict]) -> None:
         """Connect to MD simulations
 
@@ -327,6 +332,13 @@ class UniverseManager:
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("Failed to connect to simulations")
             self._comms.send({"status": "error", "message": str(e)})
+        # create the 3dview selection AtomGroup
+        try:
+            self._3dview_selection_ag = self._universes[0].select_atoms(
+                self._3dview_selection
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Failed to create 3dview selection AtomGroup")
 
     def _send_tsdata(self, u: mda.Universe):
         """Internal: Send timestep data out"""
@@ -338,6 +350,14 @@ class UniverseManager:
                 }
             }
         )
+        if self._3dview_selection_ag is not None:
+            positions = self._3dview_selection_ag.atoms.positions.T.astype(
+                "float32"
+            ).tobytes()
+            self._comms._comm.send(
+                data={"positions": None},
+                buffers=[positions],
+            )
 
     def _send_sessioninfo(self, u: mda.Universe):
         """Internal: Send session info from imdclient"""
@@ -424,6 +444,35 @@ class UniverseManager:
         except asyncio.CancelledError:
             pass
 
+    def get_topology(self, _data: dict):
+        ag = self._3dview_selection_ag
+        if self._universes[0] is None or ag is None or ag.n_atoms == 0:
+            self._comms.send(None)
+            return
+        buffer = io.StringIO()
+        stream = NamedStream(buffer, "topology.gro")
+        with mda.Writer(stream, n_atoms=ag.n_atoms) as writer:
+            writer.write(ag)
+        self._comms.send(buffer.getvalue())
+
+    def update_3dview_selection(self, data: dict):
+        selection = data["selection"]
+        self._3dview_selection = selection
+        if self._universes[0] is None:
+            self._comms.send(None)
+            return
+        if selection == "":
+            self._3dview_selection_ag = None
+            self._comms.send("Please enter a selection phrase")
+            return
+        try:
+            self._3dview_selection_ag = self._universes[0].select_atoms(selection)
+        except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
+            self._3dview_selection = ""
+            self._3dview_selection_ag = None
+            self._comms.send(str(e))
+        self._comms.send("")
+
 
 def init_n_universes(data: dict) -> None:
     """Initialize `n` universes in :class:`UniverseManager`"""
@@ -457,6 +506,8 @@ comms.register_handler("connect_to_simulations", um.connect_to_simulations)
 comms.register_handler("disconnect_from_simulations", um.disconnect_from_simulations)
 comms.register_handler("pause_simulations", um.pause_simulations)
 comms.register_handler("resume_simulations", um.resume_simulations)
+comms.register_handler("get_topology", um.get_topology)
+comms.register_handler("update_3dview_selection", um.update_3dview_selection)
 # for widget manager
 comms.register_handler("widgets:get_available_widgets", wm.get_available_widgets)
 comms.register_handler("widgets:recreate_instances", wm.recreate_instances)

@@ -79,6 +79,7 @@ class MDADash:
     def register_sio_events(self) -> None:
         """Register socket.io events"""
         self.sio.on("connect")(self.on_connect)
+        self.sio.on("init_data")(self.on_init_data)
         self.sio.on("disconnect")(self.on_disconnect)
         self.sio.on("connect_to_simulations")(self.on_connect_to_simulations)
         self.sio.on("disconnect_from_simulations")(self.on_disconnect_from_simulations)
@@ -111,6 +112,8 @@ class MDADash:
         self.sio.on("notebook:update_cells")(self.on_notebook_update_cells)
         self.sio.on("notebooks:get_clonable_widgets")(self.on_get_clonable_widgets)
         self.sio.on("notebooks:clone_widget")(self.on_notebook_clone_widget)
+        self.sio.on("load_3dview")(self.on_load_3dview)
+        self.sio.on("update_3dview_selection")(self.on_update_3dview_selection)
 
     async def emit_running_state(self, sid: Any = None) -> None:
         """Emit current dashboard running state"""
@@ -145,11 +148,15 @@ class MDADash:
 
     async def on_connect(self, sid, _env):
         """connect handler"""
+
+    async def on_init_data(self, sid):
+        """init_data handler"""
         await self.emit_running_state(sid)
         await self.km._emit_last_known_values(sid)
         await self.emit_layout(sid)
         await self.emit_settings(sid)
         await self.emit_alerts_count(sid)
+        await self.sio.emit("3dview", await self.on_load_3dview(sid))
 
     async def on_disconnect(self, _sid):
         """disconnect handler"""
@@ -158,6 +165,7 @@ class MDADash:
         """connect_to_simulations handler"""
         async with self._emit_running_states() as output:
             output["response"] = await self.km.connect_to_simulations()
+            await self.sio.emit("3dview", await self.on_load_3dview(_sid))
             return output["response"]
 
     async def on_disconnect_from_simulations(self, _sid):
@@ -370,6 +378,23 @@ class MDADash:
         with open(source_file, "r", encoding="utf-8") as file:  # noqa: ASYNC230
             code = file.read()
         return await self.sm.add_notebook(name, description, code)
+
+    async def on_load_3dview(self, _sid):
+        """load_3dview handler"""
+        topology = await self.km.get_topology()
+        return {
+            "inputs": self.sm.view3d,
+            "topology": topology,
+        }
+
+    async def on_update_3dview_selection(self, _sid, selection):
+        """3dview_selection handler"""
+        self.sm.view3d["selection"] = selection
+        response = await self.km.update_3dview_selection(selection)
+        if response is not None:
+            self.sm.view3d["selection_error"] = response
+        await self.sio.emit("3dview", await self.on_load_3dview(_sid))
+        await self.sm.save()
 
 
 def start_server():

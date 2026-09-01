@@ -251,3 +251,13 @@ class StateManager:
         """Remove notebook from notebooks dict"""
         del self.notebooks[uuid]
         await self.save()
+
+    @property
+    def view3d(self) -> dict:
+        """3dview dict"""
+        if "3dview" not in self._state:  # pragma: no cover
+            self._state["3dview"] = {
+                "selection": "",
+                "selection_error": "Please enter a selection phrase",
+            }
+        return self._state["3dview"]
