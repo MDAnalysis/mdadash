@@ -1,5 +1,9 @@
 <template>
-  <div class="position-fixed" :style="{ top: 'var(--v-layout-top)', left: '0px', zIndex: 1000 }">
+  <div
+    v-if="webglAvailable"
+    class="position-fixed"
+    :style="{ top: 'var(--v-layout-top)', left: '0px', zIndex: 1000 }"
+  >
     <!-- Selection tab -->
     <v-sheet
       v-if="!selectionExpanded"
@@ -38,12 +42,28 @@
         persistent-hint
         @change="updateSelection"
         @click:clear="updateSelection"
+        :spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
       ></v-text-field>
     </v-card>
   </div>
   <!-- Molstar plugin -->
   <div class="molstar-container">
     <div ref="molstarTarget" class="molstar-target"></div>
+    <!-- Info overlay -->
+    <v-overlay
+      v-model="overlay"
+      contained
+      persistent
+      class="align-center justify-center"
+      z-index="0"
+    >
+      <div class="text-center text-multi-line">
+        <p>{{ overlayText }}</p>
+      </div>
+    </v-overlay>
   </div>
 </template>
 
@@ -58,6 +78,9 @@ import { StateTransforms } from 'molstar/lib/mol-plugin-state/transforms'
 import { mdiChevronLeft, mdiChevronRight } from '@mdi/js'
 import 'molstar/build/viewer/molstar.css'
 
+const webglAvailable = ref(true)
+const overlay = ref(false)
+const overlayText = ref('')
 const selection = ref('')
 const selection_error = ref('')
 const selectionExpanded = ref(false)
@@ -71,7 +94,32 @@ let coordinatesNode = null
 let isResetting = false
 let isRenderingFrame = false
 
+function isWebGLAvailable() {
+  try {
+    const canvas = document.createElement('canvas')
+    const attr = { failIfMajorPerformanceCaveat: true }
+    const context = canvas.getContext('webgl2', attr) || canvas.getContext('webgl', attr)
+    if (!context) return false
+    context.getExtension('WEBGL_lose_context')?.loseContext()
+    return true
+  } catch (e) {
+    console.log(e)
+    return false
+  }
+}
+
 const initMolstar = async () => {
+  webglAvailable.value = isWebGLAvailable()
+  if (!webglAvailable.value) {
+    showOverlay(
+      `WebGL not detected.
+
+      Please reload the page and try.
+      If problen persists, you might have to restart the browser.`,
+    )
+    return
+  }
+
   if (!molstarTarget.value || plugin) {
     return
   }
@@ -117,12 +165,15 @@ const initMolstar = async () => {
     const canvas = molstarTarget.value.querySelector('canvas')
     if (canvas) {
       canvas.addEventListener('webglcontextlost', handleContextLost)
-      canvas.addEventListener('webglcontextrestored', handleContextRestored)
     }
   }
 }
 
-function updateSelection() {
+async function updateSelection() {
+  if (plugin) {
+    await plugin.clear()
+  }
+  showOverlay(`Updating selection...`)
   socket.emit('update_3dview_selection', selection.value || '')
 }
 
@@ -148,6 +199,7 @@ const updateTopology = async (topology) => {
 
 const update3dview = async (view) => {
   isResetting = true
+  showOverlay('Updating view...')
   selection.value = view.inputs.selection
   selection_error.value = view.inputs.selection_error
   if (view.inputs.selection_error) {
@@ -161,18 +213,25 @@ const update3dview = async (view) => {
       await updateTopology(view.topology)
       plugin.managers.camera.reset()
     }
+    hideOverlay()
   } else {
-    console.log('No topology received')
+    showOverlay(`Topology not available.
+
+    Please ensure you are connected and have a valid selection phrase.`)
   }
   isResetting = false
 }
 
 const load3dView = async () => {
+  showOverlay('Loading...')
   const response = await socket
     .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
     .emitWithAck('load_3dview')
   if (response) {
     await update3dview(response)
+    selectionExpanded.value = true
+  } else {
+    showOverlay(`Timeout waiting for server response. Please retry.`)
   }
 }
 
@@ -204,19 +263,27 @@ const updatePositions = async (data) => {
   isRenderingFrame = false
 }
 
-function handleContextLost(event) {
+async function handleContextLost(event) {
   event.preventDefault()
-  console.log('WebGL Context lost')
+  if (plugin) {
+    plugin.dispose()
+    plugin = null
+    molstarTarget.value.innerHTML = ''
+    await initMolstar()
+    if (plugin) {
+      await load3dView()
+    }
+  }
 }
 
-async function handleContextRestored() {
-  console.log('WebGL Context restored')
-  /*
-  if (plugin.value) {
-    plugin.value.dispose()
-  }
-  await initMolstar()
-  */
+function showOverlay(text) {
+  overlayText.value = text
+  overlay.value = true
+}
+
+function hideOverlay() {
+  overlay.value = false
+  overlayText.value = ''
 }
 
 onMounted(async () => {
@@ -249,7 +316,6 @@ onBeforeUnmount(() => {
   const canvas = molstarTarget.value?.querySelector('canvas')
   if (canvas) {
     canvas.removeEventListener('webglcontextlost', handleContextLost)
-    canvas.removeEventListener('webglcontextrestored', handleContextRestored)
   }
   if (plugin) {
     plugin.dispose()
@@ -259,6 +325,17 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* multi-line overlay text */
+.text-multi-line {
+  white-space: pre-line;
+}
+/* Disable vuetify animations for selection input */
+:deep(.v-field__clearable) {
+  transition: none !important;
+}
+:deep(.v-input__details *) {
+  transition: none !important;
+}
 /* Molstar container and target */
 .molstar-container {
   width: 100%;

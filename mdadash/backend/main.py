@@ -156,7 +156,6 @@ class MDADash:
         await self.emit_layout(sid)
         await self.emit_settings(sid)
         await self.emit_alerts_count(sid)
-        await self.sio.emit("3dview", await self.on_load_3dview(sid))
 
     async def on_disconnect(self, _sid):
         """disconnect handler"""
