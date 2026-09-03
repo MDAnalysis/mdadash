@@ -298,8 +298,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   socket.off('connect')
-  socket.off('connect_error')
-  socket.io.off('reconnect_attempt')
+  socket.off('disconnect')
   socket.off('runningState')
   socket.off('timestepInfo')
   socket.off('settings')

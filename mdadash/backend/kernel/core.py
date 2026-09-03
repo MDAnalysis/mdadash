@@ -445,6 +445,7 @@ class UniverseManager:
             pass
 
     def get_topology(self, _data: dict):
+        """Get topology of current 3dview selection"""
         ag = self._3dview_selection_ag
         if self._universes[0] is None or ag is None or ag.n_atoms == 0:
             self._comms.send(None)
@@ -456,6 +457,7 @@ class UniverseManager:
         self._comms.send(buffer.getvalue())
 
     def update_3dview_selection(self, data: dict):
+        """Update 3dview selection phrase"""
         selection = data["selection"]
         self._3dview_selection = selection
         if self._universes[0] is None:
@@ -467,11 +469,12 @@ class UniverseManager:
             return
         try:
             self._3dview_selection_ag = self._universes[0].select_atoms(selection)
+            error = ""
         except Exception as e:  # pylint: disable=broad-exception-caught  # noqa: BLE001
             self._3dview_selection = ""
             self._3dview_selection_ag = None
-            self._comms.send(str(e))
-        self._comms.send("")
+            error = str(e)
+        self._comms.send(error)
 
 
 def init_n_universes(data: dict) -> None:

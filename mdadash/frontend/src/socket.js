@@ -14,6 +14,7 @@ socket.io.on('reconnect_attempt', () => {
   socket.io.opts.transports = ['websocket', 'polling']
 })
 
+// v8 ignore next
 socket.on('connect', () => {
   let initDataRequested = false
   const requestInitData = () => {

@@ -276,8 +276,8 @@ class COMDistance(WidgetBase):
         try:
             com1 = self.ag1.center_of_mass(unwrap=True)
             com2 = self.ag2.center_of_mass(unwrap=True)
-        except NoDataError:  # pragma: no cover
-            # unwrap can fail if there is no bonds info
+        except (NoDataError, ValueError):  # pragma: no cover
+            # unwrap can fail if there is no bonds info or box info
             com1 = self.ag1.center_of_mass()
             com2 = self.ag2.center_of_mass()
         return (

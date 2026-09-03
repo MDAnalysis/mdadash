@@ -387,7 +387,7 @@ class MDADash:
         }
 
     async def on_update_3dview_selection(self, _sid, selection):
-        """3dview_selection handler"""
+        """update_3dview_selection handler"""
         self.sm.view3d["selection"] = selection
         response = await self.km.update_3dview_selection(selection)
         if response is not None:

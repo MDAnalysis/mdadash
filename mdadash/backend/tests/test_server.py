@@ -189,6 +189,10 @@ async def test_socketio_connect_disconnect(_client, imd_server):
     handler = sio.handlers["/"]["connect"]
     response = await run_task_until_done(handler("_sid", {}))
     assert response is None
+    # init_data
+    handler = sio.handlers["/"]["init_data"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response is None
     # disconnect
     handler = sio.handlers["/"]["disconnect"]
     response = await run_task_until_done(handler("_sid"))
@@ -1336,4 +1340,37 @@ async def test_utils_alert_pause(_client, imd_server):
     # cleanup - delete all alerts
     handler = sio.handlers["/"]["delete_all_alerts"]
     await run_task_until_done(handler("_sid"))
+    await disconnect_from_simulation()
+
+
+async def test_3dview(_client, imd_server):
+    await connect_to_simulation(imd_server)
+    # test defaults
+    handler = sio.handlers["/"]["load_3dview"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response is not None
+    assert response["inputs"]["selection"] == ""
+    assert response["topology"] is None
+    # update selection - valid
+    handler = sio.handlers["/"]["update_3dview_selection"]
+    await run_task_until_done(handler("_sid", "resid 1"))
+    handler = sio.handlers["/"]["load_3dview"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response is not None
+    assert response["inputs"]["selection"] == "resid 1"
+    assert response["topology"] is not None
+    # update selection - empty
+    handler = sio.handlers["/"]["update_3dview_selection"]
+    await run_task_until_done(handler("_sid", ""))
+    handler = sio.handlers["/"]["load_3dview"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["inputs"]["selection"] == ""
+    # update selection - invalid
+    handler = sio.handlers["/"]["update_3dview_selection"]
+    await run_task_until_done(handler("_sid", "invalid"))
+    handler = sio.handlers["/"]["load_3dview"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["inputs"]["selection"] == "invalid"
+    assert response["inputs"]["selection_error"] == "Unknown selection token: 'invalid'"
+    assert response["topology"] is None
     await disconnect_from_simulation()

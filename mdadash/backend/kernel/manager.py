@@ -693,11 +693,20 @@ class KernelManager:
         """
         await self.send_message("update_n_jobs", {"n_jobs": n_jobs})
 
-    async def get_topology(self):
+    async def get_topology(self) -> str | None:
+        """Get topology of current 3dview selection"""
         response = await self.send_message_await_response("get_topology", {})
         return response or None
 
-    async def update_3dview_selection(self, selection: str):
+    async def update_3dview_selection(self, selection: str) -> str | None:
+        """Update 3dview selection phrase
+
+        Parameters
+        ----------
+        selection: str
+            MDAnalysis selection phrase
+
+        """
         return await self.send_message_await_response(
             "update_3dview_selection", {"selection": selection}
         )

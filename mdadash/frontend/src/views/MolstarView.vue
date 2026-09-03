@@ -236,7 +236,13 @@ const load3dView = async () => {
 }
 
 const updatePositions = async (data) => {
-  if (isResetting || isRenderingFrame || !baseModel || !coordinatesNode) {
+  if (
+    isResetting ||
+    isRenderingFrame ||
+    !baseModel ||
+    !coordinatesNode ||
+    !plugin?.state.data.cells.has(coordinatesNode.ref)
+  ) {
     return
   }
   const positions = new Float32Array(data)
@@ -287,11 +293,11 @@ function hideOverlay() {
 }
 
 onMounted(async () => {
-  socket.on('3dview', update3dview)
   await initMolstar()
   if (plugin) {
     await load3dView()
   }
+  socket.on('3dview', update3dview)
 })
 
 onActivated(() => {

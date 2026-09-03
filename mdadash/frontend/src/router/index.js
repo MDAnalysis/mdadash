@@ -16,6 +16,7 @@ export const routes = [
   { path: '/notebook', component: NotebookView, meta: { title: 'Notebook' } },
   {
     path: '/3dview',
+    // v8 ignore next
     component: () => import('@/views/MolstarView.vue'),
     meta: { title: '3D View' },
   },
