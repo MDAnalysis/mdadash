@@ -287,6 +287,7 @@ function hideOverlay() {
 }
 
 onMounted(async () => {
+  socket.on('3dview', update3dview)
   await initMolstar()
   if (plugin) {
     await load3dView()
@@ -294,7 +295,6 @@ onMounted(async () => {
 })
 
 onActivated(() => {
-  socket.on('3dview', update3dview)
   socket.on('positions', updatePositions)
   if (plugin?.canvas3d) {
     plugin.canvas3d.resume()
@@ -305,7 +305,6 @@ onActivated(() => {
 })
 
 onDeactivated(() => {
-  socket.off('3dview')
   socket.off('positions')
   if (plugin?.canvas3d) {
     plugin.canvas3d.pause()
@@ -313,6 +312,7 @@ onDeactivated(() => {
 })
 
 onBeforeUnmount(() => {
+  socket.off('3dview')
   const canvas = molstarTarget.value?.querySelector('canvas')
   if (canvas) {
     canvas.removeEventListener('webglcontextlost', handleContextLost)
