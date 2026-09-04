@@ -232,6 +232,7 @@ class RMSD(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
+        self._reset_plot_values()
         self._update_selection()
 
     def on_input_change(self, attribute, _old_value, new_value):
