@@ -29,8 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added 3D view through Mol\* integration (PR #73)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -46,6 +44,20 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.2]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+09/04/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added 3D view through Mol\* integration (PR #73)
 
 ## [0.1.1]
 
