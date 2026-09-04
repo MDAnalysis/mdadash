@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added 3D view through Mol\* integration (PR #73)
+
 ### Fixed
 
 <!-- Bug fixes -->
@@ -44,6 +46,20 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.1]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+08/18/2026 PardhavMaradani
+
+### Fixed
+
+<!-- Bug fixes -->
+
+- Emit widget details on input changes for validations
 
 ## [0.1.0]
 

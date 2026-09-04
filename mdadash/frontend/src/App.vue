@@ -150,6 +150,7 @@
       class="align-center justify-center"
       persistent
       opacity="0.75"
+      z-index="9999"
     >
       <!-- v8 ignore start -->
       <div class="text-center text-white">
@@ -177,6 +178,7 @@ import {
   mdiNotebookMultiple,
   mdiPause,
   mdiPlay,
+  mdiRotate3d,
   mdiViewDashboard,
 } from '@mdi/js'
 
@@ -186,6 +188,7 @@ const appBarTitle = computed(() => route.meta.title)
 const appBarMenuItems = [
   { name: 'Dashboard', icon: mdiViewDashboard, path: '/' },
   { name: 'Notebooks', icon: mdiNotebookMultiple, path: '/notebooks' },
+  { name: '3D View', icon: mdiRotate3d, path: '/3dview' },
   { name: 'Settings', icon: mdiCog, path: '/settings' },
 ]
 const runningState = ref({

@@ -14,6 +14,12 @@ export const routes = [
   { path: '/widget', component: WidgetView, meta: { title: 'Widget' } },
   { path: '/notebooks', component: NotebooksView, meta: { title: 'Notebooks' } },
   { path: '/notebook', component: NotebookView, meta: { title: 'Notebook' } },
+  {
+    path: '/3dview',
+    // v8 ignore next
+    component: () => import('@/views/MolstarView.vue'),
+    meta: { title: '3D View' },
+  },
 ]
 
 const router = createRouter({

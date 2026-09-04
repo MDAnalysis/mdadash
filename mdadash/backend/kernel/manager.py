@@ -89,6 +89,8 @@ class KernelManager:
         await self.send_message(
             "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
+        # init 3dview selection
+        await self.update_3dview_selection(self.sm.view3d["selection"])
         # run notebooks from state
         await self.run_notebooks()
         # re-create widget instances from state
@@ -187,6 +189,8 @@ class KernelManager:
                     data = msg["content"]["data"]
                     if "tsinfo" in data:
                         await self._emit_tsdata(data["tsinfo"])
+                    elif "positions" in data:
+                        await self.sio.emit("positions", bytes(msg["buffers"][0]))
                     elif "widget_outputs" in data:
                         # send widget outputs to browser
                         await self.sio.emit(
@@ -688,3 +692,21 @@ class KernelManager:
 
         """
         await self.send_message("update_n_jobs", {"n_jobs": n_jobs})
+
+    async def get_topology(self) -> str | None:
+        """Get topology of current 3dview selection"""
+        response = await self.send_message_await_response("get_topology", {})
+        return response or None
+
+    async def update_3dview_selection(self, selection: str) -> str | None:
+        """Update 3dview selection phrase
+
+        Parameters
+        ----------
+        selection: str
+            MDAnalysis selection phrase
+
+        """
+        return await self.send_message_await_response(
+            "update_3dview_selection", {"selection": selection}
+        )
