@@ -124,6 +124,16 @@ class ACFAnalysis(WidgetBase):
 
     _inputs: ClassVar = [
         {
+            "attribute": "_run_frequency",
+            "name": "Run frequency",
+            "description": "The frequency with which the widget is run",
+            "type": "select",
+            "items": [
+                "every-frame",
+                "batch",
+            ],
+        },
+        {
             "attribute": "_run_mode",
             "name": "Run mode",
             "description": "The mode in which the widget is run",
@@ -277,14 +287,18 @@ class ACFAnalysis(WidgetBase):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "custom_title":
             self._set_title()
-        elif attribute in ("normalized", "_run_mode"):
+        elif attribute in ("normalized", "_run_mode", "_run_frequency"):
             pass
         else:
             self._create_acf()
 
-    def _compute(self, normalized: bool = False, parallel: bool = False):
+    def _compute_current_frame(self, normalized: bool = False, parallel: bool = False):
         """Run ACF for the current timesteps window"""
         return self.acf.run(normalized=normalized, parallel=parallel)
+
+    def _compute_batch(self, normalized: bool = False, parallel: bool = False):
+        """Compute values for current batch"""
+        return self.acf.run(normalized=normalized, parallel=parallel, batch=True)
 
     def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
@@ -297,12 +311,23 @@ class ACFAnalysis(WidgetBase):
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
-        x, y1, y2, _ = self._compute(normalized=self.normalized)
+        x, y1, y2, _ = self._compute_current_frame(normalized=self.normalized)
+        self._update_plot(x, y1, y2)
+
+    def run_batch(self):
+        """batch run handler"""
+        x, y1, y2, _ = self._compute_batch(normalized=self.normalized)
         self._update_plot(x, y1, y2)
 
     def get_parallel_job(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.get_parallel_job` handler"""
-        return delayed(self._compute)(normalized=self.normalized, parallel=True)
+        if self._run_frequency == "batch":
+            return delayed(self._compute_batch)(
+                normalized=self.normalized, parallel=True
+            )
+        return delayed(self._compute_current_frame)(
+            normalized=self.normalized, parallel=True
+        )
 
     def apply_parallel_results(self, values):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.apply_parallel_results` handler"""
@@ -383,27 +408,35 @@ class SlidingWindowACF:
         self._dim = keys[self.dim_type.lower()]
 
     # pylint: disable=too-many-locals
-    def run(self, normalized: bool = False, parallel: bool = False) -> tuple:
+    def run(
+        self, normalized: bool = False, parallel: bool = False, batch: bool = False
+    ) -> tuple:
         """Run ACF for the current window"""
 
         n = len(self.u.trajectory)  # buffer / window might not be full yet
-        current = getattr(self.ag, self.physical_property)[:, self._dim]
-        self.running_sum += current
-        self.running_count += 1
-        mu = self.running_sum / self.running_count
-        for i in range(n):
-            lag = n - 1 - i
-            _ = self.u.trajectory[i]  # set trajectory to past frame
-            previous = getattr(self.ag, self.physical_property)
-            acf = current * previous[:, self._dim]
-            if self.centered:
-                acf = acf - (mu**2)
-            acf_sum = np.sum(acf, axis=-1)
-            self.acf_sums[lag] += np.mean(acf_sum)
-            self.acf_counts[lag] += 1
-            if self.show_particle_acfs:
-                self.particle_acf_sums[lag, :] += acf_sum
-                self.particle_acf_counts[lag, :] += 1
+        for frame in reversed(range(n)):
+            _ = self.u.trajectory[frame]  # iterate frames from the back
+            current = getattr(self.ag, self.physical_property)[:, self._dim]
+            self.running_sum += current
+            self.running_count += 1
+            mu = self.running_sum / self.running_count
+            for i in range(frame + 1):
+                lag = frame - i
+                _ = self.u.trajectory[i]  # set trajectory to past frame
+                previous = getattr(self.ag, self.physical_property)
+                acf = current * previous[:, self._dim]
+                if self.centered:
+                    acf = acf - (mu**2)
+                acf_sum = np.sum(acf, axis=-1)
+                self.acf_sums[lag] += np.mean(acf_sum)
+                self.acf_counts[lag] += 1
+                if self.show_particle_acfs:
+                    self.particle_acf_sums[lag, :] += acf_sum
+                    self.particle_acf_counts[lag, :] += 1
+            if n == 2:
+                continue
+            if not batch:
+                break
 
         if self.frame_dt is None:
             # We will have at least 2 frames by the time we are here.
