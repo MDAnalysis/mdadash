@@ -1028,7 +1028,7 @@ async def test_widget_run_msd_diffusion_coefficient(_client, imd_server):
 
 async def test_widget_run_vacf_serial(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
@@ -1044,13 +1044,44 @@ async def test_widget_run_vacf_serial(_client, imd_server_trr):
     await disconnect_from_simulation()
 
 
+async def test_widget_run_vacf_serial_batch(_client, imd_server_trr):
+    uuid = await add_widget("ACF")
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    inputs = [
+        ("physical_property", "velocity"),
+        ("selection", "resid 1"),
+        ("_run_frequency", "batch"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server_trr, n_frames=5)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
 async def test_widget_run_vacf_parallel(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
         ("show_particle_acfs", True),
+        ("_run_mode", "parallel"),
+    ]
+    await check_input_changes(uuid, inputs)
+    await resume_simulation(imd_server_trr, n_frames=5)
+    assert await sio_event_emitted(sio, "widgets:output", n=1)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()
+
+
+async def test_widget_run_vacf_parallel_batch(_client, imd_server_trr):
+    uuid = await add_widget("ACF")
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    inputs = [
+        ("physical_property", "velocity"),
+        ("selection", "resid 1"),
+        ("_run_frequency", "batch"),
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)

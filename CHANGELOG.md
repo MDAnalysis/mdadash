@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added batch support for ACF widget (PR #75)
+
 ### Fixed
 
 <!-- Bug fixes -->

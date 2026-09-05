@@ -14,7 +14,7 @@ and can run in parallel:
      - Parallel
    * - :mod:`~mdadash.backend.analyses.acf`
      - Autocorrelation Function (ACF)
-     - —
+     - ✅
      - ✅
    * - :mod:`~mdadash.backend.analyses.com_distance`
      - Distance between two center-of-masses
