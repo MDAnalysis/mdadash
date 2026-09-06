@@ -59,6 +59,7 @@
       persistent
       class="align-center justify-center"
       z-index="0"
+      :close-on-back="false"
     >
       <div class="text-center text-multi-line">
         <p>{{ overlayText }}</p>
