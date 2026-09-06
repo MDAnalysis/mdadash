@@ -57,8 +57,14 @@ class WidgetBase(ABC):
         """Internal: Set the universe"""
         self.u = u
 
-    def _reset_frame_latest(self):
-        """Internal: Reset frame to latest timestep"""
+    def reset_frame_latest(self):
+        """Reset frame to latest timestep
+
+        This method resets the trajectory timestep to the most recent frame
+        available. Widgets can use this if the trajectory was manually
+        iterated to a different frame.
+
+        """
         _ = self.u.trajectory[-1]
 
     def _get_inputs(self):
@@ -759,7 +765,7 @@ class WidgetManager:
     def _with_reset_frame(func, *args, **kwargs):
         """Internal: Reset frame to the most recent one"""
         instance = func.__self__
-        instance._reset_frame_latest()
+        instance.reset_frame_latest()
         return func(*args, **kwargs)
 
     def _run_parallel_jobs(self, parallel_widgets, parallel_results):
@@ -819,7 +825,7 @@ class WidgetManager:
             parallel_thread.start()
         # run serial widgets
         for widget in serial_widgets:
-            widget._reset_frame_latest()
+            widget.reset_frame_latest()
             widget_outputs = None
             with _capture_outputs() as captured_outputs:
                 try:

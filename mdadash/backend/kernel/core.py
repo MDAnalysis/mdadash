@@ -23,6 +23,7 @@ from MDAnalysis.coordinates.base import (
     ReaderBase,
 )
 from MDAnalysis.coordinates.IMD import IMDReader
+from MDAnalysis.coordinates.timestep import Timestep
 from MDAnalysis.lib.util import NamedStream
 from MDAnalysis.transformations import NoJump
 
@@ -75,19 +76,40 @@ class BufferedTrajectory:
 
     """
 
-    def __init__(self, trajectory: ReaderBase, buffer_size: int):
+    def __init__(
+        self, trajectory: ReaderBase, buffer_size: int, reference_ts: Timestep = None
+    ):
         self._trajectory = trajectory
         self._buffer_size = buffer_size
         self._buffer = deque(maxlen=buffer_size)
         self._buffer.append(trajectory.ts.copy())
+        if reference_ts is not None:
+            self._reference_ts = reference_ts
+        else:
+            self._reference_ts = trajectory.ts.copy()
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
 
     @property
+    def reference_ts(self) -> Timestep:
+        """Reference timestep
+
+        The earliest timestep available for this trajectory since the dashboard
+        was launched. This timestep persists across multiple connect / disconnects
+        while the dashboard is running, but not across different runs of the
+        dashboard (`mdadash`) itself.
+
+        """
+        self._trajectory.ts = self._reference_ts
+        return self._trajectory.ts
+
+    @property
     def n_frames(self):
+        """Number of frames in the buffer"""
         return len(self._buffer)
 
     @property
     def buffer_size(self):
+        """Total buffer size"""
         return self._buffer_size
 
     def __len__(self):
@@ -223,6 +245,7 @@ class UniverseManager:
         self._running = False
         self._3dview_selection = ""
         self._3dview_selection_ag = None
+        self._reference_ts = None
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -308,7 +331,10 @@ class UniverseManager:
                 u.trajectory = BufferedTrajectory(
                     u.trajectory,
                     config["batch_size"],
+                    self._reference_ts,
                 )
+                if self._reference_ts is None:
+                    self._reference_ts = u.trajectory.ts.copy()
                 if uid == 0:
                     self._send_tsdata(u)
                     if self._streaming:
