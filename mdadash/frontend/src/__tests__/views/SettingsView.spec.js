@@ -26,6 +26,7 @@ const settings = ref({
       continue_after_disconnect: null,
       step: 1,
       total_steps: null,
+      total_frames: null,
       kwargs: [['n1', 'v1']],
     },
   ],

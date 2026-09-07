@@ -139,8 +139,11 @@ class KernelManager:
         """Internal: Emit timestep data"""
         tsdata = tsinfo["tsdata"]
         step = tsdata.get("step", None)
+        frame = tsinfo.get("frame", None)
         total_steps = self.sm.universe_configs[0].get("total_steps", None)
+        total_frames = self.sm.universe_configs[0].get("total_frames", None)
         done = (step / total_steps) * 100 if step and total_steps else None
+        done = ((frame + 1) / total_frames) * 100 if not done and total_frames else done
         energies = {}
         if tsdata.get("temperature") is not None:
             for key in self._energy_keys:
@@ -149,7 +152,7 @@ class KernelManager:
                     "trend": self._get_energy_trend(key, tsdata.get(key)),
                 }
         timestep_info = {
-            "frame": tsinfo.get("frame", None),
+            "frame": frame,
             "time": tsdata.get("time", None),
             "step": step,
             "done": done,
@@ -210,6 +213,10 @@ class KernelManager:
                             self.sm.running_state["running"] = False
                             await self.sio.emit("runningState", self.sm.running_state)
                             await self._alert(data["pause_simulation"])
+                    elif "disconnect_clients" in data:
+                        if self.sm.running_state["running"]:
+                            self.sm.running_state["connected"] = False
+                            await self.sio.emit("runningState", self.sm.running_state)
                     else:
                         parent_id = msg.get("parent_header", {}).get("msg_id")
                         # check if a pending future can be resolved with msg

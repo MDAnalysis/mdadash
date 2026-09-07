@@ -69,7 +69,7 @@ def imd_server_fixture_trr():
     server.cleanup()
 
 
-def test_start_server(mocker):
+def test_start_server_imd_trajectory(mocker):
     # mock the command line params
     mocker.patch.object(
         sys,
@@ -90,6 +90,29 @@ def test_start_server(mocker):
     # to run the real server in a separate thread
     mock_uvicorn_run = mocker.patch("uvicorn.run")
     start_server()
+    mock_uvicorn_run.assert_called_once_with(
+        "mdadash.backend.main:app",
+        host="127.0.0.1",
+        port=8000,
+    )
+
+
+def x_test_start_server_file_trajectory(mocker):
+    # mock the command line params
+    mocker.patch.object(
+        sys,
+        "argv",
+        [
+            "main.py",
+            "--topology",
+            str(TPR),
+            "--trajectory",
+            str(TRR),
+        ],
+    )
+    mock_uvicorn_run = mocker.patch("uvicorn.run")
+    start_server()
+    assert main.mdadash.sm.universe_configs[0]["total_frames"] == 10
     mock_uvicorn_run.assert_called_once_with(
         "mdadash.backend.main:app",
         host="127.0.0.1",
@@ -1375,7 +1398,6 @@ async def test_utils_alert_pause(_client, imd_server):
 
 
 async def test_3dview(_client, imd_server):
-    await connect_to_simulation(imd_server)
     # test defaults
     handler = sio.handlers["/"]["load_3dview"]
     response = await run_task_until_done(handler("_sid"))
@@ -1385,6 +1407,9 @@ async def test_3dview(_client, imd_server):
     # update selection - valid
     handler = sio.handlers["/"]["update_3dview_selection"]
     await run_task_until_done(handler("_sid", "resid 1"))
+    # connect
+    await connect_to_simulation(imd_server)
+    # verify selection and topology
     handler = sio.handlers["/"]["load_3dview"]
     response = await run_task_until_done(handler("_sid"))
     assert response is not None
