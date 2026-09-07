@@ -441,8 +441,7 @@ class UniverseManager:
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
             u.trajectory.next()
-        except (OSError, EOFError, StopIteration) as e:  # pragma: no cover
-            logger.warning("Disconnected", exc_info=e)
+        except (OSError, EOFError, StopIteration):  # pragma: no cover
             self._disconnect_from_simulations()
             self._wm._invoke_lifecycle_method("on_post_disconnect")
             self._comms.send({"disconnect_clients": {}})
