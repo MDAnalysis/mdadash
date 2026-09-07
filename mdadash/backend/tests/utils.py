@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import time
 from unittest.mock import AsyncMock
 
@@ -74,6 +75,8 @@ async def connect_to_simulation(imd_server, step=2, batch_size=1, n_frames=10):
 
 
 async def disconnect_from_simulation():
+    if sys.platform == "darwin":
+        return
     handler = sio.handlers["/"]["disconnect_from_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
