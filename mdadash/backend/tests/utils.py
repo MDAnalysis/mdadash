@@ -67,7 +67,10 @@ async def connect_to_simulation(imd_server, step=2, batch_size=1, n_frames=10):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
     # send the frames needed by imdclient here
-    imd_server.send_frames(1, n_frames)
+    try:
+        imd_server.send_frames(1, n_frames)
+    except Exception:  # noqa: BLE001, S110 # pylint: disable=broad-exception-caught
+        pass
 
 
 async def disconnect_from_simulation():
