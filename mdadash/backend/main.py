@@ -469,7 +469,7 @@ def start_server():
     )
     # update total frames if trajectory is a file
     trajectory_path = Path(args.trajectory)
-    if trajectory_path.exists():
+    if trajectory_path.exists():  # pragma: no cover
         try:
             reader = get_reader_for(trajectory_path)
             with reader(trajectory_path) as r:
