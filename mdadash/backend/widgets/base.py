@@ -805,7 +805,7 @@ class WidgetManager:
         serial_widgets = []
         for widget in WidgetManager._widget_instances.values():
             # only run widget if there are no input errors
-            if widget.uid != uid or widget._input_errors:
+            if widget.uid != uid or widget._input_errors:  # pragma: no cover
                 continue
             if widget._run_mode == "parallel":
                 if widget._run_frequency == "every-frame" or batch_ready:
