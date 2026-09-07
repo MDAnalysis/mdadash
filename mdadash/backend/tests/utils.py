@@ -60,6 +60,7 @@ async def connect_to_simulation(imd_server, step=2, batch_size=1):
             "nojump": False,
             "step": step,
             "batch_size": batch_size,
+            "timeout": 10,
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]
