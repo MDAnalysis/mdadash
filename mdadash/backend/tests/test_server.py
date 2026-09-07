@@ -156,7 +156,7 @@ async def test_simulation_connectivity(_client, imd_server):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
     # test resume
-    await resume_simulation(imd_server)
+    await resume_simulation()
     # test pause
     await pause_simulation()
     # test disconnect
@@ -220,7 +220,7 @@ async def test_socketio_connect_disconnect(_client, imd_server):
     handler = sio.handlers["/"]["disconnect"]
     response = await run_task_until_done(handler("_sid"))
     assert response is None
-    await resume_simulation(imd_server)
+    await resume_simulation()
     await disconnect_from_simulation()
 
 
@@ -376,7 +376,7 @@ async def test_duplicate_widgets(_client, imd_server):
     uuid2 = await duplicate_widget(uuid1)
     await remove_widget(uuid1)
     await remove_widget(uuid2)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     await disconnect_from_simulation()
 
 
@@ -441,7 +441,7 @@ async def test_widget_invalid_inputs(_client, imd_server):
         ("selection", "invalid"),
     ]
     await check_input_changes(uuid, inputs, "error")
-    await resume_simulation(imd_server)
+    await resume_simulation()
     await remove_widget(uuid)
     await disconnect_from_simulation()
 
@@ -449,7 +449,7 @@ async def test_widget_invalid_inputs(_client, imd_server):
 async def test_widget_run_energies_serial(_client, imd_server):
     uuid = await add_widget("Absolute Temperature")
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -462,7 +462,7 @@ async def test_widget_run_energies_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -480,7 +480,7 @@ async def test_widget_run_com_distance_serial_every_frame(_client, imd_server):
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -493,7 +493,7 @@ async def test_widget_run_com_distance_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -506,7 +506,7 @@ async def test_widget_run_com_distance_parallel_every_frame(_client, imd_server)
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -521,7 +521,7 @@ async def test_widget_run_com_distance_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -542,7 +542,7 @@ async def test_widget_run_com_distance_alert_pause(_client, imd_server):
     # check there are no alerts
     assert len(main.mdadash.sm.alerts) == 0
     # resume simulation
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "runningState", n=3)
     assert main.mdadash.sm.running_state["running"] is False
     # check alert generation
@@ -576,7 +576,7 @@ async def test_widget_run_rog_serial_every_frame(_client, imd_server):
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -589,7 +589,7 @@ async def test_widget_run_rog_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -602,7 +602,7 @@ async def test_widget_run_rog_parallel_every_frame(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -617,7 +617,7 @@ async def test_widget_run_rog_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -636,7 +636,7 @@ async def test_widget_run_rmsd_serial_every_frame(_client, imd_server):
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -649,7 +649,7 @@ async def test_widget_run_rmsd_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -662,7 +662,7 @@ async def test_widget_run_rmsd_parallel_every_frame(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -677,7 +677,7 @@ async def test_widget_run_rmsd_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -695,7 +695,7 @@ async def test_widget_run_native_contacts_serial_every_frame(_client, imd_server
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -708,7 +708,7 @@ async def test_widget_run_native_contacts_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -721,7 +721,7 @@ async def test_widget_run_native_contacts_parallel_every_frame(_client, imd_serv
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -736,7 +736,7 @@ async def test_widget_run_native_contacts_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -754,7 +754,7 @@ async def test_widget_run_contacts_serial_every_frame(_client, imd_server):
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -767,7 +767,7 @@ async def test_widget_run_contacts_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -780,7 +780,7 @@ async def test_widget_run_contacts_parallel_every_frame(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -795,7 +795,7 @@ async def test_widget_run_contacts_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -814,7 +814,7 @@ async def test_widget_run_hbonds_serial_every_frame(_client, imd_server):
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -827,7 +827,7 @@ async def test_widget_run_hbonds_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -840,7 +840,7 @@ async def test_widget_run_hbonds_parallel_every_frame(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -855,7 +855,7 @@ async def test_widget_run_hbonds_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -873,7 +873,7 @@ async def test_widget_run_helix_analysis_serial_every_frame(_client, imd_server)
         ("custom_title", "Title"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -886,7 +886,7 @@ async def test_widget_run_helix_analysis_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -899,7 +899,7 @@ async def test_widget_run_helix_analysis_parallel_every_frame(_client, imd_serve
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -914,7 +914,7 @@ async def test_widget_run_helix_analysis_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -930,7 +930,7 @@ async def test_widget_run_dssp_serial_every_frame(_client, imd_server):
         ("x_type", "step"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -943,7 +943,7 @@ async def test_widget_run_dssp_serial_batch(_client, imd_server):
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -956,7 +956,7 @@ async def test_widget_run_dssp_parallel_every_frame(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -971,7 +971,7 @@ async def test_widget_run_dssp_parallel_batch(_client, imd_server):
     ]
     await check_input_changes(uuid, inputs)
     await connect_to_simulation(imd_server)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     timeout = 30 if sys.platform == "win32" else 20
     assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
     await remove_widget(uuid)
@@ -985,7 +985,7 @@ async def test_widget_run_ramachandran(_client, imd_server):
         ("selection", "protein"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -998,7 +998,7 @@ async def test_widget_run_janin(_client, imd_server):
         ("selection", "protein"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1014,7 +1014,7 @@ async def test_widget_run_msd_serial(_client, imd_server):
         ("log_scale", False),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1029,7 +1029,7 @@ async def test_widget_run_msd_parallel(_client, imd_server):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1043,7 +1043,7 @@ async def test_widget_run_msd_diffusion_coefficient(_client, imd_server):
         ("show_diffusion_coefficient", True),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1051,7 +1051,7 @@ async def test_widget_run_msd_diffusion_coefficient(_client, imd_server):
 
 async def test_widget_run_vacf_serial(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3, n_frames=5)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
@@ -1061,7 +1061,7 @@ async def test_widget_run_vacf_serial(_client, imd_server_trr):
         ("normalized", True),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server_trr, n_frames=5)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1069,14 +1069,14 @@ async def test_widget_run_vacf_serial(_client, imd_server_trr):
 
 async def test_widget_run_vacf_serial_batch(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3, n_frames=5)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
         ("_run_frequency", "batch"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server_trr, n_frames=5)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1084,7 +1084,7 @@ async def test_widget_run_vacf_serial_batch(_client, imd_server_trr):
 
 async def test_widget_run_vacf_parallel(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3, n_frames=5)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
@@ -1092,7 +1092,7 @@ async def test_widget_run_vacf_parallel(_client, imd_server_trr):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server_trr, n_frames=5)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1100,7 +1100,7 @@ async def test_widget_run_vacf_parallel(_client, imd_server_trr):
 
 async def test_widget_run_vacf_parallel_batch(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=3)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=3, n_frames=5)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
@@ -1108,7 +1108,7 @@ async def test_widget_run_vacf_parallel_batch(_client, imd_server_trr):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server_trr, n_frames=5)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1116,14 +1116,14 @@ async def test_widget_run_vacf_parallel_batch(_client, imd_server_trr):
 
 async def test_widget_run_vacf_running_integral(_client, imd_server_trr):
     uuid = await add_widget("ACF")
-    await connect_to_simulation(imd_server_trr, step=1, batch_size=2)
+    await connect_to_simulation(imd_server_trr, step=1, batch_size=2, n_frames=5)
     inputs = [
         ("physical_property", "velocity"),
         ("selection", "resid 1"),
         ("show_running_integral", True),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server_trr, n_frames=5)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1161,7 +1161,7 @@ async def test_widget_run_custom_code(_client, imd_server):
         ("execute_code", "u.trajectory"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1176,7 +1176,7 @@ async def test_widget_run_custom_code_batch(_client, imd_server):
         ("execute_code", "u.trajectory"),
     ]
     await check_input_changes(uuid, inputs)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
     await disconnect_from_simulation()
@@ -1353,7 +1353,7 @@ async def test_custom_widget(_client, imd_server):
     response = await run_task_until_done(main.mdadash.km.execute_code(code))
     assert response == []
     await remove_widget(uuid2)
-    await resume_simulation(imd_server)
+    await resume_simulation()
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid1)
     await disconnect_from_simulation()
