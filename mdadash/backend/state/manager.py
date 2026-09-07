@@ -137,6 +137,7 @@ class StateManager:
                         "continue_after_disconnect": None,
                         "step": 1,
                         "total_steps": None,
+                        "total_frames": None,
                         "batch_size": 10,
                         "custom_universe_setup": "",
                         "kwargs": [],

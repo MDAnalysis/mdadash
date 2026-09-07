@@ -6,6 +6,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from pathlib import Path
 from typing import Any
 
 import socketio
@@ -13,6 +14,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from MDAnalysis.coordinates.core import get_reader_for
 
 from .analyses.energies import EnergyWidgetBase
 from .kernel.manager import KernelManager
@@ -465,6 +467,15 @@ def start_server():
             "trajectory": args.trajectory,
         }
     )
+    # update total frames if trajectory is a file
+    trajectory_path = Path(args.trajectory)
+    if trajectory_path.exists():
+        try:
+            reader = get_reader_for(trajectory_path)
+            with reader(trajectory_path) as r:
+                mdadash.sm.universe_configs[0].update({"total_frames": r.n_frames})
+        except ValueError:  # pragma: no cover
+            pass
     # start the dashboard server
     uvicorn.run(
         "mdadash.backend.main:app",

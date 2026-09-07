@@ -305,15 +305,16 @@ class UniverseManager:
                 topology = config["topology"]
                 trajectory = config["trajectory"]
                 for key, value in config.items():
-                    if key in (
-                        "topology",
-                        "trajectory",
-                        "step",
-                        "total_steps",
-                        "kwargs",
+                    if (
+                        key
+                        in (
+                            "socket_bufsize",
+                            "buffer_size",
+                            "timeout",
+                            "continue_after_disconnect",
+                        )
+                        and value is not None
                     ):
-                        continue
-                    if value is not None:
                         kwargs[key] = value
                 for name, value in config["kwargs"]:
                     if name.strip():
@@ -347,6 +348,15 @@ class UniverseManager:
                     IPython.get_ipython().run_cell(config["custom_universe_setup"])
                 # set universe for the widget instances with this uid
                 self._wm._set_universe(uid, u)
+            # create the 3dview selection AtomGroup
+            self._3dview_selection_ag = None
+            if self._3dview_selection.strip():
+                try:
+                    self._3dview_selection_ag = self._universes[0].select_atoms(
+                        self._3dview_selection
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                    logger.exception("Failed to create 3dview selection AtomGroup")
             # save universe configs
             self._universe_configs = copy.deepcopy(universe_configs)
             # start iter loop for trajectories
@@ -358,13 +368,6 @@ class UniverseManager:
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("Failed to connect to simulations")
             self._comms.send({"status": "error", "message": str(e)})
-        # create the 3dview selection AtomGroup
-        try:
-            self._3dview_selection_ag = self._universes[0].select_atoms(
-                self._3dview_selection
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            logger.exception("Failed to create 3dview selection AtomGroup")
 
     def _send_tsdata(self, u: mda.Universe):
         """Internal: Send timestep data out"""
@@ -438,8 +441,11 @@ class UniverseManager:
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
             u.trajectory.next()
-        except (OSError, EOFError, StopIteration):  # pragma: no cover
-            pass
+        except (OSError, EOFError, StopIteration) as e:  # pragma: no cover
+            logger.warning("Disconnected", exc_info=e)
+            self._disconnect_from_simulations()
+            self._wm._invoke_lifecycle_method("on_post_disconnect")
+            self._comms.send({"disconnect_clients": {}})
 
     async def _iter_loop(self):
         """Internal: Iteration loop for trajectories"""

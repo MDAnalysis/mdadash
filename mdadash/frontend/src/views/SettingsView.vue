@@ -197,7 +197,17 @@
                 variant="outlined"
                 v-model="settings.universe_configs[0].total_steps"
                 control-variant="hidden"
-                hint="Configuring this will enable showing % completion"
+                hint="Configuring this will enable showing % completion - 1st preference"
+                persistent-hint
+              ></v-number-input>
+
+              <v-number-input
+                class="mb-4"
+                label="Total frames"
+                variant="outlined"
+                v-model="settings.universe_configs[0].total_frames"
+                control-variant="hidden"
+                hint="Configuring this will enable showing % completion - 2nd preference"
                 persistent-hint
               ></v-number-input>
 

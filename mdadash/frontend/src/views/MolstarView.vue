@@ -163,6 +163,9 @@ const initMolstar = async () => {
       showControls: false,
       regionState: { left: 'collapsed', right: 'show', top: 'show', bottom: 'hidden' },
     })
+    if (plugin.behaviors?.layout?.leftPanelTabName) {
+      plugin.behaviors.layout.leftPanelTabName.next('help')
+    }
     const canvas = molstarTarget.value.querySelector('canvas')
     if (canvas) {
       canvas.addEventListener('webglcontextlost', handleContextLost)
