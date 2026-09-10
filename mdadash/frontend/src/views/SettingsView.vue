@@ -152,7 +152,7 @@
                 hint="Timeout for the socket in seconds [5]"
                 persistent-hint
                 :min="0"
-                :max="30"
+                :max="600"
                 :step="1"
               ></v-number-input>
 

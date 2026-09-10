@@ -327,8 +327,7 @@ class UniverseManager:
                 )
                 if config["nojump"]:
                     u.trajectory.add_transformations(NoJump())
-                if isinstance(u.trajectory, IMDReader):
-                    self._streaming = True
+                self._streaming = isinstance(u.trajectory, IMDReader)
                 u.trajectory = BufferedTrajectory(
                     u.trajectory,
                     config["batch_size"],
@@ -441,11 +440,9 @@ class UniverseManager:
             while (u.trajectory._frame + 1) % step != 0:
                 u.trajectory._read_next_timestep()
             u.trajectory.next()
-        except (OSError, EOFError, StopIteration) as e:  # pragma: no cover
-            logger.warning("Disconnected", exc_info=e)
-            self._disconnect_from_simulations()
-            self._wm._invoke_lifecycle_method("on_post_disconnect")
-            self._comms.send({"disconnect_clients": {}})
+            return True
+        except (OSError, EOFError, StopIteration):
+            return False
 
     async def _iter_loop(self):
         """Internal: Iteration loop for trajectories"""
@@ -457,11 +454,20 @@ class UniverseManager:
                     batch_size = self._universe_configs[uid]["batch_size"]
                     try:
                         # iterate in thread to not block on a network call here
-                        await asyncio.to_thread(
+                        ret = await asyncio.to_thread(
                             self._trajectory_next,
                             u,
                             step,
                         )
+                        if not ret:
+                            logger.warning(
+                                "trajectory.next() failed. "
+                                "Simulation likely complete. Disconnecting"
+                            )
+                            self._disconnect_from_simulations()
+                            self._wm._invoke_lifecycle_method("on_post_disconnect")
+                            self._comms.send({"disconnect_clients": {}})
+                            return
                         if uid == 0:
                             self._send_tsdata(u)
                         # run widgets for this timestep

@@ -1430,3 +1430,23 @@ async def test_3dview(_client, imd_server):
     assert response["inputs"]["selection_error"] == "Unknown selection token: 'invalid'"
     assert response["topology"] is None
     await disconnect_from_simulation()
+
+
+async def test_trajectory_file(_client):
+    main.mdadash.sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": str(TRR),
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+    uuid = await add_widget("COMDistance")
+    sio.emit.reset_mock()
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+    assert await sio_event_emitted(sio, "widgets:output", n=4)
+    await remove_widget(uuid)
+    await disconnect_from_simulation()

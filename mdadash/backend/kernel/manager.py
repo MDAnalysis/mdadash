@@ -214,7 +214,7 @@ class KernelManager:
                             await self.sio.emit("runningState", self.sm.running_state)
                             await self._alert(data["pause_simulation"])
                     elif "disconnect_clients" in data:
-                        if self.sm.running_state["running"]:
+                        if self.sm.running_state["connected"]:
                             self.sm.running_state["connected"] = False
                             await self.sio.emit("runningState", self.sm.running_state)
                     else:
