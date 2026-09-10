@@ -113,7 +113,7 @@ class KernelManager:
         except ImportError:
             pass
         """
-        self.kc.execute(coverage_flush)
+        await self.execute_code(coverage_flush)
         self._is_running = False
         # wait for listen task to completely exit
         await self.listen_task

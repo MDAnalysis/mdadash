@@ -32,6 +32,7 @@ The rules for this file:
 - Added batch support for ACF widget (PR #75)
 - Added reference timestep support (Issue #70, PR #76)
 - Added misc fixes (PR #77)
+- Refactored tests for robustness (PR #78)
 
 ### Fixed
 

@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import time
 from unittest.mock import AsyncMock
 
@@ -53,7 +52,22 @@ async def check_input_changes(uuid, inputs, status="ok"):
         assert response["status"] == status
 
 
-async def connect_to_simulation(imd_server, step=2, batch_size=1, timeout=10):
+async def connect_to_file_simulation(trajectory, step=2, batch_size=1):
+    main.mdadash.sm.universe_configs[0].update(
+        {
+            "topology": str(TPR),
+            "trajectory": str(trajectory),
+            "nojump": False,
+            "step": step,
+            "batch_size": batch_size,
+        }
+    )
+    handler = sio.handlers["/"]["connect_to_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+
+
+async def connect_to_imd_simulation(imd_server, step=2, batch_size=1, timeout=10):
     main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
@@ -70,14 +84,19 @@ async def connect_to_simulation(imd_server, step=2, batch_size=1, timeout=10):
 
 
 async def disconnect_from_simulation():
-    if sys.platform == "darwin":
-        return
     handler = sio.handlers["/"]["disconnect_from_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
 
 
-async def resume_simulation(imd_server, n_frames=10):
+async def resume_file_simulation():
+    sio.emit.reset_mock()  # clear emit.await_args_list
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "ok"
+
+
+async def resume_imd_simulation(imd_server, n_frames=10):
     sio.emit.reset_mock()  # clear emit.await_args_list
     handler = sio.handlers["/"]["resume_simulations"]
     response = await run_task_until_done(handler("_sid"))
