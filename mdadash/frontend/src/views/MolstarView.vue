@@ -228,13 +228,13 @@ const update3dview = async (view) => {
 
 const load3dView = async () => {
   showOverlay('Loading...')
-  const response = await socket
-    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-    .emitWithAck('load_3dview')
-  if (response) {
+  try {
+    const response = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('load_3dview')
     await update3dview(response)
     selectionExpanded.value = true
-  } else {
+  } catch {
     showOverlay(`Timeout waiting for server response. Please retry.`)
   }
 }

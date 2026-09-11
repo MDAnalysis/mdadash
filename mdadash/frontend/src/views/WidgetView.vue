@@ -273,28 +273,38 @@ watch(confirmDelete, (newVal) => {
 const onDeleteWidget = async () => {
   confirmDelete.value = !confirmDelete.value
   if (!confirmDelete.value) {
-    await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-      .emitWithAck('widgets:remove_widget', uuid)
-    router.push({ path: '/' })
+    try {
+      await socket
+        .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+        .emitWithAck('widgets:remove_widget', uuid)
+      router.push({ path: '/' })
+    } catch (error) {
+      // v8 ignore next
+      console.log(error)
+    }
   }
 }
 
 const onDuplicateWidget = async () => {
-  const response = await socket
-    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-    .emitWithAck(
-      'widgets:duplicate_widget',
-      0,
-      uuid,
-      widgetDetails.value.name,
-      widgetDetails.value.description,
-    )
-  if (response) {
-    router.push({
-      path: '/widget',
-      query: { uuid: response.uuid },
-    })
+  try {
+    const response = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck(
+        'widgets:duplicate_widget',
+        0,
+        uuid,
+        widgetDetails.value.name,
+        widgetDetails.value.description,
+      )
+    if (response) {
+      router.push({
+        path: '/widget',
+        query: { uuid: response.uuid },
+      })
+    }
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   }
 }
 
@@ -310,6 +320,9 @@ const loadWidgetDetails = async (widget_uuid) => {
     } else {
       router.push({ path: '/' })
     }
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   } finally {
     isLoading.value = false
   }

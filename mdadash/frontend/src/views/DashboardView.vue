@@ -548,13 +548,18 @@ function updateDisplayedLayoutWidgets(value) {
 
 const onAddWidgetSelected = async (obj) => {
   // Add widget on the server side
-  const response = await socket
-    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-    .emitWithAck('widgets:add_widget', 0, obj.name, obj.description)
-  router.push({
-    path: '/widget',
-    query: { uuid: response.uuid },
-  })
+  try {
+    const response = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('widgets:add_widget', 0, obj.name, obj.description)
+    router.push({
+      path: '/widget',
+      query: { uuid: response.uuid },
+    })
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
+  }
 }
 
 const onWidgetsGridFilter = () => {
@@ -626,13 +631,18 @@ async function widgetFunction(item, action) {
     })
   } else {
     // (action['title'] == 'Duplicate')
-    const response = await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-      .emitWithAck('widgets:duplicate_widget', 0, item.i, item.name, item.description)
-    router.push({
-      path: '/widget',
-      query: { uuid: response.uuid },
-    })
+    try {
+      const response = await socket
+        .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+        .emitWithAck('widgets:duplicate_widget', 0, item.i, item.name, item.description)
+      router.push({
+        path: '/widget',
+        query: { uuid: response.uuid },
+      })
+    } catch (error) {
+      // v8 ignore next
+      console.log(error)
+    }
   }
 }
 

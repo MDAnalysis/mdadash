@@ -237,10 +237,15 @@ watch(confirmDelete, (newVal) => {
 const onDeleteNotebook = async () => {
   confirmDelete.value = !confirmDelete.value
   if (!confirmDelete.value) {
-    await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-      .emitWithAck('notebooks:remove_notebook', uuid)
-    router.push({ path: '/notebooks' })
+    try {
+      await socket
+        .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+        .emitWithAck('notebooks:remove_notebook', uuid)
+      router.push({ path: '/notebooks' })
+    } catch (error) {
+      // v8 ignore next
+      console.log(error)
+    }
   }
 }
 
@@ -255,6 +260,9 @@ onMounted(async () => {
     } else {
       router.push({ path: '/notebooks' })
     }
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   } finally {
     isLoading.value = false
   }

@@ -33,6 +33,7 @@ The rules for this file:
 - Added reference timestep support (Issue #70, PR #76)
 - Added misc fixes (PR #77)
 - Refactored tests for robustness (PR #78)
+- Added more user facing frontend error handling (PR #80)
 
 ### Fixed
 

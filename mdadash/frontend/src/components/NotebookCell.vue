@@ -287,6 +287,9 @@ const runCell = async () => {
       .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
       .emitWithAck('cell_run', JSON.stringify({ cell_id: props.id, code: code.value }))
     outputs.value = response
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   } finally {
     isRunning.value = false
   }

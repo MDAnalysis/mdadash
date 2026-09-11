@@ -85,7 +85,7 @@ class MDADash:
         self.sio.on("disconnect")(self.on_disconnect)
         self.sio.on("connect_to_simulations")(self.on_connect_to_simulations)
         self.sio.on("disconnect_from_simulations")(self.on_disconnect_from_simulations)
-        self.sio.on("pause_simulations")(self.on_puase_simulations)
+        self.sio.on("pause_simulations")(self.on_pause_simulations)
         self.sio.on("resume_simulations")(self.on_resume_simulations)
         self.sio.on("update:settings")(self.on_update_settings)
         self.sio.on("widgets:get_available_widgets")(self.on_get_available_widgets)
@@ -162,29 +162,57 @@ class MDADash:
     async def on_disconnect(self, _sid):
         """disconnect handler"""
 
+    def _running_state_error(
+        self, output: dict, message: str
+    ) -> None:  # pragma: no cover
+        """Internal: Show running state update error"""
+        output["response"] = {
+            "status": "error",
+            "message": message,
+        }
+        logger.error(message)
+
     async def on_connect_to_simulations(self, _sid):
         """connect_to_simulations handler"""
         async with self._emit_running_states() as output:
-            output["response"] = await self.km.connect_to_simulations()
-            await self.sio.emit("3dview", await self.on_load_3dview(_sid))
+            try:
+                output["response"] = await self.km.connect_to_simulations()
+                await self.sio.emit("3dview", await self.on_load_3dview(_sid))
+            except TimeoutError:  # pragma: no cover
+                self._running_state_error(
+                    output, "Timedout waiting for connect response"
+                )
             return output["response"]
 
     async def on_disconnect_from_simulations(self, _sid):
         """disconnect_from_simulations handler"""
         async with self._emit_running_states() as output:
-            output["response"] = await self.km.disconnect_from_simulations()
+            try:
+                output["response"] = await self.km.disconnect_from_simulations()
+            except TimeoutError:  # pragma: no cover
+                self._running_state_error(
+                    output, "Timedout waiting for disconnect response"
+                )
             return output["response"]
 
-    async def on_puase_simulations(self, _sid):
+    async def on_pause_simulations(self, _sid):
         """pause_simulations handler"""
         async with self._emit_running_states() as output:
-            output["response"] = await self.km.pause_simulations()
+            try:
+                output["response"] = await self.km.pause_simulations()
+            except TimeoutError:  # pragma: no cover
+                self._running_state_error(output, "Timedout waiting for pause response")
             return output["response"]
 
     async def on_resume_simulations(self, _sid):
         """resume_simulations handler"""
         async with self._emit_running_states() as output:
-            output["response"] = await self.km.resume_simulations()
+            try:
+                output["response"] = await self.km.resume_simulations()
+            except TimeoutError:  # pragma: no cover
+                self._running_state_error(
+                    output, "Timedout waiting for resume response"
+                )
             return output["response"]
 
     async def on_update_settings(self, _sid, settings):

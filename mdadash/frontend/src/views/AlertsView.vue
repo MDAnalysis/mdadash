@@ -189,6 +189,9 @@ onMounted(async () => {
     if (response) {
       alerts.value = response
     }
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   } finally {
     isLoading.value = false
   }

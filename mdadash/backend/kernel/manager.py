@@ -193,7 +193,7 @@ class KernelManager:
                     if "tsinfo" in data:
                         await self._emit_tsdata(data["tsinfo"])
                     elif "positions" in data:
-                        await self.sio.emit("positions", bytes(msg["buffers"][0]))
+                        await self.sio.emit("positions", msg["buffers"][0].tobytes())
                     elif "widget_outputs" in data:
                         # send widget outputs to browser
                         await self.sio.emit(

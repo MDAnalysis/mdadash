@@ -251,13 +251,18 @@ function setCloneWidgetMenuState(value) {
 }
 
 const onCloneWidgetSelected = async (obj) => {
-  const uuid = await socket
-    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-    .emitWithAck('notebooks:clone_widget', obj.name, obj.description, obj.class_name)
-  router.push({
-    path: '/notebook',
-    query: { uuid: uuid },
-  })
+  try {
+    const uuid = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('notebooks:clone_widget', obj.name, obj.description, obj.class_name)
+    router.push({
+      path: '/notebook',
+      query: { uuid: uuid },
+    })
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
+  }
 }
 
 const customCloneWidgetFilter = (value, query, item) => {
@@ -321,13 +326,18 @@ const getAbsoluteIndex = (localIndex) => {
 }
 
 const addNotebook = async () => {
-  const uuid = await socket
-    .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-    .emitWithAck('notebooks:add_notebook')
-  router.push({
-    path: '/notebook',
-    query: { uuid: uuid },
-  })
+  try {
+    const uuid = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('notebooks:add_notebook')
+    router.push({
+      path: '/notebook',
+      query: { uuid: uuid },
+    })
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
+  }
 }
 
 const handleKeydown = (event) => {
@@ -360,13 +370,18 @@ async function notebookFunction(item, action) {
     })
   } else {
     // (action['title'] == 'Duplicate')
-    const new_uuid = await socket
-      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
-      .emitWithAck('notebooks:duplicate_notebook', item.uuid)
-    router.push({
-      path: '/notebook',
-      query: { uuid: new_uuid },
-    })
+    try {
+      const new_uuid = await socket
+        .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+        .emitWithAck('notebooks:duplicate_notebook', item.uuid)
+      router.push({
+        path: '/notebook',
+        query: { uuid: new_uuid },
+      })
+    } catch (error) {
+      // v8 ignore next
+      console.log(error)
+    }
   }
 }
 
@@ -379,6 +394,9 @@ onMounted(async () => {
     if (response) {
       notebooks.value = response
     }
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
   } finally {
     isLoading.value = false
   }
