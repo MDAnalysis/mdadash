@@ -26,11 +26,74 @@
 [url_conda]: https://anaconda.org/channels/conda-forge/packages/mdadash/overview
 [url_pypi]: https://pypi.org/project/mdadash/
 
-![MDAnalysis Dashboard](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/cover-image.png)
+## Table of Contents
 
-Dashboard for tracking and analyzing live MD simulations with streaming.
+- [About](#about)
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Running](#running)
+  - [Accessing Dashboard](#accessing-dashboard)
+- [Documentation](#documentation)
+- [Development](#development)
+- [Copyright](#copyright)
+- [Acknowledgements](#acknowledgements)
 
-`mdadash` is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md).
+## About
+
+`mdadash` is a browser-based real-time dashboard for monitoring, tracking and analyzing running MD simulations using the [streaming](https://docs.mdanalysis.org/stable/documentation_pages/coordinates/IMD.html) interface of [MDAnalysis][url_mda].
+
+The dashboard provides an easy-to-use interface to monitor and control simulation progress. It provides several built-in analyses that can be easily added and customized to analyze running MD simulations via real-time plots. There is support for simple frame-local analyses as well as advanced time-dependent analyses like autocorrelations or lag-time dependent observables. In addition to built-in analyses, the dashboard provides a simple framework for researchers to add their own custom analyses through a Notebook interface directly from within the dashboard and customize it for their own use cases. There is also support to display live 3D visualization of the simulation as it progresses.
+
+![mdadash - MDAnalysis Dashboard](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/cover-image.png)
+
+## Features
+
+- Support for [IMDv3](https://imdclient.readthedocs.io/en/latest/protocol_v3.html) (`imd://`) as well as file based trajectories
+- Multiple built-in analysis widgets
+  - See full list in [Built-in Analysis Widgets](https://mdadash.readthedocs.io/en/latest/built_in_widgets.html) documentation
+
+    <p><img src="https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/add-widget.png" alt="mdadash - Add Widget" width="45%">
+
+- Customizable dashboard grid layout
+- Real-time plots
+- Simulation control
+  - Connect / Disconnect / Pause / Resume
+
+    ![mdadash - Simulation Control](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/simulation-control.png)
+
+- Custom Code Widget
+  - Add custom analysis code
+  - See [Custom Code Widget](https://mdadash.readthedocs.io/en/latest/autosummary/mdadash.backend.analyses.custom_code.html) documentation
+
+    ![mdadash - Custom Code Widget](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/custom-code-widget.png)
+
+- Custom Analysis Widgets
+  - Customize built-in widgets
+  - Add your own custom analysis widgets
+  - See [Adding Custom Widgets](https://mdadash.readthedocs.io/en/latest/adding_custom_widgets.html) in documentation
+  - Notebook interface
+
+    ![mdadash - Notebooks](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/notebooks.png)
+
+- Live 3D visualization
+  - Customizable selection
+  - [Mol \*](https://molstar.org/) interface
+
+    ![mdadash - 3D view](https://raw.githubusercontent.com/MDAnalysis/mdadash/refs/heads/main/docs/source/_static/images/3d-view.png)
+
+- Alerts
+  - Notifications when conditions met
+  - Ability to pause simulation for further analysis when conditions met
+- Batching
+  - Support for running widgets in batch mode
+  - Support for buffered access and [AnalysisBase](https://docs.mdanalysis.org/stable/documentation_pages/analysis/base.html#MDAnalysis.analysis.base.AnalysisBase) based classes
+  - See [Batching](https://mdadash.readthedocs.io/en/latest/batching.html) in documentation
+- Parallelization
+  - Support for running widgets in parallel
+  - See [Parallelization](https://mdadash.readthedocs.io/en/latest/parallelization.html) in documentation
+- Scalable architecture
+  - See [Architecture](https://mdadash.readthedocs.io/en/latest/architecture.html) in documentation
 
 ## Getting Started
 
@@ -66,7 +129,7 @@ To execute directly from an isolated environment without installing:
 uvx mdadash -h
 ```
 
-### Run
+### Running
 
 Once the package is installed, it can be run using the `mdadash` command to start the dashboard server:
 
@@ -119,9 +182,9 @@ options:
   -v, --version         Show the dashboard version and exit
 ```
 
-### Dashboard
+### Accessing Dashboard
 
-The dashboard can be accessed by navigating to [`http://127.0.0.1:8000`](http://127.0.0.1:8000) from any browser.
+The dashboard can be accessed by navigating to [`http://127.0.0.1:8000`](http://127.0.0.1:8000) using any browser.
 
 > Note:
 >
@@ -129,22 +192,24 @@ The dashboard can be accessed by navigating to [`http://127.0.0.1:8000`](http://
 >
 > Setting `--dashboard-host 0.0.0.0` will make the dashboard server accessible from any machine over the network.
 
-### Documentation
+## Documentation
 
 Documentation for `mdadash` is available at: https://mdadash.readthedocs.io/
 
-### Development
+## Development
+
+`mdadash` is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md).
 
 Developer instructions for this project can be found [here](DEVELOPMENT.md).
 
-### Copyright
+## Copyright
 
 The `mdadash` source code is hosted at https://github.com/MDAnalysis/mdadash
 and is available under the [MIT License](https://opensource.org/licenses/MIT) (see the file [LICENSE](https://github.com/MDAnalysis/mdadash/blob/main/LICENSE)).
 
 Copyright (c) 2026, MDAnalysis
 
-#### Acknowledgements
+## Acknowledgements
 
 Project based on the
 [MDAnalysis Cookiecutter](https://github.com/MDAnalysis/cookiecutter-mda) version 0.1.
