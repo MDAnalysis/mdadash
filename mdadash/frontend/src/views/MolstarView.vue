@@ -380,8 +380,13 @@ onBeforeUnmount(() => {
 }
 /* Hide the Home and State* buttons on left panel */
 :deep(.msp-left-panel-controls-buttons button[title='Home']),
-:deep(.msp-left-panel-controls-buttons button[title*='State']) {
+:deep(.msp-left-panel-controls-buttons button[title*='Plugin State']) {
   display: none !important;
+}
+/* Move the Plugin State button to bottom so it is not blocked by selection tab */
+:deep(.msp-left-panel-controls-buttons button[title*='State Tree']) {
+  position: absolute !important;
+  bottom: 64px !important;
 }
 /* Move the Help button to bottom so it is not blocked by selection tab */
 :deep(.msp-left-panel-controls-buttons button[title*='Help']) {
