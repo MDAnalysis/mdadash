@@ -9,6 +9,7 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import delayed
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
 from MDAnalysis.analysis.dssp import DSSP
@@ -132,6 +133,7 @@ class DSSPAnalysis(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots(layout="constrained")
+        self.canvas = FigureCanvasAgg(self.fig)
         self._set_title()
         self.ax.set_ylabel("Res ID")
         colors = ["#ff6666", "#66b2ff", "#d9d9d9"]
@@ -264,7 +266,7 @@ class DSSPAnalysis(WidgetBase):
         self.im.set_extent([min_x, max_x, 0, self.n_residues])
         self.ax.relim()
         self.ax.autoscale_view()
-        self.display_fig(self.fig)
+        self.display_canvas(self.canvas)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

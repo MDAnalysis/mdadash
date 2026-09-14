@@ -6,6 +6,7 @@ import logging
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from MDAnalysis.analysis.dihedrals import Janin
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -92,6 +93,7 @@ class JaninPlot(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasAgg(self.fig)
         (self.plot,) = self.ax.plot([], [])
 
     def _update_selection(self):
@@ -127,4 +129,4 @@ class JaninPlot(WidgetBase):
         self.ax.set_title(
             self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
         )
-        self.display_fig(self.fig)
+        self.display_canvas(self.canvas)

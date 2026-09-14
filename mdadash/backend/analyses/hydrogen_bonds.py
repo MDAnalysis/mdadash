@@ -9,6 +9,7 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import delayed
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -223,6 +224,7 @@ class HydrogenBonds(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasAgg(self.fig)
         (self.plot,) = self.ax.plot([], [])
         self.ax.set_ylabel("Number of Hydrogen bonds")
         self.ax.grid(True)
@@ -332,7 +334,7 @@ class HydrogenBonds(WidgetBase):
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.display_fig(self.fig)
+        self.display_canvas(self.canvas)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
