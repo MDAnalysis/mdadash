@@ -6,7 +6,6 @@ import logging
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
-from IPython.display import display
 from MDAnalysis.analysis.dihedrals import Ramachandran
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -128,5 +127,4 @@ class RamachandranPlot(WidgetBase):
         self.ax.set_title(
             self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
         )
-        self.fig.canvas.draw()
-        display(self.fig)
+        self.display_fig(self.fig)

@@ -8,7 +8,6 @@ from collections import deque
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
-from IPython.display import display
 from joblib import delayed
 from MDAnalysis.analysis.helix_analysis import HELANAL
 
@@ -285,8 +284,7 @@ class HelixAnalysis(WidgetBase):
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
-        display(self.fig)
+        self.display_fig(self.fig)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

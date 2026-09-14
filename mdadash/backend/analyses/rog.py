@@ -8,7 +8,6 @@ from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import numpy as np
-from IPython.display import display
 from joblib import delayed
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -276,8 +275,7 @@ class ROG(WidgetBase):
             plot.set_data(self.x_values, y_value)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
-        display(self.fig)
+        self.display_fig(self.fig)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

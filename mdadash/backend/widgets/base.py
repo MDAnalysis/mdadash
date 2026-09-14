@@ -3,6 +3,7 @@ Base Class for Widgets and Widget Manager
 """
 
 import inspect
+import io
 import logging
 from abc import ABC
 from contextlib import contextmanager
@@ -12,7 +13,9 @@ from uuid import uuid1
 
 import IPython
 import MDAnalysis as mda
+from IPython.core.displaypub import publish_display_data
 from joblib import Parallel
+from matplotlib.figure import Figure
 from matplotlib_inline.backend_inline import InlineBackend
 
 if TYPE_CHECKING:
@@ -106,6 +109,20 @@ class WidgetBase(ABC):
         if self._wm is not None:
             return self._wm._run_cell(code)
         return None  # pragma: no cover
+
+    def display_fig(self, fig: Figure) -> None:
+        """Display matplotlib figure as an output
+
+        Parameters
+        ----------
+        fig: Figure
+            matplotlib figure
+
+        """
+        buf = io.BytesIO()
+        fig.savefig(buf, format="jpeg")
+        publish_display_data(data={"image/jpeg": buf.getvalue()})
+        buf.close()
 
     def alert(self, message: str) -> None:
         """Create an alert
