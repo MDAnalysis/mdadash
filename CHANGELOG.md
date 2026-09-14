@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Speed up of matplotlib plot generation (PR #82)
+
 ### Fixed
 
 <!-- Bug fixes -->
@@ -62,7 +64,7 @@ The rules for this file:
 - Added misc fixes (PR #77)
 - Refactored tests for robustness (PR #78)
 - Added more user facing frontend error handling (PR #80)
-- Updated README with supported features
+- Updated README with supported features (PR #81)
 
 ## [0.1.2]
 

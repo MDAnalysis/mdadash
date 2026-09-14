@@ -261,6 +261,10 @@ if required when any custom conditions are met in their code.
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.alert`
 * :meth:`~mdadash.backend.widgets.base.WidgetBase.pause_simulation`
 
+The following method is available for an optimized display of a matplotlob figure in the
+widget outputs.
+
+* :meth:`~mdadash.backend.widgets.base.WidgetBase.display_fig`
 
 Notes and Docs link
 -------------------

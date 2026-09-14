@@ -8,7 +8,6 @@ from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import numpy as np
-from IPython.display import display
 from joblib import delayed
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
@@ -265,8 +264,7 @@ class DSSPAnalysis(WidgetBase):
         self.im.set_extent([min_x, max_x, 0, self.n_residues])
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
-        display(self.fig)
+        self.display_fig(self.fig)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

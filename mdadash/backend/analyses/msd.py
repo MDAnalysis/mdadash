@@ -8,7 +8,6 @@ from typing import ClassVar
 import matplotlib.pyplot as plt
 import MDAnalysis as mda
 import numpy as np
-from IPython.display import display
 from joblib import delayed
 from matplotlib.collections import LineCollection
 
@@ -250,8 +249,7 @@ class MSDAnalysis(WidgetBase):
         self.lc.set_segments(y2 if y2 is not None else [])
         self.ax.relim()
         self.ax.autoscale_view()
-        self.fig.canvas.draw()
-        display(self.fig)
+        self.display_fig(self.fig)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
