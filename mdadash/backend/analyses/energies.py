@@ -7,6 +7,7 @@ from collections import deque
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 from mdadash.backend.widgets.base import WidgetBase
 
@@ -136,6 +137,7 @@ class EnergyWidgetBase:
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasAgg(self.fig)
         (self.plot,) = self.ax.plot([], [])
         self._set_title()
         self.ax.set_ylabel(self.y_label)
@@ -213,7 +215,7 @@ class EnergyWidgetBase:
         self.plot.set_data(self.x_values, self.y_values)
         self.ax.relim()
         self.ax.autoscale_view()
-        self.display_fig(self.fig)  # pylint: disable=no-member
+        self.display_canvas(self.canvas)  # pylint: disable=no-member
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

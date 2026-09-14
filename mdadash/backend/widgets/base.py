@@ -15,8 +15,10 @@ import IPython
 import MDAnalysis as mda
 from IPython.core.displaypub import publish_display_data
 from joblib import Parallel
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from matplotlib_inline.backend_inline import InlineBackend
+from PIL import Image
 
 if TYPE_CHECKING:
     from mdadash.backend.kernel.core import CommHandler, UniverseManager
@@ -110,7 +112,7 @@ class WidgetBase(ABC):
             return self._wm._run_cell(code)
         return None  # pragma: no cover
 
-    def display_fig(self, fig: Figure) -> None:
+    def display_fig(self, fig: Figure) -> None:  # pragma: no cover
         """Display matplotlib figure as an output
 
         Parameters
@@ -121,6 +123,25 @@ class WidgetBase(ABC):
         """
         buf = io.BytesIO()
         fig.savefig(buf, format="jpeg")
+        publish_display_data(data={"image/jpeg": buf.getvalue()})
+        buf.close()
+
+    def display_canvas(self, canvas: FigureCanvasAgg) -> None:
+        """Display matplotlib figure canvas agg as an output
+
+        Parameters
+        ----------
+        canvas: FigureCanvasAgg
+            matplotlib figure canvas agg
+
+        """
+        canvas.draw()
+        buf = io.BytesIO()
+        im = Image.frombuffer(
+            "RGBA", canvas.get_width_height(), canvas.buffer_rgba(), "raw", "RGBA", 0, 1
+        )
+        im.convert("RGB").save(buf, format="JPEG")
+        buf.seek(0)
         publish_display_data(data={"image/jpeg": buf.getvalue()})
         buf.close()
 

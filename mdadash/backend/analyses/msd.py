@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import MDAnalysis as mda
 import numpy as np
 from joblib import delayed
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.collections import LineCollection
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -173,6 +174,7 @@ class MSDAnalysis(WidgetBase):
     def _setup_plot(self):
         """Setup matplotlib plot"""
         self.fig, self.ax = plt.subplots()
+        self.canvas = FigureCanvasAgg(self.fig)
         # use non-empty values to prevent initial exception
         # if widget is configured to use log scale
         (self.plot,) = self.ax.plot([1], [1], color="red", zorder=2)
@@ -249,7 +251,7 @@ class MSDAnalysis(WidgetBase):
         self.lc.set_segments(y2 if y2 is not None else [])
         self.ax.relim()
         self.ax.autoscale_view()
-        self.display_fig(self.fig)
+        self.display_canvas(self.canvas)
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Speed up of matplotlib plot generation (PR #82)
+- Use matplotlib Agg backend for built-in plots (PR #83)
 
 ### Fixed
 
