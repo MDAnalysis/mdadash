@@ -49,8 +49,23 @@
             </v-tooltip>
           </v-btn>
 
-          <!-- Disconnect Confirmation Dialog -->
+          <!-- Connect Error Dialog -->
           <!-- v8 ignore start -->
+          <v-dialog v-model="showError" max-width="400">
+            <v-card title="Error">
+              <template v-slot:prepend>
+                <v-icon :icon="mdiAlert" color="error"></v-icon>
+              </template>
+              <v-card-text>{{ errorText }}</v-card-text>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <!-- Ok Button -->
+                <v-btn variant="text" @click="showError = false"> Ok </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+
+          <!-- Disconnect Confirmation Dialog -->
           <v-dialog v-model="showConfirm" max-width="400">
             <v-card title="Confirm">
               <template v-slot:prepend>
@@ -69,6 +84,7 @@
             </v-card>
           </v-dialog>
           <!-- v8 ignore stop -->
+
           <!-- Alerts icon -->
           <v-spacer></v-spacer>
           <v-btn icon @click="forceRoute('/alerts')">
@@ -196,6 +212,8 @@ const runningState = ref({
   connected: false,
   running: false,
 })
+const errorText = ref('')
+const showError = ref(false)
 const showConfirm = ref(false)
 const alertsCount = ref(0)
 
@@ -218,7 +236,7 @@ function handleConnectDisconnect() {
   }
 }
 
-const handleKeydown = (event) => {
+const handleDisconnectKeydown = (event) => {
   if (event.key === 'Enter') {
     confirmDisconnect()
   }
@@ -226,9 +244,23 @@ const handleKeydown = (event) => {
 
 watch(showConfirm, (newVal) => {
   if (newVal) {
-    document.addEventListener('keydown', handleKeydown)
+    document.addEventListener('keydown', handleDisconnectKeydown)
   } else {
-    document.removeEventListener('keydown', handleKeydown)
+    document.removeEventListener('keydown', handleDisconnectKeydown)
+  }
+})
+
+const handleErrorKeydown = (event) => {
+  if (event.key === 'Enter') {
+    showError.value = false
+  }
+}
+
+watch(showError, (newVal) => {
+  if (newVal) {
+    document.addEventListener('keydown', handleErrorKeydown)
+  } else {
+    document.removeEventListener('keydown', handleErrorKeydown)
   }
 })
 
@@ -280,8 +312,11 @@ onMounted(() => {
   socket.on('runningState', (data) => {
     runningState.value = data
     if (data.message) {
-      // Temporarily show error in alert
-      alert('ERROR: ' + data.message)
+      errorText.value = data.message
+      showError.value = true
+    } else {
+      errorText.value = ''
+      showError.value = false
     }
   })
   socket.on('timestepInfo', (data) => {
@@ -303,7 +338,8 @@ onBeforeUnmount(() => {
   socket.off('timestepInfo')
   socket.off('settings')
   socket.off('alertsCount')
-  document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('keydown', handleDisconnectKeydown)
+  document.removeEventListener('keydown', handleErrorKeydown)
 })
 
 provide('runningState', runningState)

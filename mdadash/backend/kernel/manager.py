@@ -240,7 +240,6 @@ class KernelManager:
                     print(f"KERNEL (error): {content['ename']}: {content['evalue']}")
                 else:
                     logger.debug("IOPUB: %s", msg)
-                # TODO: handle other message types
             except (TimeoutError, queue.Empty):
                 continue
 

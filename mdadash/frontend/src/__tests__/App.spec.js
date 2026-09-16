@@ -80,7 +80,10 @@ describe('App', () => {
     await connectBtn.trigger('click')
     expect(connectBtn.attributes('disabled')).toBeDefined()
     expect(socket.emit).toHaveBeenCalledWith('connect_to_simulations')
-    window.alert = () => {}
+    // error dialog - Enter to confirm
+    wrapper.vm.handleErrorKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    // Not Enter key
+    wrapper.vm.handleErrorKeydown(new KeyboardEvent('keydown', { key: ' ' }))
     await socketListeners['runningState']({
       pending: false,
       connected: true,
@@ -125,9 +128,9 @@ describe('App', () => {
     expect(confirmBtn).toBeDefined()
     await confirmBtn.trigger('click')
     // disconnect - Enter to confirm
-    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    wrapper.vm.handleDisconnectKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
     // Not Enter key
-    wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
+    wrapper.vm.handleDisconnectKeydown(new KeyboardEvent('keydown', { key: ' ' }))
   })
 
   it('app bar navigation', async () => {

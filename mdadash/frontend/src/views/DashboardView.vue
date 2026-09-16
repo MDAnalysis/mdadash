@@ -379,8 +379,6 @@
       </v-card>
     </v-dialog>
     <!-- v8 ignore stop -->
-
-    <!-- TODO: rest of the dashboard -->
   </v-container>
 </template>
 
