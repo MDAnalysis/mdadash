@@ -106,6 +106,11 @@
                   :rules="addRules(input.validations)"
                   :error-messages="input.error"
                   :items="input.items || []"
+                  :disabled="
+                    input.attribute == 'plot_refresh_frequency' &&
+                    widgetDetails.inputs.find((i) => i.attribute === '_run_frequency')?.value ===
+                      'batch'
+                  "
                 >
                   <template v-if="input.type === 'toggle'" #default>
                     <v-btn v-for="opt in input.options" :key="opt.value" :value="opt.value">

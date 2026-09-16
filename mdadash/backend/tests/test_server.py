@@ -454,6 +454,11 @@ async def test_widget_invalid_inputs(_client):
 async def test_widget_run_energies_serial(_client, imd_server):
     await connect_to_imd_simulation(imd_server)
     uuid = await add_widget("Absolute Temperature")
+    inputs = [
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
+    ]
+    await check_input_changes(uuid, inputs)
     await resume_imd_simulation(imd_server)
     assert await sio_event_emitted(sio, "widgets:output", n=1)
     await remove_widget(uuid)
@@ -483,6 +488,8 @@ async def test_widget_run_com_distance_serial_every_frame(_client):
         ("x_type", "step"),
         ("updating", True),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -579,6 +586,8 @@ async def test_widget_run_rog_serial_every_frame(_client):
         ("x_type", "step"),
         ("updating", True),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -639,6 +648,8 @@ async def test_widget_run_rmsd_serial_every_frame(_client):
         ("maxlen", -1),
         ("x_type", "step"),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -698,6 +709,8 @@ async def test_widget_run_native_contacts_serial_every_frame(_client):
         ("maxlen", -1),
         ("x_type", "step"),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -757,6 +770,8 @@ async def test_widget_run_contacts_serial_every_frame(_client):
         ("maxlen", -1),
         ("x_type", "step"),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -817,6 +832,8 @@ async def test_widget_run_hbonds_serial_every_frame(_client):
         ("maxlen", -1),
         ("x_type", "step"),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -876,6 +893,8 @@ async def test_widget_run_helix_analysis_serial_every_frame(_client):
         ("maxlen", -1),
         ("x_type", "step"),
         ("custom_title", "Title"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -933,6 +952,8 @@ async def test_widget_run_dssp_serial_every_frame(_client):
         ("maxlen", -1),
         ("custom_title", "Title"),
         ("x_type", "step"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -988,6 +1009,8 @@ async def test_widget_run_ramachandran(_client):
     await connect_to_file_simulation(XTC)
     inputs = [
         ("selection", "protein"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -1001,6 +1024,8 @@ async def test_widget_run_janin(_client):
     await connect_to_file_simulation(XTC)
     inputs = [
         ("selection", "protein"),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -1017,6 +1042,8 @@ async def test_widget_run_msd_serial(_client):
         ("custom_title", ""),
         ("show_particle_msds", True),
         ("log_scale", False),
+        ("plot_refresh_frequency", 1),
+        ("reset_on_connect", False),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()
@@ -1064,6 +1091,7 @@ async def test_widget_run_vacf_serial(_client):
         ("show_particle_acfs", True),
         ("centered", True),
         ("normalized", True),
+        ("plot_refresh_frequency", 1),
     ]
     await check_input_changes(uuid, inputs)
     await resume_file_simulation()

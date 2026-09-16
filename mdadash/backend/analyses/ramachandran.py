@@ -42,6 +42,12 @@ class RamachandranPlot(WidgetBase):
         Custom title for the plot
             Default: ''
 
+    Plot refresh frequency
+        The frequency with which the plot is refreshed (every n frames).
+        This only applies when the run frequency is ``every-frame``
+
+            Default: ``1``
+
     **Output**
 
     Here is an example output plot of this widget:
@@ -79,6 +85,12 @@ class RamachandranPlot(WidgetBase):
             "description": "Custom title for the plot",
             "type": "str",
         },
+        {
+            "attribute": "plot_refresh_frequency",
+            "name": "Plot refresh frequency",
+            "description": "The frequency with which the plot is refreshed (every n frames)",
+            "type": "int",
+        },
     ]
 
     def __init__(self):
@@ -88,6 +100,8 @@ class RamachandranPlot(WidgetBase):
         self.rama = None
         self.title = "protein"
         self.custom_title = None
+        self.plot_refresh_count = 1
+        self.plot_refresh_frequency = 1
         self._setup_plot()
 
     def _setup_plot(self):
@@ -104,11 +118,14 @@ class RamachandranPlot(WidgetBase):
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._update_selection()
+        self.plot_refresh_count = 1
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
         if attribute == "selection":
             self._update_selection()
+        elif attribute == "plot_refresh_frequency":
+            self.plot_refresh_count = 1
 
     def _do_nothing(self, *_args, **_kwargs):
         return None
@@ -117,16 +134,23 @@ class RamachandranPlot(WidgetBase):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
         self.rama.run(frames=[self.u.trajectory.frame])
         # update plot
-        self.ax.clear()
-        # Using `set_major_formatter` causes a memory leak everytime this
-        # loop is run. Hence remove the degree formatting and mention
-        # the units in the x and y axis labels instead
-        self.ax.xaxis.set_major_formatter = self._do_nothing
-        self.ax.yaxis.set_major_formatter = self._do_nothing
-        self.rama.plot(ax=self.ax, color="black", marker=".", ref=self.ref)
-        self.ax.set_xlabel(r"$\phi$ (degrees)")
-        self.ax.set_ylabel(r"$\psi$ (degrees)")
-        self.ax.set_title(
-            self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
-        )
-        self.display_canvas(self.canvas)
+        if (
+            self.plot_refresh_count == 1
+            or self.plot_refresh_count % self.plot_refresh_frequency == 0
+        ):
+            self.ax.clear()
+            # Using `set_major_formatter` causes a memory leak everytime this
+            # loop is run. Hence remove the degree formatting and mention
+            # the units in the x and y axis labels instead
+            self.ax.xaxis.set_major_formatter = self._do_nothing
+            self.ax.yaxis.set_major_formatter = self._do_nothing
+            self.rama.plot(ax=self.ax, color="black", marker=".", ref=self.ref)
+            self.ax.set_xlabel(r"$\phi$ (degrees)")
+            self.ax.set_ylabel(r"$\psi$ (degrees)")
+            self.ax.set_title(
+                self.custom_title.replace("\\n", "\n")
+                if self.custom_title
+                else self.title
+            )
+            self.display_canvas(self.canvas)
+        self.plot_refresh_count += 1

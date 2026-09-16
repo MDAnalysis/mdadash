@@ -73,6 +73,12 @@ class MSDAnalysis(WidgetBase):
         Custom title for the plot
             Default: ''
 
+    Plot refresh frequency
+        The frequency with which the plot is refreshed (every n frames).
+        This only applies when the run frequency is ``every-frame``
+
+            Default: ``1``
+
     **Output**
 
     Here is an example output plot of this widget:
@@ -157,6 +163,12 @@ class MSDAnalysis(WidgetBase):
             "description": "Custom title for the plot",
             "type": "str",
         },
+        {
+            "attribute": "plot_refresh_frequency",
+            "name": "Plot refresh frequency",
+            "description": "The frequency with which the plot is refreshed (every n frames)",
+            "type": "int",
+        },
     ]
 
     def __init__(self):
@@ -168,6 +180,8 @@ class MSDAnalysis(WidgetBase):
         self.show_diffusion_coefficient = False
         self.show_particle_msds = False
         self.custom_title = None
+        self.plot_refresh_count = 1
+        self.plot_refresh_frequency = 1
         self._setup_plot()
         self._set_y_label()
 
@@ -229,6 +243,7 @@ class MSDAnalysis(WidgetBase):
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._create_msd()
+        self.plot_refresh_count = 1
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
@@ -238,6 +253,8 @@ class MSDAnalysis(WidgetBase):
             self._set_axes_scale()
         elif attribute == "_run_mode":
             pass
+        elif attribute == "plot_refresh_frequency":
+            self.plot_refresh_count = 1
         else:
             self._create_msd()
 
@@ -247,11 +264,16 @@ class MSDAnalysis(WidgetBase):
 
     def _update_plot(self, x, y1, y2):
         """Update plot with computed values"""
-        self.plot.set_data(x, y1)
-        self.lc.set_segments(y2 if y2 is not None else [])
-        self.ax.relim()
-        self.ax.autoscale_view()
-        self.display_canvas(self.canvas)
+        if (
+            self.plot_refresh_count == 1
+            or self.plot_refresh_count % self.plot_refresh_frequency == 0
+        ):
+            self.plot.set_data(x, y1)
+            self.lc.set_segments(y2 if y2 is not None else [])
+            self.ax.relim()
+            self.ax.autoscale_view()
+            self.display_canvas(self.canvas)
+        self.plot_refresh_count += 1
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""

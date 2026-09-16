@@ -66,11 +66,17 @@ const widgetDetails = {
       value: 'step',
     },
     {
-      attribute: '_analysis_mode',
-      name: 'Analysis mode',
-      description: 'The mode to run this analysis widget',
+      attribute: '_run_frequency',
+      name: 'Run frequency',
+      description: 'The frequency with which the widget is run',
       type: 'select',
       items: ['every-frame', 'batch'],
+    },
+    {
+      attribute: 'plot_refresh_frequency',
+      name: 'Plot refresh frequency',
+      description: 'The frequency with which the plot is refreshed (every n frames)',
+      type: 'int',
     },
   ],
 }
@@ -212,7 +218,7 @@ describe('WidgetView.vue', () => {
       value: 'step',
     })
     // check select from dropdown
-    const mode = wrapper.findComponent('[data-attribute="_analysis_mode"]')
+    const mode = wrapper.findComponent('[data-attribute="_run_frequency"]')
     await mode.vm.$emit('update:modelValue', 'batch')
     // check invalid input update
     const maxlen = wrapper.find('[data-attribute="maxlen"]')
