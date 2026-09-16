@@ -32,6 +32,7 @@ The rules for this file:
 - Speed up of matplotlib plot generation (PR #82)
 - Use matplotlib Agg backend for built-in plots (PR #83)
 - Added refresh frequency and reset on connect options for plots (PR #84)
+- Replaced connect error alert with dialog (PR #85)
 
 ### Fixed
 
