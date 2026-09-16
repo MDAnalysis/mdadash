@@ -86,6 +86,16 @@ class HydrogenBonds(WidgetBase):
         Max values to show in plot
             Default: ``100``
 
+    Plot refresh frequency
+        The frequency with which the plot is refreshed (every n frames).
+        This only applies when the run frequency is ``every-frame``
+
+            Default: ``1``
+
+    Reset on connect
+        Reset the plot on every connect
+            Default: ``False``
+
     X-axis
         X-axis value - `time` or `step`
             Default: ``time``
@@ -192,6 +202,18 @@ class HydrogenBonds(WidgetBase):
             "type": "int",
         },
         {
+            "attribute": "plot_refresh_frequency",
+            "name": "Plot refresh frequency",
+            "description": "The frequency with which the plot is refreshed (every n frames)",
+            "type": "int",
+        },
+        {
+            "attribute": "reset_on_connect",
+            "name": "Reset on connect",
+            "description": "Reset the plot on every connect",
+            "type": "bool",
+        },
+        {
             "attribute": "x_type",
             "name": "X-axis",
             "type": "toggle",
@@ -216,6 +238,9 @@ class HydrogenBonds(WidgetBase):
         self.custom_title = None
         self.default_maxlen = 100
         self.maxlen = self.default_maxlen
+        self.plot_refresh_count = 1
+        self.plot_refresh_frequency = 1
+        self.reset_on_connect = False
         self.x_type = "time"
         self.x_values = None
         self._setup_plot()
@@ -235,6 +260,7 @@ class HydrogenBonds(WidgetBase):
         self.steps = deque(maxlen=self.maxlen)
         self.times = deque(maxlen=self.maxlen)
         self.y_values = deque(maxlen=self.maxlen)
+        self.plot_refresh_count = 1
         self._set_x_values()
 
     def _set_title(self):
@@ -275,6 +301,9 @@ class HydrogenBonds(WidgetBase):
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
         self._create_hba()
+        self.plot_refresh_count = 1
+        if self.reset_on_connect:  # pragma: no cover
+            self._reset_plot_values()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
@@ -288,6 +317,8 @@ class HydrogenBonds(WidgetBase):
             self._set_title()
         elif attribute in ("_run_mode", "_run_frequency"):
             pass
+        elif attribute == "plot_refresh_frequency":
+            self.plot_refresh_count = 1
         else:
             self._reset_plot_values()
             self._create_hba()
@@ -331,10 +362,15 @@ class HydrogenBonds(WidgetBase):
             self.times.append(times)
             self.y_values.append(v)
         # update plot
-        self.plot.set_data(self.x_values, self.y_values)
-        self.ax.relim()
-        self.ax.autoscale_view()
-        self.display_canvas(self.canvas)
+        if self._run_frequency == "batch" or (
+            self.plot_refresh_count == 1
+            or self.plot_refresh_count % self.plot_refresh_frequency == 0
+        ):
+            self.plot.set_data(self.x_values, self.y_values)
+            self.ax.relim()
+            self.ax.autoscale_view()
+            self.display_canvas(self.canvas)
+        self.plot_refresh_count += 1
 
     def run_every_frame(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.run_every_frame` handler"""
