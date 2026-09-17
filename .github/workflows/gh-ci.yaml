@@ -45,23 +45,20 @@ jobs:
           df -h
           ulimit -a
 
-      # More info on options: https://github.com/conda-incubator/setup-miniconda
-      - name: Install conda dependencies
-        uses: conda-incubator/setup-miniconda@v4
+      # More info on options: https://github.com/mamba-org/setup-micromamba
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v3
         with:
-          python-version: ${{ matrix.python-version }}
           environment-file: devtools/conda-envs/test_env.yaml
-          add-pip-as-python-dependency: true
-
-          miniforge-version: "latest"
-          use-mamba: true
-          channels: conda-forge
-
-          activate-environment: mdadash-test
-          auto-update-conda: true
-          auto-activate-base: false
-          show-channel-urls: true
-          conda-remove-defaults: true
+          environment-name: mdadash-test
+          create-args: >-
+            python=${{ matrix.python-version }}
+            pip
+          cache-environment: true
+          init-shell: bash
+          condarc: |
+            channels:
+              - conda-forge
 
       - name: Install package
         run: |
@@ -74,8 +71,8 @@ jobs:
           which pip
           pip list
 
-          conda info
-          conda list
+          micromamba info
+          micromamba list
 
       - name: Run backend tests
         run: |
