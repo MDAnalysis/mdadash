@@ -54,6 +54,7 @@ const widgetDetails = {
       type: 'int',
       value: 0,
       error: 'Invalid value',
+      validations: ['min:0'],
     },
     {
       attribute: 'x_type',
@@ -71,12 +72,26 @@ const widgetDetails = {
       description: 'The frequency with which the widget is run',
       type: 'select',
       items: ['every-frame', 'batch'],
+      validations: ['none'],
     },
     {
       attribute: 'plot_refresh_frequency',
       name: 'Plot refresh frequency',
       description: 'The frequency with which the plot is refreshed (every n frames)',
       type: 'int',
+      validations: ['max:10'],
+    },
+    {
+      attribute: 'min_check_1',
+      type: 'int',
+      value: -1,
+      validations: ['min:0'],
+    },
+    {
+      attribute: 'max_check_1',
+      type: 'int',
+      value: 10,
+      validations: ['max:1'],
     },
   ],
 }

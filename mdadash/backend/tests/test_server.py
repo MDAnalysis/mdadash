@@ -433,6 +433,11 @@ async def test_widget_invalid_inputs(_client):
     await connect_to_file_simulation(XTC)
     uuid0 = await add_widget("Absolute Temperature")
     uuid = await add_widget("ROG")
+    # test invalid type change
+    inputs = [
+        ("maxlen", ""),
+    ]
+    await check_input_changes(uuid, inputs, "error")
     # test invalid input change
     inputs = [
         ("selection", "invalid"),

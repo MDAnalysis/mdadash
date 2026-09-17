@@ -152,18 +152,21 @@ class HydrogenBonds(WidgetBase):
             "name": "Donor atoms",
             "description": "MDAnalysis selection phrase of donor atoms",
             "type": "str",
+            "validations": ["required"],
         },
         {
             "attribute": "hydrogens_sel",
             "name": "Hydrogen atoms",
             "description": "MDAnalysis selection phrase of hydrogen atoms",
             "type": "str",
+            "validations": ["required"],
         },
         {
             "attribute": "acceptors_sel",
             "name": "Acceptor atoms",
             "description": "MDAnalysis selection phrase of acceptor atoms",
             "type": "str",
+            "validations": ["required"],
         },
         {
             "attribute": "d_h_cutoff",
@@ -176,12 +179,14 @@ class HydrogenBonds(WidgetBase):
             "name": "d_a_cutoff",
             "description": "Distance cutoff for hydrogen bonds",
             "type": "float",
+            "validations": ["min:0.0"],
         },
         {
             "attribute": "d_h_a_angle_cutoff",
             "name": "d_h_a_angle_cutoff",
             "description": "D-H-A angle cutoff for hydrogen bonds, in degrees",
             "type": "float",
+            "validations": ["min:0.0"],
         },
         {
             "attribute": "update_selections",
@@ -200,12 +205,14 @@ class HydrogenBonds(WidgetBase):
             "name": "Max values",
             "description": "Max values to show in plot",
             "type": "int",
+            "validations": ["min:0"],
         },
         {
             "attribute": "plot_refresh_frequency",
             "name": "Plot refresh frequency",
             "description": "The frequency with which the plot is refreshed (every n frames)",
             "type": "int",
+            "validations": ["min:1"],
         },
         {
             "attribute": "reset_on_connect",

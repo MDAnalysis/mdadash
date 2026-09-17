@@ -90,6 +90,7 @@ class JaninPlot(WidgetBase):
             "name": "Plot refresh frequency",
             "description": "The frequency with which the plot is refreshed (every n frames)",
             "type": "int",
+            "validations": ["min:1"],
         },
     ]
 
