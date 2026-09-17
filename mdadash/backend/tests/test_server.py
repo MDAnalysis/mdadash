@@ -240,6 +240,10 @@ async def test_update_settings(_client):
     settings["dashboard_config"]["n_jobs"] = 5
     handler = sio.handlers["/"]["update:settings"]
     await run_task_until_done(handler("_sid", settings))
+    # update view3d_frequency
+    settings["dashboard_config"]["view3d_frequency"] = 2
+    handler = sio.handlers["/"]["update:settings"]
+    await run_task_until_done(handler("_sid", settings))
     # assert values are updated
     assert settings == main.mdadash.sm.settings
 
@@ -1231,7 +1235,12 @@ def test_state_load(tmp_path):
     sm = StateManager(temp_file)
     assert sm.state is not None
     # test with valid json
-    state = {"app": "mdadash"}
+    state = {
+        "app": "mdadash",
+        "settings": {
+            "dashboard_config": {},
+        },
+    }
     temp_file = tmp_path / "mdadash3.state.json"
     with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(state, f)

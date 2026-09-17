@@ -109,6 +109,7 @@ class StateManager:
                     if "app" in state and state["app"] == "mdadash":
                         self._state = state
                         self._state["running_state"] = running_state.copy()
+                        self._upgrade()
                         return
                     logger.error("Invalid mdadash state file")
                 except json.JSONDecodeError:
@@ -146,10 +147,29 @@ class StateManager:
             },
             "widgets_layout": [],
             "widgets": {},
-            "alertID": 0,
-            "alerts": [],
-            "notebooks": {},
         }
+        self._upgrade()
+
+    def _upgrade(self):
+        """Internal: Upgrade state across versions
+
+        Any new keys added / modified in the state should be done here.
+
+        """
+        if "alertID" not in self._state:
+            self._state["alertID"] = 0
+        if "alerts" not in self._state:
+            self._state["alerts"] = []
+        if "notebooks" not in self._state:
+            self._state["notebooks"] = {}
+        if "3dview" not in self._state:
+            self._state["3dview"] = {
+                "selection": "",
+                "selection_error": "Please enter a selection phrase",
+            }
+        settings = self._state["settings"]
+        if "view3d_frequency" not in settings["dashboard_config"]:
+            settings["dashboard_config"]["view3d_frequency"] = 1
 
     @property
     def state(self) -> dict:
@@ -194,15 +214,11 @@ class StateManager:
     @property
     def _alertID(self) -> int:
         """Internal: Get current alert ID"""
-        if "alertID" not in self._state:
-            self._state["alertID"] = 0
         return self._state["alertID"]
 
     @property
     def alerts(self) -> list:
         """Alerts array"""
-        if "alerts" not in self._state:
-            self._state["alerts"] = []
         return self._state["alerts"]
 
     async def add_alert(self, data: dict) -> None:
@@ -215,8 +231,6 @@ class StateManager:
     @property
     def notebooks(self) -> dict:
         """Notebooks dict"""
-        if "notebooks" not in self._state:  # pragma: no cover
-            self._state["notebooks"] = {}
         return self._state["notebooks"]
 
     async def add_notebook(self, name="Untitled", description="", code=""):
@@ -256,9 +270,4 @@ class StateManager:
     @property
     def view3d(self) -> dict:
         """3dview dict"""
-        if "3dview" not in self._state:  # pragma: no cover
-            self._state["3dview"] = {
-                "selection": "",
-                "selection_error": "Please enter a selection phrase",
-            }
         return self._state["3dview"]

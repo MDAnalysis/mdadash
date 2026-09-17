@@ -245,6 +245,8 @@ class UniverseManager:
         self._running = False
         self._3dview_selection = ""
         self._3dview_selection_ag = None
+        self._3dview_count = 0
+        self._3dview_frequency = 1
         self._reference_ts = None
 
     def __iter__(self) -> iter:
@@ -379,13 +381,15 @@ class UniverseManager:
             }
         )
         if self._3dview_selection_ag is not None:
-            positions = self._3dview_selection_ag.atoms.positions.T.astype(
-                "float32"
-            ).tobytes()
-            self._comms._comm.send(
-                data={"positions": None},
-                buffers=[positions],
-            )
+            if self._3dview_count % self._3dview_frequency == 0:
+                positions = self._3dview_selection_ag.atoms.positions.T.astype(
+                    "float32"
+                ).tobytes()
+                self._comms._comm.send(
+                    data={"positions": None},
+                    buffers=[positions],
+                )
+            self._3dview_count += 1
 
     def _send_sessioninfo(self, u: mda.Universe):
         """Internal: Send session info from imdclient"""
@@ -512,7 +516,13 @@ class UniverseManager:
             self._3dview_selection = ""
             self._3dview_selection_ag = None
             error = str(e)
+        self._3dview_count = 0
         self._comms.send(error)
+
+    def update_3dview_frequency(self, data: dict):
+        self._3dview_count = 0
+        self._3dview_frequency = data["frequency"]
+        self._comms.send({"status": "ok"})
 
 
 def init_n_universes(data: dict) -> None:
@@ -549,6 +559,7 @@ comms.register_handler("pause_simulations", um.pause_simulations)
 comms.register_handler("resume_simulations", um.resume_simulations)
 comms.register_handler("get_topology", um.get_topology)
 comms.register_handler("update_3dview_selection", um.update_3dview_selection)
+comms.register_handler("update_3dview_frequency", um.update_3dview_frequency)
 # for widget manager
 comms.register_handler("widgets:get_available_widgets", wm.get_available_widgets)
 comms.register_handler("widgets:recreate_instances", wm.recreate_instances)

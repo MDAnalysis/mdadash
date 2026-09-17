@@ -218,8 +218,14 @@ class MDADash:
     async def on_update_settings(self, _sid, settings):
         """update:settings handler"""
         n_jobs = settings["dashboard_config"]["n_jobs"]
-        if self.sm.dashboard_config["n_jobs"] != n_jobs:
+        if n_jobs is not None and self.sm.dashboard_config["n_jobs"] != n_jobs:
             await self.km.update_n_jobs(n_jobs)
+        view3d_frequency = settings["dashboard_config"]["view3d_frequency"]
+        if (
+            view3d_frequency is not None
+            and self.sm.dashboard_config["view3d_frequency"] != view3d_frequency
+        ):
+            await self.km.update_3dview_frequency(view3d_frequency)
         self.sm.settings = copy.deepcopy(settings)
         await self.emit_settings()
         await self.sm.save()

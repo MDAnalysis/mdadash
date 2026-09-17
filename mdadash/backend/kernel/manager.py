@@ -18,6 +18,7 @@ from .utils import EMATrend
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-public-methods
 class KernelManager:
     """Kernel Manager
 
@@ -89,8 +90,12 @@ class KernelManager:
         await self.send_message(
             "init_n_universes", {"n": len(self.sm.universe_configs)}
         )
+        # init n_jobs
+        await self.update_n_jobs(self.sm.dashboard_config["n_jobs"])
         # init 3dview selection
         await self.update_3dview_selection(self.sm.view3d["selection"])
+        # init 3dview frequency
+        await self.update_3dview_frequency(self.sm.dashboard_config["view3d_frequency"])
         # run notebooks from state
         await self.run_notebooks()
         # re-create widget instances from state
@@ -698,6 +703,17 @@ class KernelManager:
 
         """
         await self.send_message("update_n_jobs", {"n_jobs": n_jobs})
+
+    async def update_3dview_frequency(self, frequency: int) -> None:
+        """Update 3D view frequency
+
+        Parameters
+        ----------
+        frequency: int
+            3D view frequency
+
+        """
+        await self.send_message("update_3dview_frequency", {"frequency": frequency})
 
     async def get_topology(self) -> str | None:
         """Get topology of current 3dview selection"""
