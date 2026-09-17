@@ -33,6 +33,7 @@ The rules for this file:
 - Use matplotlib Agg backend for built-in plots (PR #83)
 - Added refresh frequency and reset on connect options for plots (PR #84)
 - Replaced connect error alert with dialog (PR #85)
+- Add refresh frequency config option for 3D view (PR #86)
 
 ### Fixed
 
