@@ -50,14 +50,27 @@
                 label="Parallel jobs"
                 variant="outlined"
                 v-model="settings.dashboard_config.n_jobs"
-                control-variant="hidden"
+                control-variant="default"
                 hint="Number of parallel jobs ('n_jobs' param of joblib.Parallel call)"
-                :rules="[(v) => v != 0 || 'n_jobs cannot be 0']"
-                @blur="
-                  settings.dashboard_config.n_jobs =
-                    settings.dashboard_config.n_jobs == 0 ? 2 : settings.dashboard_config.n_jobs
-                "
+                :min="1"
+                :step="1"
                 persistent-hint
+                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 2']"
+                validate-on="eager"
+              ></v-number-input>
+
+              <v-number-input
+                class="mb-4"
+                label="3D View refresh frequency"
+                variant="outlined"
+                v-model="settings.dashboard_config.view3d_frequency"
+                control-variant="default"
+                hint="The frequency with which the 3D View is refreshed (every n frames)"
+                :min="1"
+                :step="1"
+                persistent-hint
+                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 1']"
+                validate-on="eager"
               ></v-number-input>
             </v-card-text>
           </div>
@@ -139,8 +152,11 @@
                 variant="outlined"
                 v-model="settings.universe_configs[0].buffer_size"
                 control-variant="hidden"
+                :min="1000000"
                 hint="IMDFrameBuffer will be filled with as many IMDFrame fit in buffer_size bytes [10MB]"
                 persistent-hint
+                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 10000000']"
+                validate-on="eager"
               ></v-number-input>
 
               <v-number-input
@@ -154,6 +170,8 @@
                 :min="0"
                 :max="600"
                 :step="1"
+                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 5']"
+                validate-on="eager"
               ></v-number-input>
 
               <v-select
@@ -178,6 +196,8 @@
                 control-variant="default"
                 hint="frame(s) during iteration"
                 persistent-hint
+                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 1']"
+                validate-on="eager"
               ></v-number-input>
 
               <v-number-input
@@ -189,6 +209,8 @@
                 control-variant="hidden"
                 hint="Number of timesteps to buffer for a batch run"
                 persistent-hint
+                :rules="[(v) => v !== null || 'Cannot be empty. Min value is 1']"
+                validate-on="eager"
               ></v-number-input>
 
               <v-number-input
@@ -197,6 +219,7 @@
                 variant="outlined"
                 v-model="settings.universe_configs[0].total_steps"
                 control-variant="hidden"
+                :min="1"
                 hint="Configuring this will enable showing % completion - 1st preference"
                 persistent-hint
               ></v-number-input>
@@ -207,6 +230,7 @@
                 variant="outlined"
                 v-model="settings.universe_configs[0].total_frames"
                 control-variant="hidden"
+                :min="1"
                 hint="Configuring this will enable showing % completion - 2nd preference"
                 persistent-hint
               ></v-number-input>

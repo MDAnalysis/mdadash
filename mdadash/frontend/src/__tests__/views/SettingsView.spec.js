@@ -14,6 +14,7 @@ const settings = ref({
     show_session_info: true,
     show_energies: true,
     n_jobs: 2,
+    view3d_frequency: 1,
   },
   universe_configs: [
     {
@@ -78,14 +79,13 @@ describe('SettingsView.vue', () => {
     const inputs = form.findAllComponents({ name: 'VNumberInput' })
     const n_jobs = inputs[0]
     expect(n_jobs).toBeDefined()
-    n_jobs.setValue(0)
-    n_jobs.trigger('blur')
-    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(2)
-    n_jobs.setValue(3)
-    n_jobs.trigger('blur')
-    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(3)
-    n_jobs.setValue(0)
-    expect(settings.value.dashboard_config.n_jobs).toStrictEqual(0)
+    expect(n_jobs.props('rules')[0](null)).toMatch(/^Cannot be empty/)
+    expect(n_jobs.props('rules')[0](2)).toBe(true)
+    // update view3d_frequency
+    const view3d_frequency = inputs[1]
+    expect(view3d_frequency).toBeDefined()
+    expect(view3d_frequency.props('rules')[0](null)).toMatch(/^Cannot be empty/)
+    expect(view3d_frequency.props('rules')[0](1)).toBe(true)
   })
 
   it('update and test universe config values', async () => {
@@ -115,6 +115,15 @@ describe('SettingsView.vue', () => {
     for (const name of keys) {
       const inputs = form.findAllComponents({ name })
       for (const input of inputs) {
+        if (name == 'VNumberInput') {
+          const rules = input.props('rules')
+          if (rules.length) {
+            // oxlint-disable-next-line jest/no-conditional-expect
+            expect(rules[0](null)).toMatch(/^Cannot be empty/)
+            // oxlint-disable-next-line jest/no-conditional-expect
+            expect(rules[0](1)).toBe(true)
+          }
+        }
         await input.setValue(dataMap[name])
       }
     }
