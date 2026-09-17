@@ -758,7 +758,10 @@ class WidgetManager:
         old_value = getattr(widget, attribute, value)
         old_type = type(old_value)
         # set input using the same existing type
-        setattr(widget, attribute, value if old_value is None else old_type(value))
+        try:
+            setattr(widget, attribute, value if old_value is None else old_type(value))
+        except Exception:  # pylint: disable=broad-exception-caught  # noqa: BLE001
+            return False
         try:
             widget.on_input_change(attribute, old_value, value)
             widget._set_input_state(attribute)

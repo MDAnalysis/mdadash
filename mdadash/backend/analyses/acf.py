@@ -165,6 +165,7 @@ class ACFAnalysis(WidgetBase):
             "name": "Selection",
             "description": "MDAnalysis selection phrase",
             "type": "str",
+            "validations": ["required"],
         },
         {
             "attribute": "dim_type",
@@ -221,6 +222,7 @@ class ACFAnalysis(WidgetBase):
             "name": "Plot refresh frequency",
             "description": "The frequency with which the plot is refreshed (every n frames)",
             "type": "int",
+            "validations": ["min:1"],
         },
     ]
 

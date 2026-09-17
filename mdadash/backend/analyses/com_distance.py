@@ -163,12 +163,14 @@ class COMDistance(WidgetBase):
             "name": "Max values",
             "description": "Max values to show in plot",
             "type": "int",
+            "validations": ["min:0"],
         },
         {
             "attribute": "plot_refresh_frequency",
             "name": "Plot refresh frequency",
             "description": "The frequency with which the plot is refreshed (every n frames)",
             "type": "int",
+            "validations": ["min:1"],
         },
         {
             "attribute": "reset_on_connect",
@@ -181,6 +183,7 @@ class COMDistance(WidgetBase):
             "name": "Max distance",
             "description": "Max distance for alert check",
             "type": "float",
+            "validations": ["min:0.0"],
         },
         {
             "attribute": "max_distance_alert",

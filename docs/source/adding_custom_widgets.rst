@@ -180,6 +180,14 @@ array is a dict that has at minimum the following keys:
     * ``toggle`` - A binary toggle between two options
     * ``cell`` - A Notebook cell
 
+* ``validations``
+
+  * Validations to apply on the browser for this input. An array of validation strings.
+
+    * ``required`` - An input value is required and cannot be empty
+    * ``min:val`` - Numerical input value cannot be less than ``val``
+    * ``max:val`` - Numerical input value cannot be greater than ``val``
+
 Here is an example that creates a string input for the ``selection`` attribute:
 
 .. code-block:: python
@@ -189,6 +197,7 @@ Here is an example that creates a string input for the ``selection`` attribute:
         "name": "Selection",
         "description": "MDAnalysis selection phrase",
         "type": "str",
+        "validations": ["required"],
     },
 
 Some of the input types take additonal keys as shown in the examples below:

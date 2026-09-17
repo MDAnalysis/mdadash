@@ -111,6 +111,7 @@
                     widgetDetails.inputs.find((i) => i.attribute === '_run_frequency')?.value ===
                       'batch'
                   "
+                  validate-on="eager"
                 >
                   <template v-if="input.type === 'toggle'" #default>
                     <v-btn v-for="opt in input.options" :key="opt.value" :value="opt.value">
@@ -237,13 +238,17 @@ const propsMap = {
 }
 
 const validationRules = {
-  required: (v) => !!v || 'This input is required',
+  required: () => (v) => !!v || 'This input is required',
+  min: (min) => (v) => v >= Number(min) || `Min value is ${min}`,
+  max: (max) => (v) => v <= Number(max) || `Max value is ${max}`,
 }
 
-const addRules = (rules) => {
-  if (!rules) return []
-  return rules.map((r) => validationRules[r]).filter(Boolean)
-}
+const addRules = (rules) =>
+  (rules || []).reduce((acc, rule) => {
+    const [name, arg] = rule.split(':')
+    if (validationRules[name]) acc.push(validationRules[name](arg))
+    return acc
+  }, [])
 
 function handleNameDescChange() {
   socket.emit('widget:name_desc_change', {

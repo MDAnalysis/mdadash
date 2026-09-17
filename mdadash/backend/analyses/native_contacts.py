@@ -152,6 +152,7 @@ class NativeContacts(WidgetBase):
             "name": "Radius",
             "description": "Radius within which contacts exist in refgroup",
             "type": "float",
+            "validations": ["min:0.0"],
         },
         {
             "attribute": "method",
@@ -181,12 +182,14 @@ class NativeContacts(WidgetBase):
             "name": "Max values",
             "description": "Max values to show in plot",
             "type": "int",
+            "validations": ["min:0"],
         },
         {
             "attribute": "plot_refresh_frequency",
             "name": "Plot refresh frequency",
             "description": "The frequency with which the plot is refreshed (every n frames)",
             "type": "int",
+            "validations": ["min:1"],
         },
         {
             "attribute": "reset_on_connect",
