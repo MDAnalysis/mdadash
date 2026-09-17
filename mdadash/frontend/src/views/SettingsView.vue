@@ -55,7 +55,7 @@
                 :min="1"
                 :step="1"
                 persistent-hint
-                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 2']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 2']"
                 validate-on="eager"
               ></v-number-input>
 
@@ -69,7 +69,7 @@
                 :min="1"
                 :step="1"
                 persistent-hint
-                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 1']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 1']"
                 validate-on="eager"
               ></v-number-input>
             </v-card-text>
@@ -155,7 +155,7 @@
                 :min="1000000"
                 hint="IMDFrameBuffer will be filled with as many IMDFrame fit in buffer_size bytes [10MB]"
                 persistent-hint
-                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 10000000']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 10000000']"
                 validate-on="eager"
               ></v-number-input>
 
@@ -170,7 +170,7 @@
                 :min="0"
                 :max="600"
                 :step="1"
-                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 5']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 5']"
                 validate-on="eager"
               ></v-number-input>
 
@@ -196,7 +196,7 @@
                 control-variant="default"
                 hint="frame(s) during iteration"
                 persistent-hint
-                :rules="[(v) => v !== null || 'Cannot be empty. Default value is 1']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 1']"
                 validate-on="eager"
               ></v-number-input>
 
@@ -209,7 +209,7 @@
                 control-variant="hidden"
                 hint="Number of timesteps to buffer for a batch run"
                 persistent-hint
-                :rules="[(v) => v !== null || 'Cannot be empty. Min value is 1']"
+                :rules="[(v) => !!v || 'Cannot be empty. Min value is 1']"
                 validate-on="eager"
               ></v-number-input>
 
