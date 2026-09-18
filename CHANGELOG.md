@@ -44,6 +44,8 @@ The rules for this file:
 
 <!-- Changes in existing functionality -->
 
+- Switch to micromamba in CI (PR #88)
+
 ### Deprecated
 
 <!-- Soon-to-be removed features -->
