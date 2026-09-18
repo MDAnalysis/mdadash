@@ -55,7 +55,6 @@ jobs:
             python=${{ matrix.python-version }}
             pip
           cache-environment: true
-          init-shell: bash
           condarc: |
             channels:
               - conda-forge
