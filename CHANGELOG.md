@@ -45,6 +45,7 @@ The rules for this file:
 <!-- Changes in existing functionality -->
 
 - Switch to micromamba in CI (PR #88)
+- Default physical property is now 'position' for ACF widget (PR #89)
 
 ### Deprecated
 
