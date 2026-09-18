@@ -27,8 +27,8 @@ class ACFAnalysis(WidgetBase):
 
     The following physical properties are supported:
 
-    * velocity
     * position
+    * velocity
     * force
 
     A custom :class:`SlidingWindowACF` is used to calculate autocorrelation of chosen
@@ -48,8 +48,8 @@ class ACFAnalysis(WidgetBase):
             Default: ``serial``
 
     Physical property
-        The physical property to analyze - `velocity`, `position` or `force`
-            Default: ``velocity``
+        The physical property to analyze - `position`, `velocity` or `force`
+            Default: ``position``
 
     Selection
         The MDAnalysis selection phrase to run this analysis on
@@ -155,8 +155,8 @@ class ACFAnalysis(WidgetBase):
             "description": "Physical property to analyze",
             "type": "select",
             "items": [
-                "velocity",
                 "position",
+                "velocity",
                 "force",
             ],
         },
@@ -229,7 +229,7 @@ class ACFAnalysis(WidgetBase):
     def __init__(self):
         super().__init__()
         self.acf = None
-        self.physical_property = "velocity"
+        self.physical_property = "position"
         self.selection = "all"
         self.dim_type = "xyz"
         self.centered = False
@@ -382,7 +382,7 @@ class SlidingWindowACF:
     def __init__(
         self,
         u: mda.Universe,
-        physical_property: str = "velocity",
+        physical_property: str = "position",
         select: str = "all",
         dim_type: str = "xyz",
         centered: bool = False,
@@ -391,8 +391,8 @@ class SlidingWindowACF:
     ):
         self.u = u
         property_map = {
-            "velocity": "velocities",
             "position": "positions",
+            "velocity": "velocities",
             "force": "forces",
         }
         self.physical_property = property_map[physical_property]

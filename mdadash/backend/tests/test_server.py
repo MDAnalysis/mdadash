@@ -13,7 +13,7 @@ from mdadash.backend import main
 from mdadash.backend.kernel.core import BufferedTrajectory
 from mdadash.backend.main import MDADash, app, sio, start_server
 from mdadash.backend.state.manager import StateManager
-from mdadash.backend.tests.data.files import TPR, TRR, XTC
+from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
 from .utils import (
@@ -49,20 +49,6 @@ def imd_server_fixture():
     server = InThreadIMDServer(u.trajectory)
     info = create_default_imdsinfo_v3()
     info.velocities = False
-    info.forces = False
-    info.box = True
-    server.set_imdsessioninfo(info)
-    server.handshake_sequence("localhost", first_frame=True)
-    yield server
-    server.cleanup()
-
-
-@pytest.fixture(name="imd_server_trr")
-def imd_server_fixture_trr():
-    u = mda.Universe(TPR, TRR)
-    server = InThreadIMDServer(u.trajectory)
-    info = create_default_imdsinfo_v3()
-    info.velocities = True
     info.forces = False
     info.box = True
     server.set_imdsessioninfo(info)
@@ -109,7 +95,7 @@ def test_start_server_file_trajectory(mocker):
             "--topology",
             str(TPR),
             "--trajectory",
-            str(TRR),
+            str(XTC),
         ],
     )
     mock_uvicorn_run = mocker.patch("uvicorn.run")
@@ -1090,11 +1076,11 @@ async def test_widget_run_msd_diffusion_coefficient(_client):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_vacf_serial(_client):
+async def test_widget_run_acf_serial(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(TRR, step=1, batch_size=3)
+    await connect_to_file_simulation(XTC, step=1, batch_size=3)
     inputs = [
-        ("physical_property", "velocity"),
+        ("physical_property", "position"),
         ("selection", "resid 1"),
         ("custom_title", ""),
         ("show_particle_acfs", True),
@@ -1109,11 +1095,11 @@ async def test_widget_run_vacf_serial(_client):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_vacf_serial_batch(_client):
+async def test_widget_run_acf_serial_batch(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(TRR, step=1, batch_size=3)
+    await connect_to_file_simulation(XTC, step=1, batch_size=3)
     inputs = [
-        ("physical_property", "velocity"),
+        ("physical_property", "position"),
         ("selection", "resid 1"),
         ("_run_frequency", "batch"),
     ]
@@ -1124,11 +1110,11 @@ async def test_widget_run_vacf_serial_batch(_client):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_vacf_parallel(_client):
+async def test_widget_run_acf_parallel(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(TRR, step=1, batch_size=3)
+    await connect_to_file_simulation(XTC, step=1, batch_size=3)
     inputs = [
-        ("physical_property", "velocity"),
+        ("physical_property", "position"),
         ("selection", "resid 1"),
         ("show_particle_acfs", True),
         ("_run_mode", "parallel"),
@@ -1140,11 +1126,11 @@ async def test_widget_run_vacf_parallel(_client):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_vacf_parallel_batch(_client):
+async def test_widget_run_acf_parallel_batch(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(TRR, step=1, batch_size=3)
+    await connect_to_file_simulation(XTC, step=1, batch_size=3)
     inputs = [
-        ("physical_property", "velocity"),
+        ("physical_property", "position"),
         ("selection", "resid 1"),
         ("_run_frequency", "batch"),
         ("_run_mode", "parallel"),
@@ -1156,11 +1142,11 @@ async def test_widget_run_vacf_parallel_batch(_client):
     await disconnect_from_simulation()
 
 
-async def test_widget_run_vacf_running_integral(_client):
+async def test_widget_run_acf_running_integral(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(TRR, step=1, batch_size=2)
+    await connect_to_file_simulation(XTC, step=1, batch_size=2)
     inputs = [
-        ("physical_property", "velocity"),
+        ("physical_property", "position"),
         ("selection", "resid 1"),
         ("show_running_integral", True),
     ]
@@ -1483,7 +1469,7 @@ async def test_trajectory_file(_client):
     main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
-            "trajectory": str(TRR),
+            "trajectory": str(XTC),
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]
