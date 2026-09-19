@@ -47,11 +47,39 @@
 
               <v-number-input
                 class="mb-4"
+                label="UI timeout"
+                variant="outlined"
+                v-model="settings.dashboard_config.ui_request_timeout"
+                control-variant="default"
+                hint="Timeout for UI requests in seconds [5]"
+                :min="5"
+                :step="1"
+                persistent-hint
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 5']"
+                validate-on="eager"
+              ></v-number-input>
+
+              <v-number-input
+                class="mb-4"
+                label="Kernel timeout"
+                variant="outlined"
+                v-model="settings.dashboard_config.kernel_timeout"
+                control-variant="default"
+                hint="Timeout for Kernel requests in seconds [5]"
+                :min="5"
+                :step="1"
+                persistent-hint
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 5']"
+                validate-on="eager"
+              ></v-number-input>
+
+              <v-number-input
+                class="mb-4"
                 label="Parallel jobs"
                 variant="outlined"
                 v-model="settings.dashboard_config.n_jobs"
                 control-variant="default"
-                hint="Number of parallel jobs ('n_jobs' param of joblib.Parallel call)"
+                hint="Number of parallel jobs ('n_jobs' param of joblib.Parallel call) [2]"
                 :min="1"
                 :step="1"
                 persistent-hint
@@ -65,7 +93,7 @@
                 variant="outlined"
                 v-model="settings.dashboard_config.view3d_frequency"
                 control-variant="default"
-                hint="The frequency with which the 3D View is refreshed (every n frames)"
+                hint="Frequency with which 3D View is refreshed (every n frames) [1]"
                 :min="1"
                 :step="1"
                 persistent-hint
@@ -83,7 +111,7 @@
       <v-form :disabled="runningState.connected">
         <v-card-item
           title="Universe Configuration"
-          subtitle="Configuration settings for the universe"
+          subtitle="Configuration settings for the Universe"
           class="cursor-pointer"
           @click="isUCExpanded = !isUCExpanded"
         >
@@ -142,7 +170,7 @@
                 :min="8192"
                 :max="262144"
                 :step="1024"
-                hint="Size of the socket buffer in bytes. Default is to use the system default"
+                hint="Size of imdclient socket buffer in bytes [System default]"
                 persistent-hint
               ></v-number-input>
 
@@ -153,7 +181,7 @@
                 v-model="settings.universe_configs[0].buffer_size"
                 control-variant="hidden"
                 :min="1000000"
-                hint="IMDFrameBuffer will be filled with as many IMDFrame fit in buffer_size bytes [10MB]"
+                hint="Size of imdclient frame buffer in bytes [1000000]"
                 persistent-hint
                 :rules="[(v) => !!v || 'Cannot be empty. Default value is 10000000']"
                 validate-on="eager"
@@ -165,12 +193,12 @@
                 variant="outlined"
                 v-model="settings.universe_configs[0].timeout"
                 control-variant="default"
-                hint="Timeout for the socket in seconds [5]"
+                hint="Timeout for imdclient socket in seconds [600]"
                 persistent-hint
                 :min="0"
-                :max="600"
+                :max="900"
                 :step="1"
-                :rules="[(v) => !!v || 'Cannot be empty. Default value is 5']"
+                :rules="[(v) => !!v || 'Cannot be empty. Default value is 600']"
                 validate-on="eager"
               ></v-number-input>
 
@@ -183,7 +211,7 @@
                   { title: 'False', value: false },
                   { title: 'None', value: null },
                 ]"
-                hint="Continue simulation after disconnect"
+                hint="Continue simulation after disconnect [None]"
                 persistent-hint
               ></v-select>
 
@@ -194,7 +222,7 @@
                 v-model="settings.universe_configs[0].step"
                 :min="1"
                 control-variant="default"
-                hint="frame(s) during iteration"
+                hint="Step n frame(s) during iteration [1]"
                 persistent-hint
                 :rules="[(v) => !!v || 'Cannot be empty. Default value is 1']"
                 validate-on="eager"
