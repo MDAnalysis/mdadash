@@ -29,14 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Speed up of matplotlib plot generation (PR #82)
-- Use matplotlib Agg backend for built-in plots (PR #83)
-- Added refresh frequency and reset on connect options for plots (PR #84)
-- Replaced connect error alert with dialog (PR #85)
-- Added refresh frequency config option for 3D view (PR #86)
-- Added more client side widget input validations (PR #87)
-- Added configurable UI and kernel timeouts (PR #90)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -45,9 +37,6 @@ The rules for this file:
 
 <!-- Changes in existing functionality -->
 
-- Switch to micromamba in CI (PR #88)
-- Default physical property is now 'position' for ACF widget (PR #89)
-
 ### Deprecated
 
 <!-- Soon-to-be removed features -->
@@ -55,6 +44,33 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.4]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+09/19/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Speed up of matplotlib plot generation (PR #82)
+- Use matplotlib Agg backend for built-in plots (PR #83)
+- Added refresh frequency and reset on connect options for plots (PR #84)
+- Replaced connect error alert with dialog (PR #85)
+- Added refresh frequency config option for 3D view (PR #86)
+- Added more client side widget input validations (PR #87)
+- Added configurable UI and kernel timeouts (PR #90)
+
+### Changed
+
+<!-- Changes in existing functionality -->
+
+- Switch to micromamba in CI (PR #88)
+- Default physical property is now 'position' for ACF widget (PR #89)
 
 ## [0.1.3]
 
