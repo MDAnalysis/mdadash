@@ -134,7 +134,7 @@ class StateManager:
                         "nojump": False,
                         "socket_bufsize": None,
                         "buffer_size": 10000000,
-                        "timeout": 5,
+                        "timeout": 600,
                         "continue_after_disconnect": None,
                         "step": 1,
                         "total_steps": None,
@@ -168,8 +168,11 @@ class StateManager:
                 "selection_error": "Please enter a selection phrase",
             }
         settings = self._state["settings"]
-        if "view3d_frequency" not in settings["dashboard_config"]:
-            settings["dashboard_config"]["view3d_frequency"] = 1
+        dashboard_config = settings["dashboard_config"]
+        if "view3d_frequency" not in dashboard_config:
+            dashboard_config["view3d_frequency"] = 1
+        if "kernel_timeout" not in dashboard_config:
+            dashboard_config["kernel_timeout"] = 5
 
     @property
     def state(self) -> dict:

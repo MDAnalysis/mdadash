@@ -13,6 +13,8 @@ const settings = ref({
   dashboard_config: {
     show_session_info: true,
     show_energies: true,
+    ui_request_timeout: 5,
+    kernel_timeout: 5,
     n_jobs: 2,
     view3d_frequency: 1,
   },
@@ -75,14 +77,24 @@ describe('SettingsView.vue', () => {
         await input.setValue(dataMap[name])
       }
     }
-    // update n_jobs
+    // update ui_request_timeout
     const inputs = form.findAllComponents({ name: 'VNumberInput' })
-    const n_jobs = inputs[0]
+    const ui_request_timeout = inputs[0]
+    expect(ui_request_timeout).toBeDefined()
+    expect(ui_request_timeout.props('rules')[0](null)).toMatch(/^Cannot be empty/)
+    expect(ui_request_timeout.props('rules')[0](5)).toBe(true)
+    // update kernel_timeout
+    const kernel_timeout = inputs[1]
+    expect(kernel_timeout).toBeDefined()
+    expect(kernel_timeout.props('rules')[0](null)).toMatch(/^Cannot be empty/)
+    expect(kernel_timeout.props('rules')[0](5)).toBe(true)
+    // update n_jobs
+    const n_jobs = inputs[2]
     expect(n_jobs).toBeDefined()
     expect(n_jobs.props('rules')[0](null)).toMatch(/^Cannot be empty/)
     expect(n_jobs.props('rules')[0](2)).toBe(true)
     // update view3d_frequency
-    const view3d_frequency = inputs[1]
+    const view3d_frequency = inputs[3]
     expect(view3d_frequency).toBeDefined()
     expect(view3d_frequency.props('rules')[0](null)).toMatch(/^Cannot be empty/)
     expect(view3d_frequency.props('rules')[0](1)).toBe(true)

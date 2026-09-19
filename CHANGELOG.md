@@ -35,6 +35,7 @@ The rules for this file:
 - Replaced connect error alert with dialog (PR #85)
 - Added refresh frequency config option for 3D view (PR #86)
 - Added more client side widget input validations (PR #87)
+- Added configurable UI and kernel timeouts (PR #90)
 
 ### Fixed
 

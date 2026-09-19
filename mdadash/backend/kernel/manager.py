@@ -279,7 +279,7 @@ class KernelManager:
         self.kc.shell_channel.send(data_msg)
 
     async def send_message_await_response(
-        self, msg_type: str, data: dict | None = None, timeout: int = 5
+        self, msg_type: str, data: dict | None = None, timeout: int | None = None
     ) -> dict | None:
         """Send message to kernel and wait for a response (async)
 
@@ -288,11 +288,12 @@ class KernelManager:
         msg_type: str
             A message type string that the kernel has a handler registered for
 
-        data: dict
+        data: dict | None
             Dict that gets passed to the handler in the kernel (default: None)
 
-        timeout: int
-            Timeout in seconds (default: 5)
+        timeout: int | None
+            Timeout in seconds (default: None)
+            When None, the configured kernel timeout in dashboard configurtion is used.
 
         Returns
         -------
@@ -318,6 +319,8 @@ class KernelManager:
         future = asyncio.get_running_loop().create_future()
         self._pending_futures[msg_id] = future
         self.kc.shell_channel.send(data_msg)
+        if timeout is None:
+            timeout = self.sm.dashboard_config["kernel_timeout"]
         try:
             return await asyncio.wait_for(future, timeout=timeout)
         except TimeoutError as e:  # pragma: no cover
@@ -325,7 +328,7 @@ class KernelManager:
         finally:
             self._pending_futures.pop(msg_id, None)
 
-    async def execute_code(self, code: str, timeout: int = 5) -> str:
+    async def execute_code(self, code: str, timeout: int | None = None) -> str:
         """Execute code in the kernel
 
         Parameters
@@ -333,8 +336,9 @@ class KernelManager:
         code: str
             Code to execute in the kernel
 
-        timeout: int
-            Timeout in seconds (default: 5)
+        timeout: int | None
+            Timeout in seconds (default: None)
+            When None, the configured kernel timeout in dashboard configurtion is used.
 
         Returns
         -------
@@ -342,6 +346,8 @@ class KernelManager:
             A string representation of the output of the code executed
 
         """
+        if timeout is None:
+            timeout = self.sm.dashboard_config["kernel_timeout"]
         response = await self.send_message_await_response(
             "execute_code", {"code": code}, timeout
         )
@@ -363,10 +369,12 @@ class KernelManager:
 
         """
         try:
+            # Use a larger, but configurable timeout to allow creation of Universes
+            # Eg: guess_bonds=True could take a while to complete
             response = await self.send_message_await_response(
                 "connect_to_simulations",
                 self.sm.universe_configs,
-                timeout=20,
+                timeout=(6 * self.sm.dashboard_config["kernel_timeout"]),
             )
             if response["status"] == "ok":
                 self.sm.running_state["connected"] = True
