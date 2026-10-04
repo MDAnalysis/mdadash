@@ -479,8 +479,7 @@ class UniverseManager:
                             step * batch_size
                         ) == 0
                         self._wm.run_widgets(uid, batch_ready)
-                    # pylint: disable=broad-exception-caught
-                    except Exception:  # pragma: no cover
+                    except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
                         logger.exception("Trajectory iteration failed for uid %d", uid)
                     await asyncio.sleep(0)
         except asyncio.CancelledError:

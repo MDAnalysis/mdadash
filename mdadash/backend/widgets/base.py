@@ -415,8 +415,7 @@ class WidgetManager:
             if callable(handler):
                 try:
                     handler()
-                # pylint: disable=broad-exception-caught
-                except Exception:  # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
                     logger.exception(
                         "Failed to invoke lifecycle method %s for widget %s",
                         method,
@@ -824,8 +823,7 @@ class WidgetManager:
                 initializer=WidgetManager._patch_IMDReader,
             )(parallel_jobs)
             parallel_results.extend(results)
-        # pylint: disable=broad-exception-caught
-        except Exception:  # pragma: no cover
+        except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
             logger.exception("Parallel run failed for jobs %s", parallel_jobs)
 
     # pylint: disable=too-many-branches
@@ -874,8 +872,7 @@ class WidgetManager:
                         widget_outputs = widget.run_every_frame()
                     elif batch_ready:
                         widget_outputs = widget.run_batch()
-                # pylint: disable=broad-exception-caught
-                except Exception:  # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
                     logger.exception("Serial run failed for widget %s", widget.uuid)
             if widget_outputs is not None:
                 # custom code widget returns outputs directly
