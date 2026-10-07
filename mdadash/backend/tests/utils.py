@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 from unittest.mock import AsyncMock
 
@@ -52,6 +53,24 @@ async def check_input_changes(uuid, inputs, status="ok"):
         assert response["status"] == status
 
 
+@contextlib.asynccontextmanager
+async def file_simulation(trajectory, step=2, batch_size=1, disconnect_wait=True):
+    await connect_to_file_simulation(trajectory, step, batch_size)
+    try:
+        yield
+    finally:
+        await disconnect_from_simulation(wait=disconnect_wait)
+
+
+@contextlib.asynccontextmanager
+async def imd_simulation(imd_server, step=2, batch_size=1, timeout=10):
+    await connect_to_imd_simulation(imd_server, step, batch_size, timeout)
+    try:
+        yield
+    finally:
+        await disconnect_from_simulation()
+
+
 async def connect_to_file_simulation(trajectory, step=2, batch_size=1):
     main.mdadash.sm.universe_configs[0].update(
         {
@@ -83,9 +102,9 @@ async def connect_to_imd_simulation(imd_server, step=2, batch_size=1, timeout=10
     assert response["status"] == "ok"
 
 
-async def disconnect_from_simulation():
+async def disconnect_from_simulation(wait=True):
     handler = sio.handlers["/"]["disconnect_from_simulations"]
-    response = await run_task_until_done(handler("_sid"))
+    response = await run_task_until_done(handler("_sid", wait))
     assert response["status"] == "ok"
 
 

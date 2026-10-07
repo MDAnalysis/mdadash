@@ -4,6 +4,7 @@ Manager for jupyter_client's AsyncKernelManager
 
 import asyncio
 import logging
+import os
 import queue
 import sys
 import uuid
@@ -70,7 +71,10 @@ class KernelManager:
     async def start(self) -> None:
         """Start the async kernel"""
         # start the kernel
-        await self.km.start_kernel()
+        env = os.environ.copy()
+        env["MDADASH_KERNEL"] = "1"
+        env["SETUP_MDADASH_KERNEL"] = "1"
+        await self.km.start_kernel(env=env)
         # create a client
         self.kc = self.km.client()
         self.kc.start_channels()
@@ -105,6 +109,7 @@ class KernelManager:
 
     async def stop(self) -> None:
         """Stop the async kernel"""
+        await self.send_message_await_response("cleanup", {})
         # This seems to be the only reliable way to get coverage results
         # back from the kernel started with AsyncKernerlManager on Ubuntu.
         # This should not impact existing app functionality.
@@ -386,8 +391,13 @@ class KernelManager:
             }
         return response
 
-    async def disconnect_from_simulations(self) -> dict:
+    async def disconnect_from_simulations(self, wait: bool = False) -> dict:
         """Disconnect from the MD simulation
+
+        Parameters
+        ----------
+        wait: bool
+            Whether to wait till all jobs are complete
 
         Returns
         -------
@@ -402,7 +412,7 @@ class KernelManager:
 
         """
         response = await self.send_message_await_response(
-            "disconnect_from_simulations", {}
+            "disconnect_from_simulations", {"wait": wait}
         )
         if response["status"] == "ok":
             self.sm.running_state["connected"] = False

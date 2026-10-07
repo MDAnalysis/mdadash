@@ -184,11 +184,13 @@ class MDADash:
                 )
             return output["response"]
 
-    async def on_disconnect_from_simulations(self, _sid):
+    async def on_disconnect_from_simulations(self, _sid, wait=False):
         """disconnect_from_simulations handler"""
         async with self._emit_running_states() as output:
             try:
-                output["response"] = await self.km.disconnect_from_simulations()
+                output["response"] = await self.km.disconnect_from_simulations(
+                    wait=wait
+                )
             except TimeoutError:  # pragma: no cover
                 self._running_state_error(
                     output, "Timedout waiting for disconnect response"

@@ -8,6 +8,7 @@ import copy
 import io
 import logging
 import numbers
+import os
 import sys
 from collections import deque
 from dataclasses import asdict
@@ -16,6 +17,8 @@ import comm
 import IPython
 import MDAnalysis as mda
 import numpy as np
+from joblib import Parallel
+from joblib.externals.loky import get_reusable_executor
 from MDAnalysis.coordinates.base import (
     FrameIteratorAll,
     FrameIteratorBase,
@@ -28,6 +31,16 @@ from MDAnalysis.lib.util import NamedStream
 from MDAnalysis.transformations import NoJump
 
 from mdadash.backend.widgets.base import WidgetManager
+
+os.environ["PYTHONWARNINGS"] = (
+    f"{os.environ.get('PYTHONWARNINGS', '')},ignore:resource_tracker:UserWarning".strip(
+        ","
+    )
+)
+
+from joblib.externals.loky.backend import (  # pylint: disable=wrong-import-position, wrong-import-order, ungrouped-imports
+    resource_tracker,
+)
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -248,6 +261,11 @@ class UniverseManager:
         self._3dview_count = 0
         self._3dview_frequency = 1
         self._reference_ts = None
+        self._n_jobs = 2
+        self._parallel_executor = None
+        self._parallel_executor_n_jobs = None
+        self._patch_IMDReader()
+        self._create_parallel_executor()
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -264,6 +282,38 @@ class UniverseManager:
         if 0 <= index < _max:
             return self._universes[index]
         raise ValueError(f"Invalid index {index} of {_max} items")
+
+    @staticmethod
+    def _patch_IMDReader():
+        """Internal: Patch `IMDReader` to make it serializable"""
+        # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
+        from MDAnalysis.coordinates.IMD import IMDReader
+
+        def custom_getstate(self):
+            state = self.__dict__.copy()
+            del state["_imdclient"]
+            return state
+
+        def custom_setstate(self, state):
+            self.__dict__.update(state)
+            self._imdclient = None
+
+        IMDReader.__setstate__ = custom_setstate
+        IMDReader.__getstate__ = custom_getstate
+
+    def update_n_jobs(self, data: dict) -> None:
+        """Update n_jobs for ``joblib.Parallel``
+
+        Parameters
+        ----------
+        data: dict
+            Dict that has the following keys:
+
+            n_jobs: int
+                The number of parallel jobs
+
+        """
+        self._n_jobs = data["n_jobs"]
 
     def init_n_universes(self, n: int) -> None:
         """Initialize array for n universes
@@ -300,7 +350,20 @@ class UniverseManager:
             imdclient params, user-defined kwargs etc
 
         """
-        self._disconnect_from_simulations()
+        if self._connected:
+            self._comms.send({"status": "error", "message": "Already connected"})
+            return
+        if not self._wm.parallel_jobs_done.is_set():
+            self._wm.notify_parallel_jobs_compelte = True
+            self._comms.send(
+                {
+                    "status": "error",
+                    "message": "Parallel jobs are still in progress. "
+                    "An alert will be generated once they are complete and "
+                    "you can connect to the simulation again after that.",
+                }
+            )
+            return
         try:
             for uid, config in enumerate(universe_configs):
                 kwargs = {}
@@ -356,7 +419,7 @@ class UniverseManager:
                     self._3dview_selection_ag = self._universes[0].select_atoms(
                         self._3dview_selection
                     )
-                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                     logger.exception("Failed to create 3dview selection AtomGroup")
             # save universe configs
             self._universe_configs = copy.deepcopy(universe_configs)
@@ -397,27 +460,42 @@ class UniverseManager:
             {"sessioninfo": asdict(u.trajectory._imdclient.get_imdsessioninfo())}
         )
 
-    def _disconnect_from_simulations(self):
+    async def _ensure_iter_loop_cancelled(self, wait=False, run_after=None):
+        try:
+            if self._iter_loop_task is not None:
+                await self._iter_loop_task
+        except asyncio.CancelledError:
+            self._connected = False
+            self._running = False
+            self._iter_loop_task = None
+        except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+            logger.exception("Exception during iter loop cancellation")
+        finally:
+            if wait:
+                await self._wm.parallel_jobs_done.wait()
+            if run_after is not None:
+                run_after()
+
+    def _disconnect_from_simulations(self, wait=False, run_after=None):
         """Internal: Cancel iteration loop and close trajectories"""
         self._iter_loop_running = False
         if self._iter_loop_task is not None:
+            loop = asyncio.get_running_loop()
+            loop.create_task(
+                self._ensure_iter_loop_cancelled(wait=wait, run_after=run_after)
+            )
             self._iter_loop_task.cancel()
-            self._iter_loop_task = None
-        for u in self._universes:
-            try:
-                u.trajectory.close()
-            except AttributeError:
-                pass
-            except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
-                logger.exception("Failed to close trajectory")
-        self._connected = False
-        self._running = False
+        else:
+            run_after()
 
-    def disconnect_from_simulations(self, _data: dict) -> None:
+    def disconnect_from_simulations(self, data: dict) -> None:
         """Disconnect from MD simulations"""
-        self._disconnect_from_simulations()
+
+        def run_after():
+            self._comms.send({"status": "ok"})
+
+        self._disconnect_from_simulations(wait=data["wait"], run_after=run_after)
         self._wm._invoke_lifecycle_method("on_post_disconnect")
-        self._comms.send({"status": "ok"})
 
     def pause_simulations(self, _data: dict) -> None:
         """Pause MD simulations"""
@@ -448,6 +526,18 @@ class UniverseManager:
         except (OSError, EOFError, StopIteration):
             return False
 
+    def _create_parallel_executor(self):
+        if self._parallel_executor is not None:
+            self._parallel_executor.__exit__(None, None, None)
+        executor = Parallel(
+            n_jobs=self._n_jobs,
+            max_nbytes=None,
+            mmap_mode=None,
+            initializer=self._patch_IMDReader,
+        )
+        self._parallel_executor = executor.__enter__()  # pylint: disable=unnecessary-dunder-call
+        self._parallel_executor_n_jobs = self._n_jobs
+
     async def _iter_loop(self):
         """Internal: Iteration loop for trajectories"""
         try:
@@ -471,19 +561,44 @@ class UniverseManager:
                             self._disconnect_from_simulations()
                             self._wm._invoke_lifecycle_method("on_post_disconnect")
                             self._comms.send({"disconnect_clients": {}})
-                            return
+                            raise asyncio.CancelledError
                         if uid == 0:
                             self._send_tsdata(u)
                         # run widgets for this timestep
                         batch_ready = (u.trajectory._frame + step) % (
                             step * batch_size
                         ) == 0
-                        self._wm.run_widgets(uid, batch_ready)
-                    except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+
+                        if self._n_jobs != self._parallel_executor_n_jobs:
+                            self._create_parallel_executor()
+
+                        await self._wm.run_widgets(
+                            self._parallel_executor, uid, batch_ready
+                        )
+                    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                         logger.exception("Trajectory iteration failed for uid %d", uid)
                     await asyncio.sleep(0)
         except asyncio.CancelledError:
-            pass
+            for u in self._universes:
+                try:
+                    u.trajectory.close()
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                    logger.exception("Failed to close trajectory")
+            raise
+
+    def cleanup(self, _data: dict):
+        def run_after():
+            # cleanup joblib
+            if self._parallel_executor is not None:
+                self._parallel_executor.__exit__(None, None, None)
+                get_reusable_executor().shutdown(wait=True)
+                try:
+                    resource_tracker._resource_tracker._stop()
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                    logger.exception("Failed to invoke resource_tracker stop")
+            self._comms.send({"status": "ok"})
+
+        self._disconnect_from_simulations(run_after=run_after)
 
     def get_topology(self, _data: dict):
         """Get topology of current 3dview selection"""
@@ -524,53 +639,61 @@ class UniverseManager:
         self._comms.send({"status": "ok"})
 
 
-def init_n_universes(data: dict) -> None:
-    """Initialize `n` universes in :class:`UniverseManager`"""
-    um.init_n_universes(data["n"])
+if (
+    os.environ.get("MDADASH_KERNEL") == "1"
+    and os.environ.get("SETUP_MDADASH_KERNEL") == "1"
+):
 
+    def init_n_universes(data: dict) -> None:
+        """Initialize `n` universes in :class:`UniverseManager`"""
+        um.init_n_universes(data["n"])
 
-def run_notebooks(notebooks: dict) -> None:
-    """Run notebooks from loaded state file"""
-    ipy = IPython.get_ipython()
-    for notebook in notebooks.values():
-        if not notebook["run_on_launch"]:
-            continue
-        for cell in notebook["cells"]:
-            ipy.run_cell(cell["code"])
-    comms.send({"status": "ok"})
+    def run_notebooks(notebooks: dict) -> None:
+        """Run notebooks from loaded state file"""
+        ipy = IPython.get_ipython()
+        for notebook in notebooks.values():
+            if not notebook["run_on_launch"]:
+                continue
+            for cell in notebook["cells"]:
+                ipy.run_cell(cell["code"])
+        comms.send({"status": "ok"})
 
+    comms = CommHandler()
+    wm = WidgetManager(comms)
+    um = UniverseManager(comms)
 
-comms = CommHandler()
-wm = WidgetManager(comms)
-um = UniverseManager(comms)
+    # link
+    um._wm = wm  # WidgetManager to UniverseManager
+    wm._um = um  # UniverseManager to WidgetManager
+    # register handlers
+    # for core
+    comms.register_handler("init_n_universes", init_n_universes)
+    comms.register_handler("notebooks:run", run_notebooks)
+    # for universe manager
+    comms.register_handler("connect_to_simulations", um.connect_to_simulations)
+    comms.register_handler(
+        "disconnect_from_simulations", um.disconnect_from_simulations
+    )
+    comms.register_handler("pause_simulations", um.pause_simulations)
+    comms.register_handler("resume_simulations", um.resume_simulations)
+    comms.register_handler("get_topology", um.get_topology)
+    comms.register_handler("update_3dview_selection", um.update_3dview_selection)
+    comms.register_handler("update_3dview_frequency", um.update_3dview_frequency)
+    comms.register_handler("update_n_jobs", um.update_n_jobs)
+    comms.register_handler("cleanup", um.cleanup)
+    # for widget manager
+    comms.register_handler("widgets:get_available_widgets", wm.get_available_widgets)
+    comms.register_handler("widgets:recreate_instances", wm.recreate_instances)
+    comms.register_handler("widgets:remove_instance", wm.remove_widget_instance)
+    comms.register_handler("widget:get_inputs", wm.get_widget_inputs)
+    comms.register_handler("widget:set_input", wm.set_widget_input)
+    comms.register_handler("execute_code", wm.execute_code)
+    comms.register_handler("widgets:add_instance", wm.add_widget_instance)
+    comms.register_handler("widgets:duplicate_instance", wm.duplicate_widget_instance)
 
-# link
-um._wm = wm  # WidgetManager to UniverseManager
-wm._um = um  # UniverseManager to WidgetManager
-# register handlers
-# for core
-comms.register_handler("init_n_universes", init_n_universes)
-comms.register_handler("notebooks:run", run_notebooks)
-# for universe manager
-comms.register_handler("connect_to_simulations", um.connect_to_simulations)
-comms.register_handler("disconnect_from_simulations", um.disconnect_from_simulations)
-comms.register_handler("pause_simulations", um.pause_simulations)
-comms.register_handler("resume_simulations", um.resume_simulations)
-comms.register_handler("get_topology", um.get_topology)
-comms.register_handler("update_3dview_selection", um.update_3dview_selection)
-comms.register_handler("update_3dview_frequency", um.update_3dview_frequency)
-# for widget manager
-comms.register_handler("widgets:get_available_widgets", wm.get_available_widgets)
-comms.register_handler("widgets:recreate_instances", wm.recreate_instances)
-comms.register_handler("widgets:remove_instance", wm.remove_widget_instance)
-comms.register_handler("widget:get_inputs", wm.get_widget_inputs)
-comms.register_handler("widget:set_input", wm.set_widget_input)
-comms.register_handler("execute_code", wm.execute_code)
-comms.register_handler("update_n_jobs", wm.update_n_jobs)
-comms.register_handler("widgets:add_instance", wm.add_widget_instance)
-comms.register_handler("widgets:duplicate_instance", wm.duplicate_widget_instance)
+    # disable jedi for code complete in macOS python 3.12
+    # this times out when used with AsyncKernelManager
+    if sys.platform == "darwin" and sys.version == (3, 12):  # pragma: no cover
+        IPython.get_ipython().Completer.use_jedi = False
 
-# disable jedi for code complete in macOS python 3.12
-# this times out when used with AsyncKernelManager
-if sys.platform == "darwin" and sys.version == (3, 12):  # pragma: no cover
-    IPython.get_ipython().Completer.use_jedi = False
+    del os.environ["SETUP_MDADASH_KERNEL"]

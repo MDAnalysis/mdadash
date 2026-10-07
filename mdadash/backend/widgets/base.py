@@ -2,19 +2,18 @@
 Base Class for Widgets and Widget Manager
 """
 
+import asyncio
 import inspect
 import io
 import logging
 from abc import ABC
 from contextlib import contextmanager
-from threading import Thread
 from typing import TYPE_CHECKING, Any, ClassVar
 from uuid import uuid1
 
 import IPython
 import MDAnalysis as mda
 from IPython.core.displaypub import publish_display_data
-from joblib import Parallel
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 from matplotlib_inline.backend_inline import InlineBackend
@@ -345,13 +344,14 @@ class WidgetManager:
         return cls._instance
 
     def __init__(self, comms: "CommHandler"):
-        if hasattr(self, "_initialized"):
+        if hasattr(self, "_initialized"):  # pragma: no cover
             return
         self._comms = comms
         self._um: UniverseManager = None
-        self.n_jobs = 2
-        self._patch_IMDReader()
         self._initialized = True
+        self.parallel_jobs_done = asyncio.Event()
+        self.parallel_jobs_done.set()
+        self.notify_parallel_jobs_compelte = False
 
     @classmethod
     def register_class(cls, widget_class: WidgetBase) -> None:
@@ -415,7 +415,7 @@ class WidgetManager:
             if callable(handler):
                 try:
                     handler()
-                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                     logger.exception(
                         "Failed to invoke lifecycle method %s for widget %s",
                         method,
@@ -769,65 +769,60 @@ class WidgetManager:
             widget._set_input_state(attribute, str(e))
         return False
 
-    def update_n_jobs(self, data: dict) -> None:
-        """Update n_jobs for ``joblib.Parallel``
-
-        Parameters
-        ----------
-        data: dict
-            Dict that has the following keys:
-
-            n_jobs: int
-                The number of parallel jobs
-
-        """
-        self.n_jobs = data["n_jobs"]
-
     @staticmethod
-    def _patch_IMDReader():
-        """Internal: Patch `IMDReader` to make it serializable"""
-        # pylint: disable=import-outside-toplevel
-        from MDAnalysis.coordinates.IMD import IMDReader
+    def _job_wrapper(func, *args, **kwargs):
+        """Internal: Wrapper for parallel jobs"""
+        instance = getattr(func, "__self__", None)
+        if instance is not None:
+            # reset frame to the most recent one
+            instance.reset_frame_latest()
+        try:
+            ret = func(*args, **kwargs)
+        except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+            logger.exception("Error running parallel job")
+            ret = None
+        return ret
 
-        def custom_getstate(self):
-            state = self.__dict__.copy()
-            del state["_imdclient"]
-            return state
-
-        def custom_setstate(self, state):
-            self.__dict__.update(state)
-            self._imdclient = None
-
-        IMDReader.__setstate__ = custom_setstate
-        IMDReader.__getstate__ = custom_getstate
-
-    @staticmethod
-    def _with_reset_frame(func, *args, **kwargs):
-        """Internal: Reset frame to the most recent one"""
-        instance = func.__self__
-        instance.reset_frame_latest()
-        return func(*args, **kwargs)
-
-    def _run_parallel_jobs(self, parallel_widgets, parallel_results):
+    def _run_parallel_jobs(
+        self,
+        parallel_executor,
+        parallel_widgets,
+        parallel_widgets_run,
+        parallel_results,
+    ):
         """Internal: Run parallel jobs using joblib.Parallel"""
         parallel_jobs = []
         for widget in parallel_widgets:
-            func, args, kwargs = widget.get_parallel_job()
-            parallel_jobs.append((self._with_reset_frame, (func,) + args, kwargs))
+            try:
+                func, args, kwargs = widget.get_parallel_job()
+                parallel_jobs.append((self._job_wrapper, (func,) + args, kwargs))
+                parallel_widgets_run.append(widget)
+            except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                logger.exception(
+                    "Failed to get parallel job for widget %s", widget.uuid
+                )
         try:
-            # without max_nbytes=None, np arrays passed / returned
-            # are marked read-only in subsequent calls (eg: msd case)
-            results = Parallel(
-                n_jobs=self.n_jobs,
-                max_nbytes=None,
-                initializer=WidgetManager._patch_IMDReader,
-            )(parallel_jobs)
+            self.parallel_jobs_done.clear()
+            results = parallel_executor(parallel_jobs)
             parallel_results.extend(results)
-        except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+        except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
             logger.exception("Parallel run failed for jobs %s", parallel_jobs)
+            parallel_results.extend([None] * len(parallel_jobs))
+        finally:
+            self.parallel_jobs_done.set()
+            if self.notify_parallel_jobs_compelte:  # pragma: no cover
+                self.notify_parallel_jobs_compelte = False
+                self._comms.send(
+                    {
+                        "alert": {
+                            "tsinfo": {"frame": 0, "time": 0, "step": 0},
+                            "message": "Parallel jobs post disconnect are complete",
+                        }
+                    }
+                )
 
     # pylint: disable=too-many-branches
-    def run_widgets(self, uid: int, batch_ready: bool) -> None:
+    async def run_widgets(self, parallel_executor, uid: int, batch_ready: bool) -> None:
         """Run widget instances
 
         Parameters
@@ -854,14 +849,18 @@ class WidgetManager:
         # run parallel widgets in separate thread
         if parallel_widgets:
             parallel_results = []
-            parallel_thread = Thread(
-                target=self._run_parallel_jobs,
-                args=(
+            parallel_widgets_run = []
+            parallel_thread = asyncio.create_task(
+                asyncio.to_thread(
+                    self._run_parallel_jobs,
+                    parallel_executor,
                     parallel_widgets,
+                    parallel_widgets_run,
                     parallel_results,
-                ),
+                )
             )
-            parallel_thread.start()
+            # yield to run the task right away
+            await asyncio.sleep(0)
         # run serial widgets
         for widget in serial_widgets:
             widget.reset_frame_latest()
@@ -872,7 +871,7 @@ class WidgetManager:
                         widget_outputs = widget.run_every_frame()
                     elif batch_ready:
                         widget_outputs = widget.run_batch()
-                except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                     logger.exception("Serial run failed for widget %s", widget.uuid)
             if widget_outputs is not None:
                 # custom code widget returns outputs directly
@@ -892,10 +891,11 @@ class WidgetManager:
         # apply parallel results back
         if parallel_widgets:
             # wait for all parallel jobs to be done
-            parallel_thread.join()
-            for i, widget in enumerate(parallel_widgets):
+            await parallel_thread
+            for i, widget in enumerate(parallel_widgets_run):
                 with _capture_outputs() as captured_outputs:
-                    widget.apply_parallel_results(parallel_results[i])
+                    if parallel_results[i] is not None:
+                        widget.apply_parallel_results(parallel_results[i])
                 if captured_outputs:
                     self._comms.send(
                         {
