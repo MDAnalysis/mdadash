@@ -2,7 +2,10 @@
 Common utils for use in kernel core
 """
 
-from .core import comms, um
+import os
+
+if os.environ.get("MDADASH_KERNEL") == "1":
+    from .core import comms, um
 
 
 class EMATrend:
@@ -49,7 +52,7 @@ class EMATrend:
 
 def _get_alert_timestamp() -> dict:
     """Internal: Get dict containing the current ts info to use as timestamp"""
-    u = um[0]
+    u = um[0]  # pylint: disable=possibly-used-before-assignment
     return {
         "frame": u.trajectory.frame,
         "time": u.trajectory.ts.data.get("time"),
@@ -69,7 +72,7 @@ def alert(message: str) -> None:
         The string message used for the alert
 
     """
-    comms.send(
+    comms.send(  # pylint: disable=possibly-used-before-assignment
         {
             "alert": {
                 "tsinfo": _get_alert_timestamp(),

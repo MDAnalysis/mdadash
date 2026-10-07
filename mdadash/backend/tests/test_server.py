@@ -1,4 +1,5 @@
 # pylint: disable=too-many-lines
+import asyncio
 import json
 import sys
 from unittest.mock import ANY, AsyncMock
@@ -19,10 +20,10 @@ from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 from .utils import (
     add_widget,
     check_input_changes,
-    connect_to_file_simulation,
-    connect_to_imd_simulation,
     disconnect_from_simulation,
     duplicate_widget,
+    file_simulation,
+    imd_simulation,
     pause_simulation,
     remove_widget,
     resume_file_simulation,
@@ -143,6 +144,10 @@ async def test_simulation_connectivity(_client, imd_server):
     handler = sio.handlers["/"]["connect_to_simulations"]
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "ok"
+    # test connect failure when connected
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "error"
+    assert "Already connected" in response["message"]
     # test resume
     await resume_file_simulation()
     # test pause
@@ -160,24 +165,24 @@ async def test_km_unregistered_msg_type(_client):
 
 
 async def test_kernel_universe_access(_client):
-    await connect_to_file_simulation(XTC)
-    # check universe manager access in kernel
-    code = """
-from mdadash.backend.kernel.core import um
+    async with file_simulation(XTC):
+        # check universe manager access in kernel
+        code = """
+        from mdadash.backend.kernel.core import um
 
-try:
-    # invalid index access
-    u = um[1]
-except ValueError as e:
-    print(e)
-# check length and index access
-print(len(um), um[0].atoms.n_atoms)
-# iterate universe manager
-for u in um:
-    print(u.atoms.n_atoms)
-"""
-    response = await run_task_until_done(main.mdadash.km.execute_code(code))
-    assert response[0]["content"] == "Invalid index 1 of 1 items\n1 47681\n47681\n"
+        try:
+            # invalid index access
+            u = um[1]
+        except ValueError as e:
+            print(e)
+        # check length and index access
+        print(len(um), um[0].atoms.n_atoms)
+        # iterate universe manager
+        for u in um:
+            print(u.atoms.n_atoms)
+        """
+        response = await run_task_until_done(main.mdadash.km.execute_code(code))
+        assert response[0]["content"] == "Invalid index 1 of 1 items\n1 47681\n47681\n"
 
 
 async def test_kernel_execute_code_errors(_client):
@@ -195,21 +200,20 @@ async def test_kernel_execute_code_errors(_client):
 
 
 async def test_socketio_connect_disconnect(_client):
-    await connect_to_file_simulation(XTC)
-    # connect
-    handler = sio.handlers["/"]["connect"]
-    response = await run_task_until_done(handler("_sid", {}))
-    assert response is None
-    # init_data
-    handler = sio.handlers["/"]["init_data"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response is None
-    # disconnect
-    handler = sio.handlers["/"]["disconnect"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response is None
-    await resume_file_simulation()
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        # connect
+        handler = sio.handlers["/"]["connect"]
+        response = await run_task_until_done(handler("_sid", {}))
+        assert response is None
+        # init_data
+        handler = sio.handlers["/"]["init_data"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response is None
+        # disconnect
+        handler = sio.handlers["/"]["disconnect"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response is None
+        await resume_file_simulation()
 
 
 async def test_update_settings(_client):
@@ -223,7 +227,7 @@ async def test_update_settings(_client):
     # assert values are same
     assert settings == main.mdadash.sm.settings
     # update n_jobs
-    settings["dashboard_config"]["n_jobs"] = 5
+    settings["dashboard_config"]["n_jobs"] = 3
     handler = sio.handlers["/"]["update:settings"]
     await run_task_until_done(handler("_sid", settings))
     # update view3d_frequency
@@ -351,25 +355,24 @@ async def test_add_remove_widgets(_client):
 
 
 async def test_duplicate_widgets(_client):
-    await connect_to_file_simulation(XTC)
-    # add a widget
-    uuid1 = await add_widget("Absolute Temperature")
-    # duplicate the widget
-    uuid2 = await duplicate_widget(uuid1)
-    await remove_widget(uuid1)
-    await remove_widget(uuid2)
-    # add widget and set wrong inputs
-    uuid1 = await add_widget("ROG")
-    inputs = [
-        ("selection", "invalid"),
-    ]
-    await check_input_changes(uuid1, inputs, "error")
-    # duplicate the widget
-    uuid2 = await duplicate_widget(uuid1)
-    await remove_widget(uuid1)
-    await remove_widget(uuid2)
-    await resume_file_simulation()
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        # add a widget
+        uuid1 = await add_widget("Absolute Temperature")
+        # duplicate the widget
+        uuid2 = await duplicate_widget(uuid1)
+        await remove_widget(uuid1)
+        await remove_widget(uuid2)
+        # add widget and set wrong inputs
+        uuid1 = await add_widget("ROG")
+        inputs = [
+            ("selection", "invalid"),
+        ]
+        await check_input_changes(uuid1, inputs, "error")
+        # duplicate the widget
+        uuid2 = await duplicate_widget(uuid1)
+        await remove_widget(uuid1)
+        await remove_widget(uuid2)
+        await resume_file_simulation()
 
 
 async def test_update_layout(_client):
@@ -416,94 +419,89 @@ async def test_widget_input_changes(_client):
 
 
 async def test_widget_invalid_inputs(_client):
-    await connect_to_file_simulation(XTC)
-    uuid0 = await add_widget("Absolute Temperature")
-    uuid = await add_widget("ROG")
-    # test invalid type change
-    inputs = [
-        ("maxlen", ""),
-    ]
-    await check_input_changes(uuid, inputs, "error")
-    # test invalid input change
-    inputs = [
-        ("selection", "invalid"),
-    ]
-    await check_input_changes(uuid, inputs, "error")
-    # test valid input change
-    inputs = [
-        ("selection", "resid 1"),
-    ]
-    await check_input_changes(uuid, inputs)
-    # retain invalid input to skip run for this widget
-    inputs = [
-        ("selection", "invalid"),
-    ]
-    await check_input_changes(uuid, inputs, "error")
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid0)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        uuid0 = await add_widget("Absolute Temperature")
+        uuid = await add_widget("ROG")
+        # test invalid type change
+        inputs = [
+            ("maxlen", ""),
+        ]
+        await check_input_changes(uuid, inputs, "error")
+        # test invalid input change
+        inputs = [
+            ("selection", "invalid"),
+        ]
+        await check_input_changes(uuid, inputs, "error")
+        # test valid input change
+        inputs = [
+            ("selection", "resid 1"),
+        ]
+        await check_input_changes(uuid, inputs)
+        # retain invalid input to skip run for this widget
+        inputs = [
+            ("selection", "invalid"),
+        ]
+        await check_input_changes(uuid, inputs, "error")
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid0)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_energies_serial(_client, imd_server):
-    await connect_to_imd_simulation(imd_server)
-    uuid = await add_widget("Absolute Temperature")
-    inputs = [
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_imd_simulation(imd_server)
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with imd_simulation(imd_server):
+        uuid = await add_widget("Absolute Temperature")
+        inputs = [
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_imd_simulation(imd_server)
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_energies_batch(_client):
     uuid = await add_widget("Absolute Temperature")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_com_distance_serial_every_frame(_client):
-    await connect_to_file_simulation(XTC)
-    uuid = await add_widget("COMDistance")
-    inputs = [
-        ("selection1", "resid 1"),
-        ("selection2", "resid 2"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("updating", True),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        uuid = await add_widget("COMDistance")
+        inputs = [
+            ("selection1", "resid 1"),
+            ("selection2", "resid 2"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("updating", True),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_com_distance_serial_batch(_client):
     uuid = await add_widget("COMDistance")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_com_distance_parallel_every_frame(_client):
@@ -512,96 +510,91 @@ async def test_widget_run_com_distance_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_com_distance_parallel_batch(_client, imd_server):
-    await connect_to_imd_simulation(imd_server)
-    uuid = await add_widget("COMDistance")
-    inputs = [
-        ("_run_frequency", "batch"),
-        ("_run_mode", "parallel"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_imd_simulation(imd_server)
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with imd_simulation(imd_server):
+        uuid = await add_widget("COMDistance")
+        inputs = [
+            ("_run_frequency", "batch"),
+            ("_run_mode", "parallel"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_imd_simulation(imd_server)
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_com_distance_alert_pause(_client):
     uuid = await add_widget("COMDistance")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection1", "resid 1"),
-        ("selection2", "resid 2"),
-        ("max_distance", 0),
-        ("max_distance_alert", True),
-        ("max_distance_pause", True),
-    ]
-    await check_input_changes(uuid, inputs)
-    # check there are no alerts
-    assert len(main.mdadash.sm.alerts) == 0
-    # resume simulation
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "runningState", n=3)
-    assert main.mdadash.sm.running_state["running"] is False
-    # check alert generation
-    handler = sio.handlers["/"]["get_alerts"]
-    alerts = await run_task_until_done(handler("_sid"))
-    previous_alerts = alerts.copy()
-    assert alerts[0]["id"] == 0
-    # check alert deletion
-    handler = sio.handlers["/"]["delete_alert"]
-    await run_task_until_done(handler("_sid", 0))
-    if len(main.mdadash.sm.alerts) > 0:
-        assert alerts[0]["id"] != 0
-    # check delete all alerts
-    handler = sio.handlers["/"]["delete_all_alerts"]
-    await run_task_until_done(handler("_sid"))
-    handler = sio.handlers["/"]["get_alerts"]
-    alerts = await run_task_until_done(handler("_sid"))
-    assert alerts != previous_alerts
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection1", "resid 1"),
+            ("selection2", "resid 2"),
+            ("max_distance", 0),
+            ("max_distance_alert", True),
+            ("max_distance_pause", True),
+        ]
+        await check_input_changes(uuid, inputs)
+        # check there are no alerts
+        assert len(main.mdadash.sm.alerts) == 0
+        # resume simulation
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "runningState", n=3)
+        assert main.mdadash.sm.running_state["running"] is False
+        # check alert generation
+        handler = sio.handlers["/"]["get_alerts"]
+        alerts = await run_task_until_done(handler("_sid"))
+        previous_alerts = alerts.copy()
+        assert alerts[0]["id"] == 0
+        # check alert deletion
+        handler = sio.handlers["/"]["delete_alert"]
+        await run_task_until_done(handler("_sid", 0))
+        if len(main.mdadash.sm.alerts) > 0:
+            assert alerts[0]["id"] != 0
+        # check delete all alerts
+        handler = sio.handlers["/"]["delete_all_alerts"]
+        await run_task_until_done(handler("_sid"))
+        handler = sio.handlers["/"]["get_alerts"]
+        alerts = await run_task_until_done(handler("_sid"))
+        assert alerts != previous_alerts
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rog_serial_every_frame(_client):
-    await connect_to_file_simulation(XTC)
-    uuid = await add_widget("ROG")
-    inputs = [
-        ("selection", "protein"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("updating", True),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        uuid = await add_widget("ROG")
+        inputs = [
+            ("selection", "protein"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("updating", True),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rog_serial_batch(_client):
     uuid = await add_widget("ROG")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rog_parallel_every_frame(_client):
@@ -610,12 +603,11 @@ async def test_widget_run_rog_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rog_parallel_batch(_client):
@@ -625,45 +617,42 @@ async def test_widget_run_rog_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rmsd_serial_every_frame(_client):
     uuid = await add_widget("RMSD")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection", "protein"),
-        ("center", True),
-        ("superposition", True),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection", "protein"),
+            ("center", True),
+            ("superposition", True),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rmsd_serial_batch(_client):
     uuid = await add_widget("RMSD")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rmsd_parallel_every_frame(_client):
@@ -672,12 +661,11 @@ async def test_widget_run_rmsd_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_rmsd_parallel_batch(_client):
@@ -687,44 +675,41 @@ async def test_widget_run_rmsd_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_native_contacts_serial_every_frame(_client):
     uuid = await add_widget("Native Contacts")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection1", "protein and name CA"),
-        ("selection2", "protein and name CA"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection1", "protein and name CA"),
+            ("selection2", "protein and name CA"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_native_contacts_serial_batch(_client):
     uuid = await add_widget("Native Contacts")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_native_contacts_parallel_every_frame(_client):
@@ -733,12 +718,11 @@ async def test_widget_run_native_contacts_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_native_contacts_parallel_batch(_client):
@@ -748,44 +732,41 @@ async def test_widget_run_native_contacts_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_contacts_serial_every_frame(_client):
     uuid = await add_widget("Contacts")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection1", "protein"),
-        ("selection2", "resid 1:10"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection1", "protein"),
+            ("selection2", "resid 1:10"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_contacts_serial_batch(_client):
     uuid = await add_widget("Contacts")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_contacts_parallel_every_frame(_client):
@@ -794,12 +775,11 @@ async def test_widget_run_contacts_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_contacts_parallel_batch(_client):
@@ -809,45 +789,42 @@ async def test_widget_run_contacts_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_hbonds_serial_every_frame(_client):
     uuid = await add_widget("Hydrogen bonds")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("donors_sel", "name O* N*"),
-        ("hydrogens_sel", "name H*"),
-        ("acceptors_sel", "name O* N*"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("donors_sel", "name O* N*"),
+            ("hydrogens_sel", "name H*"),
+            ("acceptors_sel", "name O* N*"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_hbonds_serial_batch(_client):
     uuid = await add_widget("Hydrogen bonds")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_hbonds_parallel_every_frame(_client):
@@ -856,12 +833,11 @@ async def test_widget_run_hbonds_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_hbonds_parallel_batch(_client):
@@ -871,44 +847,41 @@ async def test_widget_run_hbonds_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_helix_analysis_serial_every_frame(_client):
     uuid = await add_widget("Helix Analysis")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection", "resid 1:10 and name CA"),
-        ("property", "local_twists"),
-        ("maxlen", -1),
-        ("x_type", "step"),
-        ("custom_title", "Title"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection", "resid 1:10 and name CA"),
+            ("property", "local_twists"),
+            ("maxlen", -1),
+            ("x_type", "step"),
+            ("custom_title", "Title"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_helix_analysis_serial_batch(_client):
     uuid = await add_widget("Helix Analysis")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_helix_analysis_parallel_every_frame(_client):
@@ -917,12 +890,11 @@ async def test_widget_run_helix_analysis_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_helix_analysis_parallel_batch(_client):
@@ -932,42 +904,39 @@ async def test_widget_run_helix_analysis_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_dssp_serial_every_frame(_client):
-    await connect_to_file_simulation(XTC)
-    uuid = await add_widget("DSSP Analysis")
-    inputs = [
-        ("maxlen", -1),
-        ("custom_title", "Title"),
-        ("x_type", "step"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        uuid = await add_widget("DSSP Analysis")
+        inputs = [
+            ("maxlen", -1),
+            ("custom_title", "Title"),
+            ("x_type", "step"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_dssp_serial_batch(_client):
     uuid = await add_widget("DSSP Analysis")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_dssp_parallel_every_frame(_client):
@@ -976,12 +945,11 @@ async def test_widget_run_dssp_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_dssp_parallel_batch(_client):
@@ -991,223 +959,211 @@ async def test_widget_run_dssp_parallel_batch(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    await connect_to_file_simulation(XTC)
-    await resume_file_simulation()
-    timeout = 30 if sys.platform == "win32" else 20
-    assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_ramachandran(_client):
     uuid = await add_widget("Ramachandran Plot")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection", "protein"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection", "protein"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_janin(_client):
     uuid = await add_widget("Janin Plot")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("selection", "protein"),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("selection", "protein"),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_msd_serial(_client):
     uuid = await add_widget("MSD Analysis")
-    await connect_to_file_simulation(XTC, step=1, batch_size=2)
-    inputs = [
-        ("selection", "resid 1"),
-        ("custom_title", ""),
-        ("show_particle_msds", True),
-        ("log_scale", False),
-        ("plot_refresh_frequency", 1),
-        ("reset_on_connect", False),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("selection", "resid 1"),
+            ("custom_title", ""),
+            ("show_particle_msds", True),
+            ("log_scale", False),
+            ("plot_refresh_frequency", 1),
+            ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_msd_parallel(_client):
     uuid = await add_widget("MSD Analysis")
-    await connect_to_file_simulation(XTC, step=1, batch_size=2)
-    inputs = [
-        ("selection", "resid 1"),
-        ("show_particle_msds", True),
-        ("_run_mode", "parallel"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("selection", "resid 1"),
+            ("show_particle_msds", True),
+            ("_run_mode", "parallel"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_msd_diffusion_coefficient(_client):
     uuid = await add_widget("MSD Analysis")
-    await connect_to_file_simulation(XTC, step=1, batch_size=2)
-    inputs = [
-        ("selection", "resid 1"),
-        ("show_diffusion_coefficient", True),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("selection", "resid 1"),
+            ("show_diffusion_coefficient", True),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_acf_serial(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(XTC, step=1, batch_size=3)
-    inputs = [
-        ("physical_property", "position"),
-        ("selection", "resid 1"),
-        ("custom_title", ""),
-        ("show_particle_acfs", True),
-        ("centered", True),
-        ("normalized", True),
-        ("plot_refresh_frequency", 1),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=2)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=3):
+        inputs = [
+            ("physical_property", "position"),
+            ("selection", "resid 1"),
+            ("custom_title", ""),
+            ("show_particle_acfs", True),
+            ("centered", True),
+            ("normalized", True),
+            ("plot_refresh_frequency", 1),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=2)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_acf_serial_batch(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(XTC, step=1, batch_size=3)
-    inputs = [
-        ("physical_property", "position"),
-        ("selection", "resid 1"),
-        ("_run_frequency", "batch"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("physical_property", "position"),
+            ("selection", "resid 1"),
+            ("_run_frequency", "batch"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_acf_parallel(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(XTC, step=1, batch_size=3)
-    inputs = [
-        ("physical_property", "position"),
-        ("selection", "resid 1"),
-        ("show_particle_acfs", True),
-        ("_run_mode", "parallel"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=3):
+        inputs = [
+            ("physical_property", "position"),
+            ("selection", "resid 1"),
+            ("show_particle_acfs", True),
+            ("_run_mode", "parallel"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_acf_parallel_batch(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(XTC, step=1, batch_size=3)
-    inputs = [
-        ("physical_property", "position"),
-        ("selection", "resid 1"),
-        ("_run_frequency", "batch"),
-        ("_run_mode", "parallel"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("physical_property", "position"),
+            ("selection", "resid 1"),
+            ("_run_frequency", "batch"),
+            ("_run_mode", "parallel"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_acf_running_integral(_client):
     uuid = await add_widget("ACF")
-    await connect_to_file_simulation(XTC, step=1, batch_size=2)
-    inputs = [
-        ("physical_property", "position"),
-        ("selection", "resid 1"),
-        ("show_running_integral", True),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("physical_property", "position"),
+            ("selection", "resid 1"),
+            ("show_running_integral", True),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_notebook_cell(_client):
-    await connect_to_file_simulation(XTC)
-    sio.emit.reset_mock()
-    # cell run
-    handler = sio.handlers["/"]["cell_run"]
-    response = await run_task_until_done(handler("_sid", '{"cell_id": 0, "code": "u"}'))
-    assert "Universe with" in response[0]["content"]
-    # code complete
-    handler = sio.handlers["/"]["cell_code_complete"]
-    response = await run_task_until_done(
-        handler("_sid", {"code": "u", "cursor_pos": 1})
-    )
-    if response is not None:
-        assert "u" in response["matches"]
-    # code inspect
-    handler = sio.handlers["/"]["cell_code_inspect"]
-    response = await run_task_until_done(
-        handler("_sid", {"code": "u", "cursor_pos": 1})
-    )
-    if response is not None:
-        assert "Universe" in response["data"]["text/plain"]
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        sio.emit.reset_mock()
+        # cell run
+        handler = sio.handlers["/"]["cell_run"]
+        response = await run_task_until_done(
+            handler("_sid", '{"cell_id": 0, "code": "u"}')
+        )
+        assert "Universe with" in response[0]["content"]
+        # code complete
+        handler = sio.handlers["/"]["cell_code_complete"]
+        response = await run_task_until_done(
+            handler("_sid", {"code": "u", "cursor_pos": 1})
+        )
+        if response is not None:
+            assert "u" in response["matches"]
+        # code inspect
+        handler = sio.handlers["/"]["cell_code_inspect"]
+        response = await run_task_until_done(
+            handler("_sid", {"code": "u", "cursor_pos": 1})
+        )
+        if response is not None:
+            assert "Universe" in response["data"]["text/plain"]
 
 
 async def test_widget_run_custom_code(_client):
     uuid = await add_widget("Custom Code")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("setup_code", "u"),
-        ("execute_code", "u.trajectory"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("setup_code", "u"),
+            ("execute_code", "u.trajectory"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 async def test_widget_run_custom_code_batch(_client):
     uuid = await add_widget("Custom Code")
-    await connect_to_file_simulation(XTC)
-    inputs = [
-        ("_run_frequency", "batch"),
-        ("setup_code", "u"),
-        ("execute_code", "u.trajectory"),
-    ]
-    await check_input_changes(uuid, inputs)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid)
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+            ("setup_code", "u"),
+            ("execute_code", "u.trajectory"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
 
 
 def test_state_load(tmp_path):
@@ -1373,23 +1329,22 @@ async def test_custom_widget(_client):
     assert response == []
     uuid1 = await add_widget("Custom Widget")
     uuid2 = await add_widget("Absolute Temperature")
-    await connect_to_file_simulation(XTC)
-    code = """
-    from mdadash.backend.widgets.base import WidgetBase
-    class _CustomWidget1(WidgetBase):
-        name = "Custom Widget"
-        _override_name = True
+    async with file_simulation(XTC):
+        code = """
+        from mdadash.backend.widgets.base import WidgetBase
+        class _CustomWidget1(WidgetBase):
+            name = "Custom Widget"
+            _override_name = True
 
-        def run_every_frame(self):
-            print(self.u)
-    """
-    response = await run_task_until_done(main.mdadash.km.execute_code(code))
-    assert response == []
-    await remove_widget(uuid2)
-    await resume_file_simulation()
-    assert await sio_event_emitted(sio, "widgets:output", n=1)
-    await remove_widget(uuid1)
-    await disconnect_from_simulation()
+            def run_every_frame(self):
+                print(self.u)
+        """
+        response = await run_task_until_done(main.mdadash.km.execute_code(code))
+        assert response == []
+        await remove_widget(uuid2)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid1)
 
 
 async def test_notebooks_clone_widget(_client):
@@ -1408,26 +1363,25 @@ async def test_notebooks_clone_widget(_client):
 
 
 async def test_utils_alert_pause(_client):
-    await connect_to_file_simulation(XTC)
-    # delete all alerts
-    handler = sio.handlers["/"]["delete_all_alerts"]
-    await run_task_until_done(handler("_sid"))
-    # check there are no alerts
-    assert len(main.mdadash.sm.alerts) == 0
-    # generate alert from custom code
-    code = "utils.alert('test alert')"
-    await run_task_until_done(main.mdadash.km.execute_code(code))
-    # check alert generation
-    handler = sio.handlers["/"]["get_alerts"]
-    alerts = await run_task_until_done(handler("_sid"))
-    assert alerts[0]["message"] == "test alert"
-    # pause from custom code
-    code = "utils.pause_simulation('test pause')"
-    await run_task_until_done(main.mdadash.km.execute_code(code))
-    # cleanup - delete all alerts
-    handler = sio.handlers["/"]["delete_all_alerts"]
-    await run_task_until_done(handler("_sid"))
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        # delete all alerts
+        handler = sio.handlers["/"]["delete_all_alerts"]
+        await run_task_until_done(handler("_sid"))
+        # check there are no alerts
+        assert len(main.mdadash.sm.alerts) == 0
+        # generate alert from custom code
+        code = "utils.alert('test alert')"
+        await run_task_until_done(main.mdadash.km.execute_code(code))
+        # check alert generation
+        handler = sio.handlers["/"]["get_alerts"]
+        alerts = await run_task_until_done(handler("_sid"))
+        assert alerts[0]["message"] == "test alert"
+        # pause from custom code
+        code = "utils.pause_simulation('test pause')"
+        await run_task_until_done(main.mdadash.km.execute_code(code))
+        # cleanup - delete all alerts
+        handler = sio.handlers["/"]["delete_all_alerts"]
+        await run_task_until_done(handler("_sid"))
 
 
 async def test_3dview(_client):
@@ -1441,45 +1395,79 @@ async def test_3dview(_client):
     handler = sio.handlers["/"]["update_3dview_selection"]
     await run_task_until_done(handler("_sid", "resid 1"))
     # connect
-    await connect_to_file_simulation(XTC)
-    # verify selection and topology
-    handler = sio.handlers["/"]["load_3dview"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response is not None
-    assert response["inputs"]["selection"] == "resid 1"
-    assert response["topology"] is not None
-    # update selection - empty
-    handler = sio.handlers["/"]["update_3dview_selection"]
-    await run_task_until_done(handler("_sid", ""))
-    handler = sio.handlers["/"]["load_3dview"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["inputs"]["selection"] == ""
-    # update selection - invalid
-    handler = sio.handlers["/"]["update_3dview_selection"]
-    await run_task_until_done(handler("_sid", "invalid"))
-    handler = sio.handlers["/"]["load_3dview"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["inputs"]["selection"] == "invalid"
-    assert response["inputs"]["selection_error"] == "Unknown selection token: 'invalid'"
-    assert response["topology"] is None
-    await disconnect_from_simulation()
+    async with file_simulation(XTC):
+        # verify selection and topology
+        handler = sio.handlers["/"]["load_3dview"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response is not None
+        assert response["inputs"]["selection"] == "resid 1"
+        assert response["topology"] is not None
+        # update selection - empty
+        handler = sio.handlers["/"]["update_3dview_selection"]
+        await run_task_until_done(handler("_sid", ""))
+        handler = sio.handlers["/"]["load_3dview"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response["inputs"]["selection"] == ""
+        # update selection - invalid
+        handler = sio.handlers["/"]["update_3dview_selection"]
+        await run_task_until_done(handler("_sid", "invalid"))
+        handler = sio.handlers["/"]["load_3dview"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response["inputs"]["selection"] == "invalid"
+        assert (
+            response["inputs"]["selection_error"]
+            == "Unknown selection token: 'invalid'"
+        )
+        assert response["topology"] is None
 
 
 async def test_trajectory_file(_client):
-    main.mdadash.sm.universe_configs[0].update(
-        {
-            "topology": str(TPR),
-            "trajectory": str(XTC),
-        }
-    )
+    async with file_simulation(XTC):
+        uuid = await add_widget("COMDistance")
+        sio.emit.reset_mock()
+        handler = sio.handlers["/"]["resume_simulations"]
+        response = await run_task_until_done(handler("_sid"))
+        assert response["status"] == "ok"
+        assert await sio_event_emitted(sio, "widgets:output", n=4)
+        await remove_widget(uuid)
+
+
+async def test_long_parallel_job(_client):
+    code = """
+    import time
+    from joblib import delayed
+    from mdadash.backend.widgets.base import WidgetBase
+
+    def job():
+        time.sleep(2)
+
+    class LongParallel(WidgetBase):
+        name = "Long Parallel"
+
+        def __init__(self):
+            super().__init__()
+            self._run_mode = "parallel"
+
+        def run_every_frame(self):
+            pass
+
+        def get_parallel_job(self):
+            return delayed(job)()
+
+        def apply_parallel_results(self, values):
+            pass
+            
+    """
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == []
+    uuid = await add_widget("Long Parallel")
+    async with file_simulation(XTC, disconnect_wait=False):
+        await resume_file_simulation()
+        await asyncio.sleep(0.25)
+    # check connect while previous parallel jobs are still running
     handler = sio.handlers["/"]["connect_to_simulations"]
     response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-    uuid = await add_widget("COMDistance")
-    sio.emit.reset_mock()
-    handler = sio.handlers["/"]["resume_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    assert response["status"] == "ok"
-    assert await sio_event_emitted(sio, "widgets:output", n=4)
+    # ensure error with message
+    assert response["status"] == "error"
+    assert "Parallel jobs are still in progress" in response["message"]
     await remove_widget(uuid)
-    await disconnect_from_simulation()
