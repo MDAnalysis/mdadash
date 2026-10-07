@@ -20,6 +20,7 @@ from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 from .utils import (
     add_widget,
     check_input_changes,
+    connect_to_file_simulation,
     disconnect_from_simulation,
     duplicate_widget,
     file_simulation,
@@ -1471,3 +1472,26 @@ async def test_long_parallel_job(_client):
     assert response["status"] == "error"
     assert "Parallel jobs are still in progress" in response["message"]
     await remove_widget(uuid)
+    # ensure we can connect again in later tests
+    await asyncio.sleep(2)
+
+
+async def test_running_state(_client):
+    await connect_to_file_simulation(XTC)
+    # can't pause when not running
+    handler = sio.handlers["/"]["pause_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "error"
+    assert "Not running" in response["message"]
+    await resume_file_simulation()
+    # can't resume when not paused
+    handler = sio.handlers["/"]["resume_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "error"
+    assert "Not paused" in response["message"]
+    await disconnect_from_simulation()
+    # can't disconnect when not connected
+    handler = sio.handlers["/"]["disconnect_from_simulations"]
+    response = await run_task_until_done(handler("_sid"))
+    assert response["status"] == "error"
+    assert "Already disconnected" in response["message"]

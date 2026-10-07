@@ -4,6 +4,8 @@ import inspect
 import json
 import logging
 import os
+import signal
+import threading
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 from pathlib import Path
@@ -26,10 +28,17 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+def shutting_down(_signum, _frame):  # pragma: no cover
+    print("Shutdown already in progres...")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await mdadash.km.start()
     yield
+    if threading.current_thread() is threading.main_thread():  # pragma: no cover
+        signal.signal(signal.SIGINT, shutting_down)
+        signal.signal(signal.SIGTERM, shutting_down)
     await mdadash.km.stop()
 
 

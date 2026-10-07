@@ -188,7 +188,7 @@ class KernelManager:
         await self.sm.add_alert(data)
         await self.sio.emit("alertsCount", len(self.sm.alerts))
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     async def _listen_iopub_channel(self):
         """Internal: Listen on iopub channel"""
         # pylint: disable=too-many-nested-blocks
@@ -226,6 +226,11 @@ class KernelManager:
                     elif "disconnect_clients" in data:
                         if self.sm.running_state["connected"]:
                             self.sm.running_state["connected"] = False
+                            self.sm.running_state["running"] = False
+                            await self.sio.emit("runningState", self.sm.running_state)
+                    elif "pause_clients" in data:  # pragma: no cover
+                        if self.sm.running_state["running"]:
+                            self.sm.running_state["running"] = False
                             await self.sio.emit("runningState", self.sm.running_state)
                     else:
                         parent_id = msg.get("parent_header", {}).get("msg_id")
@@ -416,6 +421,7 @@ class KernelManager:
         )
         if response["status"] == "ok":
             self.sm.running_state["connected"] = False
+            self.sm.running_state["running"] = False
         return response
 
     async def pause_simulations(self) -> dict:

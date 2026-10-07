@@ -105,7 +105,10 @@ async def connect_to_imd_simulation(imd_server, step=2, batch_size=1, timeout=10
 async def disconnect_from_simulation(wait=True):
     handler = sio.handlers["/"]["disconnect_from_simulations"]
     response = await run_task_until_done(handler("_sid", wait))
-    assert response["status"] == "ok"
+    if response["status"] == "error":
+        assert "Already disconnected" in response["message"]
+    else:
+        assert response["status"] == "ok"
 
 
 async def resume_file_simulation():

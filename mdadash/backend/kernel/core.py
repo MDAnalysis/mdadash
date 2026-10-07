@@ -490,26 +490,37 @@ class UniverseManager:
 
     def disconnect_from_simulations(self, data: dict) -> None:
         """Disconnect from MD simulations"""
+        if not self._connected:
+            self._comms.send({"status": "error", "message": "Already disconnected"})
+            return
 
         def run_after():
             self._comms.send({"status": "ok"})
+            self._comms.send({"disconnect_clients": {}})
 
         self._disconnect_from_simulations(wait=data["wait"], run_after=run_after)
         self._wm._invoke_lifecycle_method("on_post_disconnect")
 
     def pause_simulations(self, _data: dict) -> None:
         """Pause MD simulations"""
-        self._iter_loop_resumed.clear()
-        self._running = False
-        self._wm._invoke_lifecycle_method("on_post_pause")
-        self._comms.send({"status": "ok"})
+        if self._connected and self._running:
+            self._iter_loop_resumed.clear()
+            self._running = False
+            self._wm._invoke_lifecycle_method("on_post_pause")
+            self._comms.send({"status": "ok"})
+            self._comms.send({"pause_clients": {}})
+        else:
+            self._comms.send({"status": "error", "message": "Not running"})
 
     def resume_simulations(self, _data: dict) -> None:
         """Resume MD simulations"""
-        self._wm._invoke_lifecycle_method("on_pre_resume")
-        self._iter_loop_resumed.set()
-        self._running = True
-        self._comms.send({"status": "ok"})
+        if self._connected and not self._running:
+            self._wm._invoke_lifecycle_method("on_pre_resume")
+            self._iter_loop_resumed.set()
+            self._running = True
+            self._comms.send({"status": "ok"})
+        else:
+            self._comms.send({"status": "error", "message": "Not paused"})
 
     def _trajectory_next(self, u: mda.Universe, step: int):
         """Internal: Iterate trajectory by `step` frame(s)"""
