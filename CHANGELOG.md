@@ -35,6 +35,8 @@ The rules for this file:
 
 <!-- Bug fixes -->
 
+- Fix parallelization of custom widget class jobs (Issue #94, PR #95)
+
 ### Changed
 
 <!-- Changes in existing functionality -->

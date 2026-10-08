@@ -39,6 +39,15 @@ class WidgetBase(ABC):
     def __init_subclass__(cls, **kwargs):
         """Register any derived class with the WidgetManager"""
         super().__init_subclass__(**kwargs)
+        if cls.__module__ == "__main__" and all(
+            k.startswith("__") and k.endswith("__") for k in cls.__dict__
+        ):
+            # Custom widgets that have a member method as the parallel job
+            # will reach here during de-serialization of the class on the worker.
+            # The WidgetManager registration is not required in this case and will
+            # also fail because an empty class shell is created during this process.
+            # The class module is __main__ because they were created in the kernel.
+            return
         WidgetManager.register_class(cls)
 
     def __init__(self):
