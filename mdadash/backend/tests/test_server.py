@@ -1439,9 +1439,6 @@ async def test_long_parallel_job(_client):
     from joblib import delayed
     from mdadash.backend.widgets.base import WidgetBase
 
-    def job():
-        time.sleep(2)
-
     class LongParallel(WidgetBase):
         name = "Long Parallel"
 
@@ -1450,10 +1447,10 @@ async def test_long_parallel_job(_client):
             self._run_mode = "parallel"
 
         def run_every_frame(self):
-            pass
+            time.sleep(2)
 
         def get_parallel_job(self):
-            return delayed(job)()
+            return delayed(self.run_every_frame)()
 
         def apply_parallel_results(self, values):
             pass
