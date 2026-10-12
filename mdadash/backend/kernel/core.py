@@ -892,7 +892,10 @@ class UniverseManager:
                         # Use the python recommended approach to first shutdown the socket
                         # See: https://docs.python.org/3/library/socket.html#socket.socket.close
                         # TODO: Fix this in imdclient?
-                        u.trajectory._imdclient._conn.shutdown(socket.SHUT_RD)
+                        try:
+                            u.trajectory._imdclient._conn.shutdown(socket.SHUT_RDWR)
+                        except OSError:  # pragma: no cover
+                            pass
                     u.trajectory.close()
                 except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                     logger.exception("Failed to close trajectory")
