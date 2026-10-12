@@ -70,6 +70,7 @@ async def imd_simulation(imd_server, step=2, batch_size=1, timeout=10, use_shm=T
     try:
         yield
     finally:
+        imd_server.disconnect()
         await disconnect_from_simulation()
 
 
