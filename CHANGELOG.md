@@ -30,6 +30,7 @@ The rules for this file:
 <!-- New added features -->
 
 - Parallelization improvements (PR #93)
+- Zero-copy support in BufferedTrajectory (PR #96)
 
 ### Fixed
 

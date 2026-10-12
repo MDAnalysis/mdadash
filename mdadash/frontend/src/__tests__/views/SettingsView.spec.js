@@ -25,6 +25,7 @@ const settings = ref({
       nojump: false,
       socket_bufsize: null,
       buffer_size: 10000000,
+      shared_memory: true,
       timeout: 5,
       continue_after_disconnect: null,
       step: 1,

@@ -54,8 +54,10 @@ async def check_input_changes(uuid, inputs, status="ok"):
 
 
 @contextlib.asynccontextmanager
-async def file_simulation(trajectory, step=2, batch_size=1, disconnect_wait=True):
-    await connect_to_file_simulation(trajectory, step, batch_size)
+async def file_simulation(
+    trajectory, step=2, batch_size=1, disconnect_wait=True, use_shm=True
+):
+    await connect_to_file_simulation(trajectory, step, batch_size, use_shm)
     try:
         yield
     finally:
@@ -63,15 +65,15 @@ async def file_simulation(trajectory, step=2, batch_size=1, disconnect_wait=True
 
 
 @contextlib.asynccontextmanager
-async def imd_simulation(imd_server, step=2, batch_size=1, timeout=10):
-    await connect_to_imd_simulation(imd_server, step, batch_size, timeout)
+async def imd_simulation(imd_server, step=2, batch_size=1, timeout=10, use_shm=True):
+    await connect_to_imd_simulation(imd_server, step, batch_size, timeout, use_shm)
     try:
         yield
     finally:
         await disconnect_from_simulation()
 
 
-async def connect_to_file_simulation(trajectory, step=2, batch_size=1):
+async def connect_to_file_simulation(trajectory, step=2, batch_size=1, use_shm=True):
     main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
@@ -79,6 +81,7 @@ async def connect_to_file_simulation(trajectory, step=2, batch_size=1):
             "nojump": False,
             "step": step,
             "batch_size": batch_size,
+            "shared_memory": use_shm,
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]
@@ -86,7 +89,9 @@ async def connect_to_file_simulation(trajectory, step=2, batch_size=1):
     assert response["status"] == "ok"
 
 
-async def connect_to_imd_simulation(imd_server, step=2, batch_size=1, timeout=10):
+async def connect_to_imd_simulation(
+    imd_server, step=2, batch_size=1, timeout=10, use_shm=True
+):
     main.mdadash.sm.universe_configs[0].update(
         {
             "topology": str(TPR),
@@ -95,6 +100,7 @@ async def connect_to_imd_simulation(imd_server, step=2, batch_size=1, timeout=10
             "step": step,
             "batch_size": batch_size,
             "timeout": timeout,
+            "shared_memory": use_shm,
         }
     )
     handler = sio.handlers["/"]["connect_to_simulations"]

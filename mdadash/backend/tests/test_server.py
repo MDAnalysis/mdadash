@@ -5,13 +5,14 @@ import sys
 from unittest.mock import ANY, AsyncMock
 
 import MDAnalysis as mda
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from imdclient.tests.server import InThreadIMDServer
 from imdclient.tests.utils import create_default_imdsinfo_v3
 
 from mdadash.backend import main
-from mdadash.backend.kernel.core import BufferedTrajectory
+from mdadash.backend.kernel.core import BufferedTrajectory, MultiArrayBuffer
 from mdadash.backend.main import MDADash, app, sio, start_server
 from mdadash.backend.state.manager import StateManager
 from mdadash.backend.tests.data.files import TPR, XTC
@@ -150,7 +151,7 @@ async def test_simulation_connectivity(_client, imd_server):
     assert response["status"] == "error"
     assert "Already connected" in response["message"]
     # test resume
-    await resume_file_simulation()
+    await resume_imd_simulation(imd_server)
     # test pause
     await pause_simulation()
     # test disconnect
@@ -385,9 +386,9 @@ async def test_update_layout(_client):
 def test_buffered_trajectory():
     u = mda.Universe(TPR, XTC)
     u.trajectory = BufferedTrajectory(u.trajectory, 10)
-    with pytest.raises(IndexError, match="deque index out of range"):
+    with pytest.raises(IndexError, match="BufferedTrajectory index out of range"):
         _ = u.trajectory[10]
-    with pytest.raises(IndexError, match="deque index out of range"):
+    with pytest.raises(IndexError, match="BufferedTrajectory index out of range"):
         _ = u.trajectory[-10]
     assert "_buffer" not in dir(u.trajectory)
 
@@ -511,7 +512,7 @@ async def test_widget_run_com_distance_parallel_every_frame(_client):
         ("_run_mode", "parallel"),
     ]
     await check_input_changes(uuid, inputs)
-    async with file_simulation(XTC):
+    async with file_simulation(XTC, use_shm=False):
         await resume_file_simulation()
         timeout = 30 if sys.platform == "win32" else 20
         assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
@@ -1187,6 +1188,7 @@ def test_state_load(tmp_path):
         "app": "mdadash",
         "settings": {
             "dashboard_config": {},
+            "universe_configs": [],
         },
     }
     temp_file = tmp_path / "mdadash3.state.json"
@@ -1348,6 +1350,37 @@ async def test_custom_widget(_client):
         await remove_widget(uuid1)
 
 
+async def test_custom_widget_parallel_job(_client):
+    code = """
+    from joblib import delayed
+    from mdadash.backend.widgets.base import WidgetBase
+
+    class CustomWidget2(WidgetBase):
+        name = "Custom Widget 2"
+
+        def __init__(self):
+            super().__init__()
+            self._run_mode = "parallel"
+
+        def run_every_frame(self):
+            return u.trajectory.frame
+
+        def get_parallel_job(self):
+            return delayed(self.run_every_frame)()
+
+        def apply_parallel_results(self, values):
+            print(values)
+            
+    """
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == []
+    uuid = await add_widget("Custom Widget 2")
+    async with file_simulation(XTC):
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
+
+
 async def test_notebooks_clone_widget(_client):
     sio.emit.reset_mock()
     # check get clonable widgets
@@ -1392,11 +1425,10 @@ async def test_3dview(_client):
     assert response is not None
     assert response["inputs"]["selection"] == ""
     assert response["topology"] is None
-    # update selection - valid
-    handler = sio.handlers["/"]["update_3dview_selection"]
-    await run_task_until_done(handler("_sid", "resid 1"))
-    # connect
     async with file_simulation(XTC):
+        # update selection - valid
+        handler = sio.handlers["/"]["update_3dview_selection"]
+        await run_task_until_done(handler("_sid", "resid 1"))
         # verify selection and topology
         handler = sio.handlers["/"]["load_3dview"]
         response = await run_task_until_done(handler("_sid"))
@@ -1420,6 +1452,10 @@ async def test_3dview(_client):
             == "Unknown selection token: 'invalid'"
         )
         assert response["topology"] is None
+        # update selection back to run simulation
+        handler = sio.handlers["/"]["update_3dview_selection"]
+        await run_task_until_done(handler("_sid", "resid 1"))
+        await resume_file_simulation()
 
 
 async def test_trajectory_file(_client):
@@ -1492,3 +1528,41 @@ async def test_running_state(_client):
     response = await run_task_until_done(handler("_sid"))
     assert response["status"] == "error"
     assert "Already disconnected" in response["message"]
+
+
+def test_standalone_mab_no_shm():
+    spec = {
+        "_int1": {"shape": 10, "dtype": "int64"},
+    }
+    mab1 = MultiArrayBuffer(spec, use_shm=False)
+    i1 = mab1.arrays["_int1"]
+    assert np.all(i1 == 0)
+    i1.fill(2)
+    state = mab1.getstate()
+    assert "buffer" in state
+    assert "shm_name" not in state
+    state["buffer"] = np.ones(10, dtype=np.int64)
+    mab2 = MultiArrayBuffer.setstate(state)
+    i2 = mab2.arrays["_int1"]
+    assert np.all(i2 == 1)
+    i1[0] = 3
+    assert i2[0] != 3
+
+
+def test_standalone_mab_shm():
+    spec = {
+        "_int1": {"shape": 10, "dtype": "int64"},
+    }
+    mab1 = MultiArrayBuffer(spec, use_shm=True)
+    i1 = mab1.arrays["_int1"]
+    assert np.all(i1 == 0)
+    i1.fill(2)
+    state = mab1.getstate()
+    assert "buffer" not in state
+    assert "shm_name" in state
+    mab2 = MultiArrayBuffer.setstate(state)
+    i2 = mab2.arrays["_int1"]
+    assert np.all(i2 == 2)
+    i1[0] = 3
+    assert i2[0] == 3
+    mab1.cleanup()
