@@ -547,7 +547,9 @@ class UniverseManager:
         self._create_parallel_executor()
         self._iter_next_done = asyncio.Event()
         self._iter_next_done.set()
-        self._disconnect_cleanup_task = None
+        self._disconnect_cleanup_task = asyncio.Future()
+        self._disconnect_cleanup_task.set_result(None)
+        self._notify_disconnect_cleanup_done = False
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -635,12 +637,12 @@ class UniverseManager:
         if self._connected:
             self._comms.send({"status": "error", "message": "Already connected"})
             return
-        if not self._wm.parallel_jobs_done.is_set():
-            self._wm.notify_parallel_jobs_compelte = True
+        if not self._disconnect_cleanup_task.done():
+            self._notify_disconnect_cleanup_done = True
             self._comms.send(
                 {
                     "status": "error",
-                    "message": "Parallel jobs are still in progress. "
+                    "message": "Previous jobs are still in progress. "
                     "An alert will be generated once they are complete and "
                     "you can connect to the simulation again after that.",
                 }
@@ -920,6 +922,16 @@ class UniverseManager:
         await self._wm.parallel_jobs_done.wait()
         self._cleanup_buffered_trajectory()
         self._3dview_selection_ag = None
+        if self._notify_disconnect_cleanup_done:
+            self._notify_disconnect_cleanup_done = False
+            self._comms.send(
+                {
+                    "alert": {
+                        "tsinfo": {"frame": 0, "time": 0, "step": 0},
+                        "message": "Parallel jobs post disconnect are complete",
+                    }
+                }
+            )
 
     def cleanup(self, _data: dict):
         """Cleanup the UniverseManager

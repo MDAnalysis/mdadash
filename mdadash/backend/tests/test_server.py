@@ -1503,7 +1503,7 @@ async def test_long_parallel_job(_client):
     response = await run_task_until_done(handler("_sid"))
     # ensure error with message
     assert response["status"] == "error"
-    assert "Parallel jobs are still in progress" in response["message"]
+    assert "Previous jobs are still in progress" in response["message"]
     await remove_widget(uuid)
     # ensure we can connect again in later tests
     await asyncio.sleep(2)
