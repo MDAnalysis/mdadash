@@ -894,6 +894,10 @@ class UniverseManager:
                         # TODO: Fix this in imdclient?
                         try:
                             u.trajectory._imdclient._conn.shutdown(socket.SHUT_RDWR)
+                            # There is a known issue with close() after shutdown() on macOS
+                            # which explains the flakiness of macOS tests for us
+                            # see: https://github.com/python/cpython/issues/154224
+                            await asyncio.sleep(0.1)
                         except OSError:  # pragma: no cover
                             pass
                     u.trajectory.close()
