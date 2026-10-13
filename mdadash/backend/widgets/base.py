@@ -41,7 +41,7 @@ class WidgetBase(ABC):
         super().__init_subclass__(**kwargs)
         if cls.__module__ == "__main__" and all(
             k.startswith("__") and k.endswith("__") for k in cls.__dict__
-        ):
+        ):  # pragma: no cover
             # Custom widgets that have a member method as the parallel job
             # will reach here during de-serialization of the class on the worker.
             # The WidgetManager registration is not required in this case and will
@@ -360,7 +360,6 @@ class WidgetManager:
         self._initialized = True
         self.parallel_jobs_done = asyncio.Event()
         self.parallel_jobs_done.set()
-        self.notify_parallel_jobs_compelte = False
 
     @classmethod
     def register_class(cls, widget_class: WidgetBase) -> None:
@@ -819,16 +818,6 @@ class WidgetManager:
             parallel_results.extend([None] * len(parallel_jobs))
         finally:
             self.parallel_jobs_done.set()
-            if self.notify_parallel_jobs_compelte:  # pragma: no cover
-                self.notify_parallel_jobs_compelte = False
-                self._comms.send(
-                    {
-                        "alert": {
-                            "tsinfo": {"frame": 0, "time": 0, "step": 0},
-                            "message": "Parallel jobs post disconnect are complete",
-                        }
-                    }
-                )
 
     # pylint: disable=too-many-branches
     async def run_widgets(self, parallel_executor, uid: int, batch_ready: bool) -> None:

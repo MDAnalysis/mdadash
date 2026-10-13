@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """
 Kernel core where MDAnalysis code runs
 """
@@ -9,16 +10,16 @@ import io
 import logging
 import numbers
 import os
+import socket
 import sys
-from collections import deque
 from dataclasses import asdict
+from multiprocessing import shared_memory
 
 import comm
 import IPython
 import MDAnalysis as mda
 import numpy as np
 from joblib import Parallel
-from joblib.externals.loky import get_reusable_executor
 from MDAnalysis.coordinates.base import (
     FrameIteratorAll,
     FrameIteratorBase,
@@ -38,9 +39,6 @@ os.environ["PYTHONWARNINGS"] = (
     )
 )
 
-from joblib.externals.loky.backend import (  # pylint: disable=wrong-import-position, wrong-import-order, ungrouped-imports
-    resource_tracker,
-)
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -78,6 +76,151 @@ class BufferFrameIteratorIndices(FrameIteratorBase):
         return self._frames
 
 
+class MultiArrayBuffer:
+    """Multi Array Buffer
+
+    This class manages a single contiguous buffer that is used by multiple
+    numpy arrays. All individual np arrays are 64-byte aligned. There is an
+    option to create this memory buffer as shared memory to achieve zero-copy
+    access from parallel worker processes.
+
+    """
+
+    # The following class variables are only used by the workers to cache and
+    # re-use the shared memory without having to re-attach every time.
+    # The gen value is used to indicate a new shared mem block which happens
+    # during a disconnect / re-connect when a new BufferedTrajectory is created
+    _cached_shm = None
+    _cached_buffer = None
+    _cached_gen = -1
+
+    def __init__(self, spec: dict, use_shm: bool = True):
+        # only the main process creates the buffer
+        self.is_worker = False
+        self.spec = spec
+        self.use_shm = use_shm
+
+        self.offsets = {}
+        current_offset = 0
+        for name, array in self.spec.items():
+            dtype = np.dtype(array["dtype"])
+            size_bytes = int(np.prod(array["shape"]) * dtype.itemsize)
+            self.offsets[name] = {
+                "start": current_offset,
+                "end": current_offset + size_bytes,
+                "shape": array["shape"],
+                "dtype": array["dtype"],
+            }
+            current_offset += size_bytes
+            current_offset = (current_offset + 63) // 64 * 64  # 64-byte aligned
+        self.total_bytes = current_offset
+
+        if self.use_shm:
+            self.shm = shared_memory.SharedMemory(create=True, size=self.total_bytes)
+            self.shm_name = self.shm.name
+            self.buffer = np.ndarray(
+                (self.total_bytes,), dtype=np.uint8, buffer=self.shm.buf
+            )
+        else:
+            self.shm = None
+            self.shm_name = None
+            self.buffer = np.ndarray((self.total_bytes,), dtype=np.uint8)
+
+        self.arrays = {}
+        for name, array in self.offsets.items():
+            self.arrays[name] = np.ndarray(
+                array["shape"],
+                dtype=array["dtype"],
+                buffer=self.buffer[array["start"] : array["end"]],
+            )
+            self.arrays[name][:] = 0
+
+    def getstate(self, gen: int = 0) -> dict:
+        """Get the state to use for serialization"""
+        state = {
+            "gen": gen,
+            "use_shm": self.use_shm,
+            "offsets": self.offsets,
+        }
+        if self.use_shm:
+            state["shm_name"] = self.shm_name
+            state["total_bytes"] = self.total_bytes
+        else:
+            state["buffer"] = self.buffer
+        return state
+
+    @classmethod
+    def setstate(cls, state: dict):
+        """Set the state and re-create the instance
+
+        This method is invoked only on workers during de-serialization
+
+        """
+        instance = cls.__new__(cls)
+        instance.is_worker = True
+        instance.use_shm = state["use_shm"]
+
+        if instance.use_shm:
+            gen = state["gen"]
+            instance.shm_name = state["shm_name"]
+            if cls._cached_gen < gen:
+                if cls._cached_shm is not None:
+                    try:
+                        cls._cached_shm.close()
+                    except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                        logger.exception("Failed to close cached shm")
+                    cls._cached_shm = None
+                    cls._cached_buffer = None
+                cls._cached_gen = gen
+            if cls._cached_shm is None:
+                cls._cached_shm = shared_memory.SharedMemory(name=instance.shm_name)
+                cls._cached_buffer = np.ndarray(
+                    (state["total_bytes"],),
+                    dtype=np.uint8,
+                    buffer=cls._cached_shm.buf,
+                )
+            instance.shm = cls._cached_shm
+            instance.buffer = cls._cached_buffer
+        else:
+            instance.shm = None
+            instance.shm_name = None
+            instance.buffer = state["buffer"]
+
+        instance.arrays = {}
+        for name, array in state["offsets"].items():
+            instance.arrays[name] = np.ndarray(
+                array["shape"],
+                dtype=array["dtype"],
+                buffer=instance.buffer[array["start"] : array["end"]],
+            )
+
+        return instance
+
+    def cleanup(self):
+        """Cleanup in case of shm"""
+        if self.is_worker:
+            # since workers cache the shm, the shm close is handled
+            # when the shm changes or implicitly when the worker process quits
+            return
+        if self.shm is not None:
+            try:
+                self.shm.close()
+            except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                logger.exception("Failed to close shm")
+            if not self.is_worker and sys.platform != "win32":
+                try:
+                    self.shm.unlink()
+                except FileNotFoundError:  # pragma: no cover
+                    pass
+            self.shm = None
+            self.shm_name = None
+            self.buffer = None
+            self.arrays.clear()
+
+    def __del__(self):
+        self.cleanup()
+
+
 class BufferedTrajectory:
     """Buffered Trajectory
 
@@ -89,18 +232,119 @@ class BufferedTrajectory:
 
     """
 
+    _gen = 0
+
     def __init__(
-        self, trajectory: ReaderBase, buffer_size: int, reference_ts: Timestep = None
+        self,
+        trajectory: ReaderBase,
+        buffer_size: int,
+        reference_ts: Timestep = None,
+        use_shm: bool = True,
     ):
         self._trajectory = trajectory
         self._buffer_size = buffer_size
-        self._buffer = deque(maxlen=buffer_size)
-        self._buffer.append(trajectory.ts.copy())
+        ts = trajectory.ts
         if reference_ts is not None:
             self._reference_ts = reference_ts
         else:
-            self._reference_ts = trajectory.ts.copy()
+            self._reference_ts = ts.copy()
+        self._use_shm = use_shm
+
+        # _load_ts is used to load timestep info into this buffer
+        # _return_ts is used to return the timestep from this buffer
+        # A copy is made so the timestep instance is like the initial one
+        # Internal attributes point to the items in this buffer during load / return
+        self._load_ts = ts.copy()
+        self._return_ts = ts.copy()
+
+        # use contiguous arrays to hold arrays within a Timestep for whole buffer size
+        unitcell_shape = (self.buffer_size,) + ts._unitcell.shape
+        self._arrays = {
+            "_steps": {"shape": buffer_size, "dtype": "int64"},
+            "_frames": {"shape": buffer_size, "dtype": "int64"},
+            "_times": {"shape": buffer_size, "dtype": "float64"},
+            "_unitcells": {"shape": unitcell_shape, "dtype": "float32"},
+            "_positions": {
+                "shape": (buffer_size, trajectory.n_atoms, 3),
+                "dtype": "float32",
+            },
+        }
+        if ts.has_velocities:  # pragma: no cover
+            self._arrays["_velocities"] = {
+                "shape": (buffer_size, trajectory.n_atoms, 3),
+                "dtype": "float32",
+            }
+        if ts.has_forces:  # pragma: no cover
+            self._arrays["_forces"] = {
+                "shape": (buffer_size, trajectory.n_atoms, 3),
+                "dtype": "float32",
+            }
+
+        BufferedTrajectory._gen += 1
+        self.gen = BufferedTrajectory._gen
+
+        # use MultiArrayBuffer to have all these arrays reside in one common memory block
+        self._buffer = MultiArrayBuffer(self._arrays, use_shm=self._use_shm)
+        self._create_array_attributes()
+
+        self._data = [{} for _ in range(buffer_size)]
+        self._aux = [{} for _ in range(buffer_size)]
+
+        # save initial timestep
+        self._save_ts_arrays(ts, 0)
+        self._save_ts_metadata(ts, 0)
+
+        self._head = 1 % self._buffer_size
+        self._size = min(1, self._buffer_size)
+
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
+
+    def cleanup(self):
+        """Cleanup the buffer"""
+        if self._buffer is not None:
+            self._buffer.cleanup()
+            self._buffer = None
+            for array in self._arrays:
+                delattr(self, array)
+
+    def _create_array_attributes(self):
+        """Internal: Create array attributes from the spec"""
+        for array in self._arrays:
+            setattr(self, array, self._buffer.arrays[array])
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["_load_ts"]
+        del state["_return_ts"]
+        del state["_buffer"]
+        for array in self._arrays:
+            state.pop(array, None)
+        state["array_buffer_state"] = self._buffer.getstate(self.gen)
+        return state
+
+    def __setstate__(self, state):
+        array_buffer_state = state.pop("array_buffer_state")
+        self.__dict__.update(state)
+        self._buffer = MultiArrayBuffer.setstate(array_buffer_state)
+        self._create_array_attributes()
+        self._return_ts = self._trajectory.ts
+
+    def _save_ts_arrays(self, ts: Timestep, index: int) -> None:
+        """Internal: Copy the positions/velocities/forces arrays into buffer"""
+        np.copyto(self._positions[index], ts._pos)
+        if ts.has_velocities:  # pragma: no cover
+            np.copyto(self._velocities[index], ts._velocities)
+        if ts.has_forces:  # pragma: no cover
+            np.copyto(self._forces[index], ts._forces)
+        np.copyto(self._unitcells[index], ts._unitcell)
+
+    def _save_ts_metadata(self, ts: Timestep, index: int) -> None:
+        """Internal: Copy the metadata from the timestep into buffer"""
+        self._frames[index] = ts.frame
+        self._times[index] = ts.time
+        self._steps[index] = ts.data["step"]
+        self._data[index] = ts.data.copy()
+        self._aux[index] = ts.aux.copy()
 
     @property
     def reference_ts(self) -> Timestep:
@@ -118,7 +362,7 @@ class BufferedTrajectory:
     @property
     def n_frames(self):
         """Number of frames in the buffer"""
-        return len(self._buffer)
+        return self._size
 
     @property
     def buffer_size(self):
@@ -126,19 +370,37 @@ class BufferedTrajectory:
         return self._buffer_size
 
     def __len__(self):
-        return len(self._buffer)
+        return self._size
 
     def check_slice_indices(self, start, stop, step):
         return ProtoReader.check_slice_indices(self, start, stop, step)
 
     def _apply_limits(self, frame):
-        if frame >= len(self._buffer):
+        if frame >= self._size:
             frame = -1
         return frame
 
     def __getitem__(self, index):
         if isinstance(index, numbers.Integral):
-            ts = self._buffer[index]
+            if index < 0:
+                index = self._size + index
+            if index < 0 or index >= self._size:
+                raise IndexError("BufferedTrajectory index out of range")
+            buffer_index = (
+                index
+                if self._size < self._buffer_size
+                else (self._head + index) % self._buffer_size
+            )
+            ts = self._return_ts
+            ts.frame = self._frames[buffer_index]
+            ts._pos = self._positions[buffer_index]
+            if ts.has_velocities:  # pragma: no cover
+                ts._velocities = self._velocities[buffer_index]
+            if ts.has_forces:  # pragma: no cover
+                ts._forces = self._forces[buffer_index]
+            ts._unitcell = self._unitcells[buffer_index]
+            ts.data = self._data[buffer_index]
+            ts.aux = self._aux[buffer_index]
             self._trajectory.ts = ts
             return ts
         if isinstance(index, slice):
@@ -155,18 +417,35 @@ class BufferedTrajectory:
         return list(set(dir(super().__dir__()) + dir(self._trajectory)))
 
     def next(self):
-        """Iterate next frame and copy timestep into buffer"""
+        """Iterate next frame and save timestep into buffer"""
+        head = self._head
+        old_ts = self._trajectory.ts
         ts = self._trajectory.next()
-        self._buffer.append(ts.copy())
+        if ts is not old_ts:  # pragma: no cover
+            # only DCDReader and MemoryReader seem to return new
+            # timestep instances instead of updating in-place
+            self._save_ts_arrays(ts, head)
+        self._save_ts_metadata(ts, head)
+        self._head = (head + 1) % self._buffer_size
+        self._size = min(self._size + 1, self._buffer_size)
         return ts
 
     def _prepare_for_next(self):
-        """IMDReader during `_read_frame` loads the new frame into the current
-        timestep using `_load_imdframe_into_ts`. This will overwrite the values
-        if current ts is a reference to a buffer item. Hence make a copy to
-        prevent current buffer items from getting overwritten during iteration.
         """
-        self._trajectory.ts = self._buffer[-1].copy()
+        Prepare for next() to update timestep in-place and not overwrite existing
+        buffer contents. This is done outside of next() because iter loop can skip
+        over timesteps (if configured) before invoking next()
+
+        """
+        head = self._head
+        ts = self._load_ts
+        ts._pos = self._positions[head]
+        if ts.has_velocities:  # pragma: no cover
+            ts._velocities = self._velocities[head]
+        if ts.has_forces:  # pragma: no cover
+            ts._forces = self._forces[head]
+        ts._unitcell = self._unitcells[head]
+        self._trajectory.ts = ts
 
 
 class CommHandler:
@@ -266,6 +545,11 @@ class UniverseManager:
         self._parallel_executor_n_jobs = None
         self._patch_IMDReader()
         self._create_parallel_executor()
+        self._iter_next_done = asyncio.Event()
+        self._iter_next_done.set()
+        self._disconnect_cleanup_task = asyncio.Future()
+        self._disconnect_cleanup_task.set_result(None)
+        self._notify_disconnect_cleanup_done = False
 
     def __iter__(self) -> iter:
         """To support iteration"""
@@ -353,12 +637,12 @@ class UniverseManager:
         if self._connected:
             self._comms.send({"status": "error", "message": "Already connected"})
             return
-        if not self._wm.parallel_jobs_done.is_set():
-            self._wm.notify_parallel_jobs_compelte = True
+        if not self._disconnect_cleanup_task.done():
+            self._notify_disconnect_cleanup_done = True
             self._comms.send(
                 {
                     "status": "error",
-                    "message": "Parallel jobs are still in progress. "
+                    "message": "Previous jobs are still in progress. "
                     "An alert will be generated once they are complete and "
                     "you can connect to the simulation again after that.",
                 }
@@ -397,6 +681,7 @@ class UniverseManager:
                     u.trajectory,
                     config["batch_size"],
                     self._reference_ts,
+                    use_shm=config["shared_memory"],
                 )
                 if self._reference_ts is None:
                     self._reference_ts = u.trajectory.ts.copy()
@@ -472,7 +757,10 @@ class UniverseManager:
             logger.exception("Exception during iter loop cancellation")
         finally:
             if wait:
-                await self._wm.parallel_jobs_done.wait()
+                # UI will show disconnect right away (and prevent re-connects) but
+                # run the disconnect cleanup task in the background.
+                # Tests will wait till everything is cleaned up before continuing
+                await self._disconnect_cleanup_task
             if run_after is not None:
                 run_after()
 
@@ -486,7 +774,8 @@ class UniverseManager:
             )
             self._iter_loop_task.cancel()
         else:
-            run_after()
+            if run_after is not None:
+                run_after()
 
     def disconnect_from_simulations(self, data: dict) -> None:
         """Disconnect from MD simulations"""
@@ -525,6 +814,7 @@ class UniverseManager:
     def _trajectory_next(self, u: mda.Universe, step: int):
         """Internal: Iterate trajectory by `step` frame(s)"""
         try:
+            self._iter_next_done.clear()
             # TODO: Modify this when `imdclient` and `IMDReader` are updated
             #   with support for 'Transmission rate' packet
             # Burn the timesteps until we reach the desired step
@@ -536,6 +826,8 @@ class UniverseManager:
             return True
         except (OSError, EOFError, StopIteration):
             return False
+        finally:
+            self._iter_next_done.set()
 
     def _create_parallel_executor(self):
         if self._parallel_executor is not None:
@@ -545,6 +837,7 @@ class UniverseManager:
             max_nbytes=None,
             mmap_mode=None,
             initializer=self._patch_IMDReader,
+            # temp_folder=,
         )
         self._parallel_executor = executor.__enter__()  # pylint: disable=unnecessary-dunder-call
         self._parallel_executor_n_jobs = self._n_jobs
@@ -592,21 +885,78 @@ class UniverseManager:
         except asyncio.CancelledError:
             for u in self._universes:
                 try:
+                    if hasattr(u.trajectory, "_imdclient"):
+                        # calling a close() here only seems to decrement the ref count
+                        # and not close the underlying connection. The _trajectory_next
+                        # thread remains blocked (default imdclient timeout is 600 seconds).
+                        # Use the python recommended approach to first shutdown the socket
+                        # See: https://docs.python.org/3/library/socket.html#socket.socket.close
+                        # TODO: Fix this in imdclient?
+                        try:
+                            u.trajectory._imdclient._conn.shutdown(socket.SHUT_RDWR)
+                            # There is a known issue with close() after shutdown() on macOS
+                            # which explains the flakiness of macOS tests for us
+                            # see: https://github.com/python/cpython/issues/154224
+                            await asyncio.sleep(0.1)
+                        except OSError:  # pragma: no cover
+                            pass
                     u.trajectory.close()
                 except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
                     logger.exception("Failed to close trajectory")
+            self._disconnect_cleanup_task = asyncio.create_task(
+                self._disconnect_cleanup()
+            )
             raise
 
+    def _cleanup_buffered_trajectory(self):
+        """Internal: Cleanup the buffered trajectory"""
+        for i, u in enumerate(self._universes):
+            if u is not None:
+                u.trajectory.cleanup()
+                self._universes[i] = None
+
+    async def _disconnect_cleanup(self):
+        """Internal: Cleanup after disconnecting from simulation
+
+        The main iteration loop could have been blocked during trajectory.next()
+        or within the WidgetManager's parallel run - because both of them happen
+        in a separate thread (asyncio.to_thread). We need to wait till they are
+        done to cleanup any shared memory in the buffered trajectory as they will
+        be referencing it. Not doing this could lead to hard crashes
+
+        """
+        await self._iter_next_done.wait()
+        await self._wm.parallel_jobs_done.wait()
+        self._cleanup_buffered_trajectory()
+        self._3dview_selection_ag = None
+        if self._notify_disconnect_cleanup_done:
+            self._notify_disconnect_cleanup_done = False
+            self._comms.send(
+                {
+                    "alert": {
+                        "tsinfo": {"frame": 0, "time": 0, "step": 0},
+                        "message": "Parallel jobs post disconnect are complete",
+                    }
+                }
+            )
+
     def cleanup(self, _data: dict):
+        """Cleanup the UniverseManager
+
+        This is invoked when mdadash is being shutdown. The simulation is disconnected,
+        but we don't have to wait till all parallel jobs are done etc because the app
+        itself is shutting down
+
+        """
+
         def run_after():
             # cleanup joblib
             if self._parallel_executor is not None:
                 self._parallel_executor.__exit__(None, None, None)
-                get_reusable_executor().shutdown(wait=True)
-                try:
-                    resource_tracker._resource_tracker._stop()
-                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
-                    logger.exception("Failed to invoke resource_tracker stop")
+                # TODO: Use temp_folder param to make cleanup easy of joblib's
+                # empty joblib_memmapping_folder_* and sem.loky-* leftover files?
+            # cleanup universes
+            self._cleanup_buffered_trajectory()
             self._comms.send({"status": "ok"})
 
         self._disconnect_from_simulations(run_after=run_after)

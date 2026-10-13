@@ -173,6 +173,9 @@ class StateManager:
             dashboard_config["view3d_frequency"] = 1
         if "kernel_timeout" not in dashboard_config:
             dashboard_config["kernel_timeout"] = 5
+        for universe_config in settings["universe_configs"]:
+            if "shared_memory" not in universe_config:
+                universe_config["shared_memory"] = True
 
     @property
     def state(self) -> dict:

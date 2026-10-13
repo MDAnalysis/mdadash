@@ -241,6 +241,16 @@
                 validate-on="eager"
               ></v-number-input>
 
+              <v-switch
+                class="mb-8"
+                density="compact"
+                color="primary"
+                v-model="settings.universe_configs[0].shared_memory"
+                label="Shared Memory"
+                hint="Use shared memory for the buffer across parallel workers"
+                persistent-hint
+              ></v-switch>
+
               <v-number-input
                 class="mb-4"
                 label="Total simulation steps"
