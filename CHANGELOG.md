@@ -31,6 +31,7 @@ The rules for this file:
 
 - Parallelization improvements (PR #93)
 - Zero-copy support in BufferedTrajectory (PR #96)
+- Added vectorization support for batch mode ACF (PR #102)
 
 ### Fixed
 

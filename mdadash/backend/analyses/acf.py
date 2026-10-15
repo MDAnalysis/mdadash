@@ -431,15 +431,41 @@ class SlidingWindowACF:
         }
         self._dim = keys[self.dim_type.lower()]
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def run(
         self, normalized: bool = False, parallel: bool = False, batch: bool = False
     ) -> tuple:
         """Run ACF for the current window"""
 
         n = len(self.u.trajectory)  # buffer / window might not be full yet
-        for frame in reversed(range(n)):
-            _ = self.u.trajectory[frame]  # iterate frames from the back
+        if batch:
+            array = f"_{self.physical_property}"
+            frames = getattr(self.u.trajectory, array)[:n, self.ag.indices][
+                ..., self._dim
+            ]
+            if self.centered:
+                batch_sums = np.cumsum(frames, axis=0)
+                batch_counts = np.arange(1, n + 1)[:, np.newaxis, np.newaxis]
+                mu_matrix = (self.running_sum[np.newaxis, :, :] + batch_sums) / (
+                    self.running_count + batch_counts
+                )
+                mu_squared_sum = np.sum(mu_matrix**2, axis=2)
+                self.running_sum += batch_sums[-1]
+                self.running_count += n
+            for lag in range(n):
+                current = frames[lag:]
+                previous = frames[: n - lag]
+                acf_sum = np.sum(current * previous, axis=2)
+                if self.centered:
+                    acf_sum = acf_sum - mu_squared_sum[lag:]
+                self.acf_sums[lag] += np.sum(np.mean(acf_sum, axis=1))
+                self.acf_counts[lag] += n - lag
+                if self.show_particle_acfs:
+                    self.particle_acf_sums[lag, :] += np.sum(acf_sum, axis=0)
+                    self.particle_acf_counts[lag, :] += n - lag
+        else:
+            frame = n - 1
+            _ = self.u.trajectory[frame]
             current = getattr(self.ag, self.physical_property)[:, self._dim]
             self.running_sum += current
             self.running_count += 1
@@ -457,10 +483,6 @@ class SlidingWindowACF:
                 if self.show_particle_acfs:
                     self.particle_acf_sums[lag, :] += acf_sum
                     self.particle_acf_counts[lag, :] += 1
-            if n == 2:
-                continue
-            if not batch:
-                break
 
         if self.frame_dt is None:
             # We will have at least 2 frames by the time we are here.
