@@ -1064,6 +1064,8 @@ async def test_widget_run_acf_serial_batch(_client):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
+            ("show_particle_acfs", True),
+            ("centered", True),
             ("_run_frequency", "batch"),
         ]
         await check_input_changes(uuid, inputs)
