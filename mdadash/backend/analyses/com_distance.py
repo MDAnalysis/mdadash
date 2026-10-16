@@ -7,12 +7,14 @@ from collections import deque
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
+import numpy as np
 from joblib import delayed
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from MDAnalysis.exceptions import NoDataError
 from MDAnalysis.lib.distances import calc_bonds
 
 from mdadash.backend.widgets.base import WidgetBase
+
+from .utils import get_box_matrices
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +45,20 @@ class COMDistance(WidgetBase):
         Second MDAnalysis selection phrase
             Default: ``resid 1``
 
+    Unwrap
+        Unwrap atoms in the selections
+            Default: ``True``
+
     Periodic
         Select with periodic boundary conditions
             Default: ``True``
 
     Updating
         Update selection during each timestep
+            Default: ``False``
+
+    Batch Vectorization
+        Use vectorization in batch mode (requires trajectory to be unwrapped)
             Default: ``False``
 
     Custom title
@@ -141,6 +151,12 @@ class COMDistance(WidgetBase):
             "validations": ["required"],
         },
         {
+            "attribute": "unwrap",
+            "name": "Unwrap",
+            "description": "Unwrap atoms in the selections",
+            "type": "bool",
+        },
+        {
             "attribute": "periodic",
             "name": "Periodic",
             "description": "Select with periodic boundary conditions",
@@ -150,6 +166,12 @@ class COMDistance(WidgetBase):
             "attribute": "updating",
             "name": "Updating",
             "description": "Update selection during each timestep",
+            "type": "bool",
+        },
+        {
+            "attribute": "batch_vectorization",
+            "name": "Batch Vectorization",
+            "description": "Use vectorization in batch mode (requires trajectory to be unwrapped)",
             "type": "bool",
         },
         {
@@ -210,8 +232,10 @@ class COMDistance(WidgetBase):
         super().__init__()
         self.selection1 = "protein"
         self.selection2 = "resid 1"
+        self.unwrap = True
         self.periodic = True
         self.updating = False
+        self.batch_vectorization = False
         self.ag1 = None
         self.ag2 = None
         self.max_distance = 50.0
@@ -308,25 +332,58 @@ class COMDistance(WidgetBase):
 
     def _compute_current_frame(self):
         """Compute for current frame"""
-        try:
-            com1 = self.ag1.center_of_mass(unwrap=True)
-            com2 = self.ag2.center_of_mass(unwrap=True)
-        except (NoDataError, ValueError):  # pragma: no cover
-            # unwrap can fail if there is no bonds info or box info
-            com1 = self.ag1.center_of_mass()
-            com2 = self.ag2.center_of_mass()
+        com1 = self.ag1.center_of_mass(unwrap=self.unwrap)
+        com2 = self.ag2.center_of_mass(unwrap=self.unwrap)
         return (
             self.u.trajectory.ts.data["step"],
             self.u.trajectory.ts.data["time"],
             calc_bonds(com1, com2, box=self.u.dimensions),
         )
 
+    # pylint: disable=too-many-locals
     def _compute_batch(self):
         """Compute for current batch"""
-        values = []
-        for i in range(self.u.trajectory.buffer_size):
-            _ = self.u.trajectory[i]
-            values.append(self._compute_current_frame())
+        if self.batch_vectorization:
+            positions = self.u.trajectory._positions
+            unitcells = self.u.trajectory._unitcells
+            pos1 = positions[:, self.ag1.ix, :]
+            pos2 = positions[:, self.ag2.ix, :]
+            masses1 = self.ag1.masses[:, np.newaxis]
+            masses2 = self.ag2.masses[:, np.newaxis]
+            com1 = np.einsum("fac,ac->fc", pos1, masses1) / masses1.sum()
+            com2 = np.einsum("fac,ac->fc", pos2, masses2) / masses2.sum()
+            displacement = com1 - com2
+            if (
+                unitcells is not None
+                and unitcells.size > 0
+                and not np.allclose(unitcells[:, :3], 0)
+            ):
+                # apply mic
+                box_mats, inv_box_mats, is_ortho = get_box_matrices(unitcells)
+                try:
+                    if is_ortho:  # pragma: no cover
+                        box_lengths = unitcells[:, :3]
+                        displacement -= (
+                            np.round(displacement / box_lengths) * box_lengths
+                        )
+                    else:
+                        frac_disp = np.einsum("fi,fij->fj", displacement, inv_box_mats)
+                        displacement = np.einsum(
+                            "fi,fij->fj", frac_disp - np.round(frac_disp), box_mats
+                        )
+                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                    logger.exception("Error when applying MIC")
+
+            com_distances = np.linalg.norm(displacement, axis=1)
+            steps = self.u.trajectory._steps
+            times = self.u.trajectory._times
+            values = list(zip(steps.tolist(), times.tolist(), com_distances.tolist()))
+        else:
+            values = []
+            for i in range(self.u.trajectory.buffer_size):
+                _ = self.u.trajectory[i]
+                values.append(self._compute_current_frame())
+
         return values
 
     def _update_plot(self, values):

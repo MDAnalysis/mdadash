@@ -10,6 +10,8 @@
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Enable formatting when saving a notebook
+  "notebook.formatOnSave.enabled": true,
   // frontend
   "[vue]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
