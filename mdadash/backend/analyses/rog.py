@@ -41,12 +41,20 @@ class ROG(WidgetBase):
         MDAnalysis selection phrase
             Default: ``protein``
 
+    Unwrap
+        Unwrap atoms in the selections
+            Default: ``True``
+
     Periodic
         Select with periodic boundary conditions
             Default: ``True``
 
     Updating
         Update selection during each timestep
+            Default: ``False``
+
+    Batch Vectorization
+        Use vectorization in batch mode (requires trajectory to be unwrapped)
             Default: ``False``
 
     Custom title
@@ -120,6 +128,12 @@ class ROG(WidgetBase):
             "validations": ["required"],
         },
         {
+            "attribute": "unwrap",
+            "name": "Unwrap",
+            "description": "Unwrap atoms in the selections",
+            "type": "bool",
+        },
+        {
             "attribute": "periodic",
             "name": "Periodic",
             "description": "Select with periodic boundary conditions",
@@ -129,6 +143,12 @@ class ROG(WidgetBase):
             "attribute": "updating",
             "name": "Updating",
             "description": "Update selection during each timestep",
+            "type": "bool",
+        },
+        {
+            "attribute": "batch_vectorization",
+            "name": "Batch Vectorization",
+            "description": "Use vectorization in batch mode (requires trajectory to be unwrapped)",
             "type": "bool",
         },
         {
@@ -171,8 +191,10 @@ class ROG(WidgetBase):
     def __init__(self):
         super().__init__()
         self.selection = "protein"
+        self.unwrap = True
         self.periodic = True
         self.updating = False
+        self.batch_vectorization = False
         self.ag = None
         self.title = "Radii of Gyration"
         self.custom_title = None
@@ -268,7 +290,7 @@ class ROG(WidgetBase):
         total_mass = np.sum(masses)
         coordinates = self.ag.positions
         # get squared distance from center
-        ri_sq = (coordinates - self.ag.center_of_mass()) ** 2
+        ri_sq = (coordinates - self.ag.center_of_mass(unwrap=self.unwrap)) ** 2
         # sum the unweighted positions
         sq = np.sum(ri_sq, axis=1)
         sq_x = np.sum(ri_sq[:, [1, 2]], axis=1)  # sum over y and z
@@ -288,10 +310,26 @@ class ROG(WidgetBase):
 
     def _compute_batch(self):
         """Compute ROG values for current batch"""
-        values = []
-        for i in range(self.u.trajectory.buffer_size):
-            _ = self.u.trajectory[i]
-            values.append(self._compute_current_frame())
+        if self.batch_vectorization:
+            pos = self.u.trajectory._positions[:, self.ag.ix, :]
+            masses = self.ag.masses
+            total_mass = np.sum(masses)
+            sum_m_r = np.einsum("fac,a->fc", pos, masses)
+            sum_m_r2 = np.einsum("fac,fac,a->fc", pos, pos, masses)
+            com = sum_m_r / total_mass
+            g_sq = (sum_m_r2 - 2 * com * sum_m_r + (com**2) * total_mass) / total_mass
+            rog_sq_total = g_sq.sum(axis=1, keepdims=True)
+            rog_sq_axes = rog_sq_total - g_sq
+            rog = np.sqrt(np.hstack([rog_sq_total, rog_sq_axes]))
+            steps = self.u.trajectory._steps
+            times = self.u.trajectory._times
+            values = list(zip(steps.tolist(), times.tolist(), rog))
+        else:
+            values = []
+            for i in range(self.u.trajectory.buffer_size):
+                _ = self.u.trajectory[i]
+                values.append(self._compute_current_frame())
+
         return values
 
     def _update_plot(self, values):

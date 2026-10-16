@@ -33,6 +33,7 @@ The rules for this file:
 - Zero-copy support in BufferedTrajectory (PR #96)
 - Added vectorization support for batch mode ACF (PR #102)
 - Added vectorization support for batch mode COM distance (PR #103)
+- Added vectorization support for batch mode ROG (PR #104)
 
 ### Fixed
 
