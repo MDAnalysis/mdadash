@@ -612,6 +612,19 @@ async def test_widget_run_rog_serial_batch(_client):
         await remove_widget(uuid)
 
 
+async def test_widget_run_rog_serial_batch_vectorized(_client):
+    uuid = await add_widget("ROG")
+    async with file_simulation(XTC):
+        inputs = [
+            ("_run_frequency", "batch"),
+            ("batch_vectorization", True),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
+
+
 async def test_widget_run_rog_parallel_every_frame(_client):
     uuid = await add_widget("ROG")
     inputs = [
