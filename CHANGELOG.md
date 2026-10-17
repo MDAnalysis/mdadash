@@ -34,6 +34,7 @@ The rules for this file:
 - Added vectorization support for batch mode ACF (PR #102)
 - Added vectorization support for batch mode COM distance (PR #103)
 - Added vectorization support for batch mode ROG (PR #104)
+- Updated Batching and Parallelization documentation (PR #105)
 
 ### Fixed
 

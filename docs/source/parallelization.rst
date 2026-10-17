@@ -31,14 +31,15 @@ needed by the Widget class (ouputs, updated internal state, etc) must be explici
 back as return values from the parallel job and applied back to the Widget.
 
 Given the choice of Process-based parallelism, there will be serialization and de-serialization
-overheads involved when Widgets run in parallel mode. The type of analysis and the use of
-batching should be considered when choosing the ``parallel`` :ref:`_run_mode <run-mode>` for
-Widgets.
+overheads involved when Widgets run in parallel mode. `mdadash`_ uses shared memory within the
+:class:`~mdadash.backend.kernel.core.BufferedTrajectory` to keep these overheads to the absolute
+minimum. A global "Shared Memory" option under "Settings > Universe Configuration" in the
+dashboard controls whether or not to use this feature. This is enabled by default.
 
 .. tip::
 
-    :doc:`batching` can be used with Parallelization to limit the impact of the
-    serialization and de-serialization overhead.
+    Enabling "Shared Memory" under "Settings > Universe Configuration" will keep serialization
+    and de-serialization overheads to the minimum when running widgets in parallel.
 
 ----
 

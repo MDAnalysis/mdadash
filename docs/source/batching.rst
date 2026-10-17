@@ -42,6 +42,37 @@ Here is a typical compute batch block used in the code for :doc:`built_in_widget
         return values
 
 
+Vectorized operations
+~~~~~~~~~~~~~~~~~~~~~
+
+:class:`~mdadash.backend.kernel.core.BufferedTrajectory` maintains individual arrays that are
+available within a single timestep (like positions, velocities, frame numbers, etc) as contiguous
+arrays across the whole buffer. For example, the positions for all the frames in the buffer can be
+accessed using ``self.u.trajectory._positions``. When widgets run in batch mode, this enables the
+use of vectorized operations on these arrays.
+
+The available contiguous arrays are:
+
+* ``self.u.trajectory._steps``
+* ``self.u.trajectory._frames``
+* ``self.u.trajectory._times``
+* ``self.u.trajectory._unitcells``
+* ``self.u.trajectory._positions``
+* ``self.u.trajectory._velocities`` (if the timesteps have velocities)
+* ``self.u.trajectory._forces`` (if the timesteps have forces)
+
+:class:`~mdadash.backend.kernel.core.BufferedTrajectory` uses the above arrays as a ring buffer.
+For this reason, only in the batch mode (which gets invoked for each chunk of the buffer) they
+will be chronologically correct. Vectorized operations can be used even in the non-batch mode,
+but due to the nature of a ring buffer, a two split approach of the arrays will be needed in that
+case.
+
+.. tip::
+
+    Examples of using vectorized operations can be found in :mod:`~mdadash.backend.analyses.com_distance`
+    and :mod:`~mdadash.backend.analyses.rog` widgets in batch mode.
+
+
 AnalysisBase support
 --------------------
 
