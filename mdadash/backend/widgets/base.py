@@ -785,11 +785,13 @@ class WidgetManager:
             # reset frame to the most recent one
             instance.reset_frame_latest()
         try:
-            ret = func(*args, **kwargs)
-        except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+            output = func(*args, **kwargs)
+            error = None
+        except Exception as e:  # pylint: disable=broad-exception-caught  # pragma: no cover
             logger.exception("Error running parallel job")
-            ret = None
-        return ret
+            output = None
+            error = str(e)
+        return output, error
 
     def _run_parallel_jobs(
         self,
@@ -813,13 +815,13 @@ class WidgetManager:
             self.parallel_jobs_done.clear()
             results = parallel_executor(parallel_jobs)
             parallel_results.extend(results)
-        except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+        except Exception as e:  # pylint: disable=broad-exception-caught  # pragma: no cover
             logger.exception("Parallel run failed for jobs %s", parallel_jobs)
-            parallel_results.extend([None] * len(parallel_jobs))
+            parallel_results.extend([(None, str(e))] * len(parallel_jobs))
         finally:
             self.parallel_jobs_done.set()
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-locals
     async def run_widgets(self, parallel_executor, uid: int, batch_ready: bool) -> None:
         """Run widget instances
 
@@ -869,7 +871,8 @@ class WidgetManager:
                         widget_outputs = widget.run_every_frame()
                     elif batch_ready:
                         widget_outputs = widget.run_batch()
-                except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                except Exception as e:  # pylint: disable=broad-exception-caught  # pragma: no cover
+                    print(str(e))  # this print goes directly to widget output
                     logger.exception("Serial run failed for widget %s", widget.uuid)
             if widget_outputs is not None:
                 # custom code widget returns outputs directly
@@ -891,9 +894,12 @@ class WidgetManager:
             # wait for all parallel jobs to be done
             await parallel_thread
             for i, widget in enumerate(parallel_widgets_run):
+                output, error = parallel_results[i]
                 with _capture_outputs() as captured_outputs:
-                    if parallel_results[i] is not None:
-                        widget.apply_parallel_results(parallel_results[i])
+                    if error is not None:  # pragma: no cover
+                        print(error)  # this print goes directly to widget output
+                    if output is not None:
+                        widget.apply_parallel_results(output)
                 if captured_outputs:
                     self._comms.send(
                         {
