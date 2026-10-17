@@ -41,6 +41,13 @@ dashboard controls whether or not to use this feature. This is enabled by defaul
     Enabling "Shared Memory" under "Settings > Universe Configuration" will keep serialization
     and de-serialization overheads to the minimum when running widgets in parallel.
 
+.. warning::
+
+    When running `mdadash`_ in docker containers, note that the default shared memory size is
+    limited to 64MB unless explicitly configured for the container. Either this limit has to
+    be increased for containers or the use of "Shared Memory" disabled under Settings in most
+    cases.
+
 ----
 
 The list of all the Widgets that can be run in parallel can be found on the
