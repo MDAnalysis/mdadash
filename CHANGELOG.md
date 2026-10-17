@@ -29,18 +29,9 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Parallelization improvements (PR #93)
-- Zero-copy support in BufferedTrajectory (PR #96)
-- Added vectorization support for batch mode ACF (PR #102)
-- Added vectorization support for batch mode COM distance (PR #103)
-- Added vectorization support for batch mode ROG (PR #104)
-- Updated Batching and Parallelization documentation (PR #105)
-
 ### Fixed
 
 <!-- Bug fixes -->
-
-- Fix parallelization of custom widget class jobs (Issue #94, PR #95)
 
 ### Changed
 
@@ -53,6 +44,31 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.5]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+10/17/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Parallelization improvements (PR #93)
+- Zero-copy support in BufferedTrajectory (PR #96)
+- Added vectorization support for batch mode ACF (PR #102)
+- Added vectorization support for batch mode COM distance (PR #103)
+- Added vectorization support for batch mode ROG (PR #104)
+- Updated Batching and Parallelization documentation (PR #105)
+
+### Fixed
+
+<!-- Bug fixes -->
+
+- Fix parallelization of custom widget class jobs (Issue #94, PR #95)
 
 ## [0.1.4]
 
