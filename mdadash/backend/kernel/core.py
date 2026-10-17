@@ -10,8 +10,10 @@ import io
 import logging
 import numbers
 import os
+import shutil
 import socket
 import sys
+import tempfile
 from dataclasses import asdict
 from multiprocessing import shared_memory
 
@@ -544,6 +546,7 @@ class UniverseManager:
         self._parallel_executor = None
         self._parallel_executor_n_jobs = None
         self._patch_IMDReader()
+        self._tmp_dir = tempfile.mkdtemp(prefix="mdadash_tmp_")
         self._create_parallel_executor()
         self._iter_next_done = asyncio.Event()
         self._iter_next_done.set()
@@ -837,7 +840,7 @@ class UniverseManager:
             max_nbytes=None,
             mmap_mode=None,
             initializer=self._patch_IMDReader,
-            # temp_folder=,
+            temp_folder=self._tmp_dir,
         )
         self._parallel_executor = executor.__enter__()  # pylint: disable=unnecessary-dunder-call
         self._parallel_executor_n_jobs = self._n_jobs
@@ -953,11 +956,11 @@ class UniverseManager:
             # cleanup joblib
             if self._parallel_executor is not None:
                 self._parallel_executor.__exit__(None, None, None)
-                # TODO: Use temp_folder param to make cleanup easy of joblib's
-                # empty joblib_memmapping_folder_* and sem.loky-* leftover files?
             # cleanup universes
             self._cleanup_buffered_trajectory()
             self._comms.send({"status": "ok"})
+            # cleanup tmp folder
+            shutil.rmtree(self._tmp_dir, ignore_errors=True)
 
         self._disconnect_from_simulations(run_after=run_after)
 
