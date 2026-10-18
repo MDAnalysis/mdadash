@@ -11,6 +11,7 @@ import numpy as np
 from joblib import delayed
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.collections import LineCollection
+from MDAnalysis.exceptions import NoDataError
 from scipy import integrate
 
 from mdadash.backend.widgets.base import WidgetBase
@@ -50,6 +51,23 @@ class ACFAnalysis(WidgetBase):
     Physical property
         The physical property to analyze - `position`, `velocity` or `force`
             Default: ``position``
+
+    Weight
+        Weighting factor applied to the physical property before the
+        autocorrelation is computed - `none`, `mass`, `charge` or `sqrt_mass`
+
+            Default: ``none``
+
+        .. tip::
+            The weight `w` multiplies the physical property of each particle
+            at both time points, i.e., the ACF of ``w * property`` is
+            computed. For example, a mass weighted velocity ACF is
+            ``<(m_i * v_i(t)) . (m_i * v_i(t + tau))>_t``, so a particle's
+            contribution scales with the square of its weight.
+
+        .. caution::
+            Weighting by `mass` or `sqrt_mass` requires the topology to have
+            masses and weighting by `charge` requires it to have charges
 
     Selection
         The MDAnalysis selection phrase to run this analysis on
@@ -161,6 +179,21 @@ class ACFAnalysis(WidgetBase):
             ],
         },
         {
+            "attribute": "weight",
+            "name": "Weight",
+            "description": (
+                "Weighting factor applied to the physical property - "
+                "none, mass, charge or sqrt_mass"
+            ),
+            "type": "select",
+            "items": [
+                "none",
+                "mass",
+                "charge",
+                "sqrt_mass",
+            ],
+        },
+        {
             "attribute": "selection",
             "name": "Selection",
             "description": "MDAnalysis selection phrase",
@@ -230,6 +263,7 @@ class ACFAnalysis(WidgetBase):
         super().__init__()
         self.acf = None
         self.physical_property = "position"
+        self.weight = "none"
         self.selection = "all"
         self.dim_type = "xyz"
         self.centered = False
@@ -253,28 +287,45 @@ class ACFAnalysis(WidgetBase):
         self._set_title()
         self._set_y_label()
 
+    _weight_titles: ClassVar = {
+        "mass": "Mass-weighted",
+        "charge": "Charge-weighted",
+        "sqrt_mass": "Sqrt-mass-weighted",
+    }
+
+    def _weight_label(self):
+        """Internal: Plot label prefix for the selected weight"""
+        weight_title = self._weight_titles.get(self.weight)
+        return f"{weight_title} " if weight_title else ""
+
     def _set_title(self):
         """Set plot title"""
+        label = self._weight_label()
         if self.show_running_integral:
             title = (
-                f"Running integral of {self.physical_property.title()} "
+                f"Running integral of {label}{self.physical_property.title()} "
                 f"ACF of '{self.selection}'"
             )
         else:
-            title = f"{self.physical_property.title()} ACF of '{self.selection}'"
+            title = (
+                f"{label}{self.physical_property.title()} "
+                f"ACF of '{self.selection}'"
+            )
         self.ax.set_title(
             self.custom_title.replace("\\n", "\n") if self.custom_title else title
         )
 
     def _set_y_label(self):
         """Set plot y label"""
+        label = self._weight_label()
         if self.show_running_integral:
             self.ax.set_ylabel(
-                f"Running integral of {self.physical_property.title()} ACF"
+                f"Running integral of {label}{self.physical_property.title()} ACF"
             )
         else:
             self.ax.set_ylabel(
-                f"{self.physical_property.title()} Autocorrelation Function"
+                f"{label}{self.physical_property.title()} "
+                f"Autocorrelation Function"
             )
 
     def _create_acf(self):
@@ -283,6 +334,7 @@ class ACFAnalysis(WidgetBase):
             self.u,
             select=self.selection,
             physical_property=self.physical_property,
+            weight=self.weight,
             dim_type=self.dim_type,
             centered=self.centered,
             show_running_integral=self.show_running_integral,
@@ -376,7 +428,19 @@ class SlidingWindowACF:
     against the time-lag buffer / window of past N frames. The total number
     of computations for each frame is O(N).
 
+    The physical property can optionally be weighted by a per-particle
+    factor (mass, charge or sqrt of mass). The weight multiplies the
+    property of each particle at both time points, i.e., the ACF of
+    ``weight * property`` is computed. With no weight, the unweighted
+    ACF of the physical property is computed.
+
     """
+
+    _weight_attrs: ClassVar = {
+        "mass": ("masses", False),
+        "sqrt_mass": ("masses", True),
+        "charge": ("charges", False),
+    }
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
@@ -384,6 +448,7 @@ class SlidingWindowACF:
         u: mda.Universe,
         physical_property: str = "position",
         select: str = "all",
+        weight: str = "none",
         dim_type: str = "xyz",
         centered: bool = False,
         show_running_integral: bool = False,
@@ -397,12 +462,14 @@ class SlidingWindowACF:
         }
         self.physical_property = property_map[physical_property]
         self.select = select
+        self.weight = weight
         self.dim_type = dim_type
         self.centered = centered
         self.show_running_integral = show_running_integral
         self.show_particle_acfs = (not show_running_integral) and show_particle_acfs
         self._parse_dim_type()
         self.ag = u.select_atoms(self.select)
+        self.weights = self._get_weights()
         self.n_atoms = self.ag.atoms.n_atoms
         self.n_lags = u.trajectory.buffer_size
         self.frame_dt = None
@@ -417,6 +484,46 @@ class SlidingWindowACF:
                 (self.n_lags, self.n_atoms), dtype=np.float64
             )
             self.particle_acf_counts = np.zeros((self.n_lags, self.n_atoms), dtype=int)
+
+    def _get_weights(self):
+        """Internal: Resolve the per-particle weighting factors
+
+        Returns None if weighting is disabled.
+
+        """
+        if self.weight is None or self.weight == "none":
+            return None
+        if self.weight not in self._weight_attrs:
+            options = ", ".join(["none"] + list(self._weight_attrs))
+            raise ValueError(
+                f"Invalid weight '{self.weight}'. Valid options: {options}"
+            )
+        attr, sqrt = self._weight_attrs[self.weight]
+        try:
+            values = np.asarray(getattr(self.ag, attr), dtype=np.float64)
+        except NoDataError as e:
+            raise ValueError(
+                f"Weighting by '{self.weight}' requires {attr} for the "
+                f"selection '{self.select}', but the topology does not "
+                f"provide them"
+            ) from e
+        if sqrt and np.any(values < 0):
+            raise ValueError(
+                f"Weighting by '{self.weight}' requires non-negative masses"
+            )
+        return np.sqrt(values) if sqrt else values
+
+    def _apply_weights(self, values):
+        """Internal: Multiply per-particle property values by the weights
+
+        ``values`` is of shape (n_atoms, n_dims) or (n_frames, n_atoms, n_dims)
+
+        """
+        if self.weights is None:
+            return values
+        if values.ndim == 3:
+            return values * self.weights[np.newaxis, :, np.newaxis]
+        return values * self.weights[:, np.newaxis]
 
     def _parse_dim_type(self):
         """Sets up the desired dimensionality."""
@@ -443,6 +550,7 @@ class SlidingWindowACF:
             frames = getattr(self.u.trajectory, array)[:n, self.ag.indices][
                 ..., self._dim
             ]
+            frames = self._apply_weights(frames)
             if self.centered:
                 batch_sums = np.cumsum(frames, axis=0)
                 batch_counts = np.arange(1, n + 1)[:, np.newaxis, np.newaxis]
@@ -466,14 +574,18 @@ class SlidingWindowACF:
         else:
             frame = n - 1
             _ = self.u.trajectory[frame]
-            current = getattr(self.ag, self.physical_property)[:, self._dim]
+            current = self._apply_weights(
+                getattr(self.ag, self.physical_property)[:, self._dim]
+            )
             self.running_sum += current
             self.running_count += 1
             mu = self.running_sum / self.running_count
             for i in range(frame + 1):
                 lag = frame - i
                 _ = self.u.trajectory[i]  # set trajectory to past frame
-                previous = getattr(self.ag, self.physical_property)
+                previous = self._apply_weights(
+                    getattr(self.ag, self.physical_property)
+                )
                 acf = current * previous[:, self._dim]
                 if self.centered:
                     acf = acf - (mu**2)
