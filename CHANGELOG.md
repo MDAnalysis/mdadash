@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added fallback to regular mem when shared mem not available (PR #106)
+
 ### Fixed
 
 <!-- Bug fixes -->

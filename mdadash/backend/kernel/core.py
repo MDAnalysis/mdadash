@@ -100,7 +100,6 @@ class MultiArrayBuffer:
         # only the main process creates the buffer
         self.is_worker = False
         self.spec = spec
-        self.use_shm = use_shm
 
         self.offsets = {}
         current_offset = 0
@@ -117,13 +116,25 @@ class MultiArrayBuffer:
             current_offset = (current_offset + 63) // 64 * 64  # 64-byte aligned
         self.total_bytes = current_offset
 
-        if self.use_shm:
-            self.shm = shared_memory.SharedMemory(create=True, size=self.total_bytes)
-            self.shm_name = self.shm.name
-            self.buffer = np.ndarray(
-                (self.total_bytes,), dtype=np.uint8, buffer=self.shm.buf
-            )
+        if use_shm:
+            try:
+                self.shm = shared_memory.SharedMemory(
+                    create=True, size=self.total_bytes
+                )
+                self.shm_name = self.shm.name
+                self.buffer = np.ndarray(
+                    (self.total_bytes,), dtype=np.uint8, buffer=self.shm.buf
+                )
+                self.using_shm = True
+            except Exception:  # pylint: disable=broad-exception-caught # pragma: no cover
+                self.using_shm = False
+                logger.exception(
+                    "Failed to create shm - falling back to regular buffer"
+                )
         else:
+            self.using_shm = False
+
+        if not self.using_shm:
             self.shm = None
             self.shm_name = None
             self.buffer = np.ndarray((self.total_bytes,), dtype=np.uint8)
@@ -141,10 +152,10 @@ class MultiArrayBuffer:
         """Get the state to use for serialization"""
         state = {
             "gen": gen,
-            "use_shm": self.use_shm,
+            "using_shm": self.using_shm,
             "offsets": self.offsets,
         }
-        if self.use_shm:
+        if self.using_shm:
             state["shm_name"] = self.shm_name
             state["total_bytes"] = self.total_bytes
         else:
@@ -160,9 +171,9 @@ class MultiArrayBuffer:
         """
         instance = cls.__new__(cls)
         instance.is_worker = True
-        instance.use_shm = state["use_shm"]
+        instance.using_shm = state["using_shm"]
 
-        if instance.use_shm:
+        if instance.using_shm:
             gen = state["gen"]
             instance.shm_name = state["shm_name"]
             if cls._cached_gen < gen:
