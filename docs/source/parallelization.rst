@@ -44,9 +44,8 @@ dashboard controls whether or not to use this feature. This is enabled by defaul
 .. warning::
 
     When running `mdadash`_ in docker containers, note that the default shared memory size is
-    limited to 64MB unless explicitly configured for the container. Either this limit has to
-    be increased for containers or the use of "Shared Memory" disabled under Settings in most
-    cases.
+    limited to 64MB unless explicitly configured for the container. When `mdadash`_ fails to
+    allocate the required buffer size in shared memory it falls back to using regular memory.
 
 ----
 

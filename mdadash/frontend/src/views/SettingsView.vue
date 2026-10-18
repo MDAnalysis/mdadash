@@ -247,7 +247,7 @@
                 color="primary"
                 v-model="settings.universe_configs[0].shared_memory"
                 label="Shared Memory"
-                hint="Use shared memory for the buffer across parallel workers"
+                hint="Use shared memory for the buffer. When not available, falls back to regular buffer"
                 persistent-hint
               ></v-switch>
 
