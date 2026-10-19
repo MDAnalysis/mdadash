@@ -16,7 +16,7 @@ MASSES = np.array([1.0, 2.0, 3.5])
 CHARGES = np.array([-0.5, 0.0, 0.7])
 
 
-class _MemoryReaderWithStep(MemoryReader):
+class _MemoryReaderWithStep(MemoryReader):  # pylint: disable=abstract-method
     """MemoryReader with a ``step`` entry in ``ts.data``
 
     ``BufferedTrajectory`` expects ``step`` in the timestep data. Returning a
@@ -202,7 +202,7 @@ def test_acf_sqrt_mass_weighted(u_vel, pos_vel):
     assert_acf_allclose(values, expected)
 
 
-def test_acf_mass_weighted_positions(u_vel, pos_vel):
+def test_acf_mass_weighted_positions(pos_vel):
     """Mass weighting also applies to the position property"""
     pos, _ = pos_vel
     u = _make_universe(pos, masses=MASSES)
