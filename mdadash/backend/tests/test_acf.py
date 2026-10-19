@@ -254,9 +254,7 @@ def test_acf_weighted_particle_acfs(u_vel, pos_vel):
     so a particle's ACF is scaled by the square of its weight.
     """
     _, vel = pos_vel
-    acf = SlidingWindowACF(
-        u_vel, physical_property="velocity", show_particle_acfs=True
-    )
+    acf = SlidingWindowACF(u_vel, physical_property="velocity", show_particle_acfs=True)
     _, _, lines, _ = acf.run(parallel=True, batch=True)
     particle_acfs = lines[:, :, 1]
 

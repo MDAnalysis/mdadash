@@ -307,10 +307,7 @@ class ACFAnalysis(WidgetBase):
                 f"ACF of '{self.selection}'"
             )
         else:
-            title = (
-                f"{label}{self.physical_property.title()} "
-                f"ACF of '{self.selection}'"
-            )
+            title = f"{label}{self.physical_property.title()} ACF of '{self.selection}'"
         self.ax.set_title(
             self.custom_title.replace("\\n", "\n") if self.custom_title else title
         )
@@ -324,8 +321,7 @@ class ACFAnalysis(WidgetBase):
             )
         else:
             self.ax.set_ylabel(
-                f"{label}{self.physical_property.title()} "
-                f"Autocorrelation Function"
+                f"{label}{self.physical_property.title()} Autocorrelation Function"
             )
 
     def _create_acf(self):
@@ -583,9 +579,7 @@ class SlidingWindowACF:
             for i in range(frame + 1):
                 lag = frame - i
                 _ = self.u.trajectory[i]  # set trajectory to past frame
-                previous = self._apply_weights(
-                    getattr(self.ag, self.physical_property)
-                )
+                previous = self._apply_weights(getattr(self.ag, self.physical_property))
                 acf = current * previous[:, self._dim]
                 if self.centered:
                     acf = acf - (mu**2)
