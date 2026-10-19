@@ -23,6 +23,9 @@ source project on GitHub. In short, the steps are to:
 - Add tests if modifying the code
 - Commit and push changes to GitHub, and open a pull request
 
+`mdadash` is part of the MDAnalysis organization and follows the
+[MDAnalysis AI Policy](https://github.com/MDAnalysis/mdanalysis/blob/develop/AI_POLICY.md).
+
 Guides such as the [MDAnalysis User Guide](https://userguide.mdanalysis.org/stable/contributing.html)
 have been written in much more detail to go through these steps more thoroughly.
 We strongly encourage you to check those for help, and we welcome any questions.
