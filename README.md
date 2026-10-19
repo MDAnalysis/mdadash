@@ -198,7 +198,7 @@ Documentation for `mdadash` is available at: https://mdadash.readthedocs.io/
 
 ## Development
 
-`mdadash` is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md).
+`mdadash` is bound by a [Code of Conduct](https://github.com/MDAnalysis/mdadash/blob/main/CODE_OF_CONDUCT.md) and follows the [MDAnalysis AI Policy](https://github.com/MDAnalysis/mdanalysis/blob/develop/AI_POLICY.md).
 
 Developer instructions for this project can be found [here](DEVELOPMENT.md).
 
