@@ -1203,6 +1203,49 @@ async def test_widget_run_acf_running_integral(_client):
         await remove_widget(uuid)
 
 
+async def test_widget_run_acf_weighted(_client):
+    uuid = await add_widget("ACF")
+    async with file_simulation(XTC, step=1, batch_size=3):
+        inputs = [
+            ("physical_property", "position"),
+            ("weight", "mass"),
+            ("selection", "resid 1"),
+            ("show_particle_acfs", True),
+            ("normalized", True),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=2)
+        await remove_widget(uuid)
+
+
+async def test_widget_run_acf_weighted_parallel_batch(_client):
+    uuid = await add_widget("ACF")
+    async with file_simulation(XTC, step=1, batch_size=2):
+        inputs = [
+            ("physical_property", "position"),
+            ("weight", "sqrt_mass"),
+            ("selection", "resid 1"),
+            ("_run_frequency", "batch"),
+            ("_run_mode", "parallel"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
+
+
+async def test_widget_run_acf_invalid_weight(_client):
+    uuid = await add_widget("ACF")
+    async with file_simulation(XTC, step=1, batch_size=2):
+        await check_input_changes(uuid, [("physical_property", "position")])
+        await check_input_changes(uuid, [("weight", "invalid")], status="error")
+        # widget is not run while there are input errors
+        await resume_file_simulation()
+        assert not await sio_event_emitted(sio, "widgets:output", n=1, timeout=1.0)
+        await remove_widget(uuid)
+
+
 async def test_notebook_cell(_client):
     async with file_simulation(XTC):
         sio.emit.reset_mock()

@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Weighted ACF calculations with `mass`, `charge` and `sqrt_mass`
+  weighting options (Issue #54)
 - Added fallback to regular mem when shared mem not available (PR #106)
 - Added weights support for RMSD widget (PR #110)
 
