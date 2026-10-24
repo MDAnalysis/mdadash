@@ -369,7 +369,7 @@ async def test_duplicate_widgets(_client):
         inputs = [
             ("selection", "invalid"),
         ]
-        await check_input_changes(uuid1, inputs, "error")
+        await check_input_changes(uuid1, inputs, ["error"])
         # duplicate the widget
         uuid2 = await duplicate_widget(uuid1)
         await remove_widget(uuid1)
@@ -428,12 +428,12 @@ async def test_widget_invalid_inputs(_client):
         inputs = [
             ("maxlen", ""),
         ]
-        await check_input_changes(uuid, inputs, "error")
+        await check_input_changes(uuid, inputs, ["error"])
         # test invalid input change
         inputs = [
             ("selection", "invalid"),
         ]
-        await check_input_changes(uuid, inputs, "error")
+        await check_input_changes(uuid, inputs, ["error"])
         # test valid input change
         inputs = [
             ("selection", "resid 1"),
@@ -443,7 +443,7 @@ async def test_widget_invalid_inputs(_client):
         inputs = [
             ("selection", "invalid"),
         ]
-        await check_input_changes(uuid, inputs, "error")
+        await check_input_changes(uuid, inputs, ["error"])
         await resume_file_simulation()
         assert await sio_event_emitted(sio, "widgets:output", n=1)
         await remove_widget(uuid0)
@@ -664,6 +664,65 @@ async def test_widget_run_rmsd_serial_every_frame(_client):
             ("custom_title", "Title"),
             ("plot_refresh_frequency", 1),
             ("reset_on_connect", False),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
+
+
+async def test_widget_run_rmsd_weights_masses(_client):
+    uuid = await add_widget("RMSD")
+    async with file_simulation(XTC):
+        inputs = [
+            ("weights", "masses"),
+        ]
+        await check_input_changes(uuid, inputs)
+        await resume_file_simulation()
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        await remove_widget(uuid)
+
+
+async def test_widget_run_rmsd_weights_custom_function(_client):
+    code = """
+    custom_weights_function_not_callable = None
+
+    def custom_weights_function_improper():
+        pass
+
+    def custom_weights_function_wrong_1D(ag):
+        return [1]
+
+    def custom_weights_function_valid(ag):
+        return ag.masses
+    """
+    response = await run_task_until_done(main.mdadash.km.execute_code(code))
+    assert response == []
+    uuid = await add_widget("RMSD")
+    async with file_simulation(XTC):
+        inputs = [
+            ("weights", "Custom function"),
+        ]
+        await check_input_changes(uuid, inputs, ["error"])
+        inputs = [
+            ("weights_function", "custom_weights_function_undefined"),
+        ]
+        await check_input_changes(uuid, inputs, ["error"])
+        inputs = [
+            ("weights_function", "custom_weights_function_not_callable"),
+        ]
+        await check_input_changes(uuid, inputs, ["error"])
+        inputs = [
+            ("weights_function", "custom_weights_function_improper"),
+        ]
+        await check_input_changes(uuid, inputs, ["error"])
+        inputs = [
+            ("weights_function", "custom_weights_function_wrong_1D"),
+        ]
+        await check_input_changes(uuid, inputs, ["error"])
+        inputs = [
+            ("weights_function", "custom_weights_function_valid"),
+            ("weights", "Custom function"),
         ]
         await check_input_changes(uuid, inputs)
         await resume_file_simulation()
