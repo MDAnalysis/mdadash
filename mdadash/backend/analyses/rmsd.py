@@ -3,10 +3,12 @@ RMSD Analysis
 """
 
 import logging
+import sys
 from collections import deque
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
+import numpy as np
 from joblib import delayed
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from MDAnalysis.analysis import rms
@@ -61,6 +63,32 @@ class RMSD(WidgetBase):
     Superposition:
         Perform a rotational and translational superposition with the fast QCP algorithm
             Default: ``False``
+
+    Weights:
+        Weights to use to compute weighted average.
+
+        One of ``None``, ``masses``, ``charges``, ``Custom function``
+
+            Default: ``None``
+
+    Custom weights function:
+        Name of the custom weights function to use to obtain weights. This is applicable
+        only when the Weights input above is set to ``Custom function``.
+
+        A custom function can be defined using the Notebook interface. The function should
+        take one parameter (MDAnalysis ``AtomGroup``) as input and should return a 1D array
+        of weights of the same length as the passed in selection ``AtomGroup``.
+
+        Example:
+
+            .. code-block:: python
+
+                import numpy as np
+
+                def rmsd_custom_weights_function(ag):
+                    return np.sqrt(ag.masses)
+
+            Default: ''
 
     Custom title
         Custom title for the plot
@@ -158,6 +186,24 @@ class RMSD(WidgetBase):
             "type": "bool",
         },
         {
+            "attribute": "weights",
+            "name": "Weights",
+            "description": "Weights to use to compute weighted average",
+            "type": "select",
+            "items": [
+                "None",
+                "masses",
+                "charges",
+                "Custom function",
+            ],
+        },
+        {
+            "attribute": "weights_function",
+            "name": "Custom weights function",
+            "description": "Custom function to obtain weights",
+            "type": "str",
+        },
+        {
             "attribute": "custom_title",
             "name": "Custom title",
             "description": "Custom title for the plot",
@@ -199,8 +245,11 @@ class RMSD(WidgetBase):
         self.selection = "protein"
         self.center = False
         self.superposition = False
+        self.weights = "None"
+        self.weights_function = ""
         self.ag = None
         self.reference_positions = None
+        self.weights_array = None
         self.title = "RMSD"
         self.custom_title = None
         self.default_maxlen = 100
@@ -246,12 +295,37 @@ class RMSD(WidgetBase):
             self.x_values = self.times
         self.ax.set_xlabel(x_label)
 
+    def _get_weights(self):
+        if self.weights in ("masses", "charges"):
+            if not hasattr(self.ag, self.weights):  # pragma: no cover
+                raise ValueError(f"{self.weights} not available")
+            return getattr(self.ag, self.weights)
+        if self.weights == "Custom function":
+            weights = None
+            main = sys.modules.get("__main__")
+            func_name = self.weights_function.strip()
+            if not hasattr(main, func_name):
+                raise ValueError(f"Custom function '{func_name}' not defined")
+            func = getattr(main, func_name)
+            if not callable(func):
+                raise ValueError(f"'{func_name}' is not a callable function")
+            try:
+                weights = func(self.ag)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                raise ValueError("Error invoking custom weights function") from e
+            if np.shape(weights) != (len(self.ag),):
+                raise ValueError(f"Weights is not a 1D array of size {len(self.ag)}")
+            return weights
+        return None
+
     def _update_selection(self):
         """Update atom groups when selection phrase changes"""
         # Use the reference timestep to create the reference positions
         _ = self.u.trajectory.reference_ts
         self.ag = self.u.select_atoms(self.selection)
         self.reference_positions = self.ag.positions.copy()
+        # get weights
+        self.weights_array = self._get_weights()
         # reset to current frame
         self.reset_frame_latest()
         self.title = f"RMSD of '{self.selection}'"
@@ -280,7 +354,13 @@ class RMSD(WidgetBase):
             self._set_x_values()
         elif attribute == "custom_title":
             self._set_title()
-        elif attribute in ("selection", "center", "superposition"):
+        elif attribute in (
+            "selection",
+            "center",
+            "superposition",
+            "weights",
+            "weights_function",
+        ):
             self._reset_plot_values()
             self._update_selection()
         elif attribute == "plot_refresh_frequency":
@@ -291,6 +371,7 @@ class RMSD(WidgetBase):
         rmsd_value = rms.rmsd(
             self.ag.positions,
             self.reference_positions,
+            weights=self.weights_array,
             center=self.center,
             superposition=self.superposition,
         )

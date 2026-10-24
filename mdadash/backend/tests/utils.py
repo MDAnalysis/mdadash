@@ -40,17 +40,19 @@ async def sio_event_emitted(_sio, event, n=1, timeout=5.0):
     return emitted
 
 
-async def check_input_changes(uuid, inputs, status="ok"):
-    for i in inputs:
+async def check_input_changes(uuid, inputs, status=None):
+    if status is None:
+        status = ["ok"] * len(inputs)
+    for i, inp in enumerate(inputs):
         handler = sio.handlers["/"]["widget:input_change"]
-        attribute, value = i
+        attribute, value = inp
         response = await run_task_until_done(
             handler(
                 "_sid",
                 {"uuid": uuid, "attribute": attribute, "value": value},
             )
         )
-        assert response["status"] == status
+        assert response["status"] == status[i]
 
 
 @contextlib.asynccontextmanager
