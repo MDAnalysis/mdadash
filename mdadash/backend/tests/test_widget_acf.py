@@ -13,7 +13,7 @@ from .utils import (
 
 async def test_widget_run_acf_serial(_client):
     uuid = await add_widget("ACF")
-    async with file_simulation(XTC, step=1, batch_size=2):
+    async with file_simulation(XTC, step=1, batch_size=3):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
@@ -25,13 +25,13 @@ async def test_widget_run_acf_serial(_client):
         ]
         await check_input_changes(uuid, inputs)
         await resume_file_simulation()
-        assert await sio_event_emitted(sio, "widgets:output", n=2)
+        assert await sio_event_emitted(sio, "widgets:output", n=1)
         await remove_widget(uuid)
 
 
 async def test_widget_run_acf_serial_batch(_client):
     uuid = await add_widget("ACF")
-    async with file_simulation(XTC, step=1, batch_size=2):
+    async with file_simulation(XTC, step=1, batch_size=3):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
@@ -47,7 +47,7 @@ async def test_widget_run_acf_serial_batch(_client):
 
 async def test_widget_run_acf_parallel(_client):
     uuid = await add_widget("ACF")
-    async with file_simulation(XTC, step=1, batch_size=2):
+    async with file_simulation(XTC, step=1, batch_size=3):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
@@ -62,7 +62,7 @@ async def test_widget_run_acf_parallel(_client):
 
 async def test_widget_run_acf_parallel_batch(_client):
     uuid = await add_widget("ACF")
-    async with file_simulation(XTC, step=1, batch_size=2):
+    async with file_simulation(XTC, step=1, batch_size=3):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
@@ -77,7 +77,7 @@ async def test_widget_run_acf_parallel_batch(_client):
 
 async def test_widget_run_acf_running_integral(_client):
     uuid = await add_widget("ACF")
-    async with file_simulation(XTC, step=1, batch_size=2):
+    async with file_simulation(XTC, step=1, batch_size=3):
         inputs = [
             ("physical_property", "position"),
             ("selection", "resid 1"),
