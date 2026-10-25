@@ -119,6 +119,8 @@ dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 distance-dirty = "{base_version}+{distance}.{vcs}{rev}.dirty"
 
 [tool.coverage.run]
+# multi-file tests fail coverage without sigterm
+sigterm = true
 omit = [
     # Omit the tests
     "*/tests/*",
