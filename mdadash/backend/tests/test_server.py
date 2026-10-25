@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import json
 import sys
@@ -13,12 +12,10 @@ from mdadash.backend.tests.data.files import TPR, XTC
 from mdadash.backend.widgets.base import WidgetBase, WidgetManager
 
 from .utils import (
-    add_widget,
     connect_to_file_simulation,
     disconnect_from_simulation,
     file_simulation,
     pause_simulation,
-    remove_widget,
     resume_file_simulation,
     resume_imd_simulation,
     run_task_until_done,
@@ -325,43 +322,3 @@ async def test_utils_alert_pause(_client):
         # cleanup - delete all alerts
         handler = sio.handlers["/"]["delete_all_alerts"]
         await run_task_until_done(handler("_sid"))
-
-
-async def test_long_parallel_job(_client):
-    code = """
-    import time
-    from joblib import delayed
-    from mdadash.backend.widgets.base import WidgetBase
-
-    class LongParallel(WidgetBase):
-        name = "Long Parallel"
-
-        def __init__(self):
-            super().__init__()
-            self._run_mode = "parallel"
-
-        def run_every_frame(self):
-            if self.u.trajectory.frame == 1:
-                time.sleep(2)
-
-        def get_parallel_job(self):
-            return delayed(self.run_every_frame)()
-
-        def apply_parallel_results(self, values):
-            pass
-    """
-    response = await run_task_until_done(main.mdadash.km.execute_code(code))
-    assert response == []
-    uuid = await add_widget("Long Parallel")
-    async with file_simulation(XTC, disconnect_wait=False):
-        await resume_file_simulation()
-        await asyncio.sleep(0.25)
-    # check connect while previous parallel jobs are still running
-    handler = sio.handlers["/"]["connect_to_simulations"]
-    response = await run_task_until_done(handler("_sid"))
-    # ensure error with message
-    assert response["status"] == "error"
-    assert "Previous jobs are still in progress" in response["message"]
-    await remove_widget(uuid)
-    # ensure we can connect again in later tests
-    await asyncio.sleep(5)

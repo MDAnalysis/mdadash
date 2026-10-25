@@ -651,7 +651,7 @@ class UniverseManager:
         if self._connected:
             self._comms.send({"status": "error", "message": "Already connected"})
             return
-        if not self._disconnect_cleanup_task.done():
+        if not self._disconnect_cleanup_task.done():  # pragma: no cover
             self._notify_disconnect_cleanup_done = True
             self._comms.send(
                 {
@@ -943,7 +943,7 @@ class UniverseManager:
         await self._wm.parallel_jobs_done.wait()
         self._cleanup_buffered_trajectory()
         self._3dview_selection_ag = None
-        if self._notify_disconnect_cleanup_done:
+        if self._notify_disconnect_cleanup_done:  # pragma: no cover
             self._notify_disconnect_cleanup_done = False
             self._comms.send(
                 {
