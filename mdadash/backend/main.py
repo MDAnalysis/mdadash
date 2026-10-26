@@ -403,7 +403,7 @@ class MDADash:
         widgets = [
             subclass
             for subclass in WidgetBase.__subclasses__()
-            if EnergyWidgetBase not in subclass.__mro__
+            if EnergyWidgetBase not in subclass.__mro__ and hasattr(subclass, "name")
         ]
         return [
             {
