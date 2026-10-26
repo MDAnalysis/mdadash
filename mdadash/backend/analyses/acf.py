@@ -3,11 +3,13 @@ Autocorrelation Function (ACF)
 """
 
 import logging
+import sys
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
 import MDAnalysis as mda
 import numpy as np
+import numpy.typing as npt
 from joblib import delayed
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.collections import LineCollection
@@ -60,6 +62,32 @@ class ACFAnalysis(WidgetBase):
         `xyz`, `xy`, `yz`, `xz`, `x`, `y` or `z`
 
             Default: ``xyz``
+
+    Weights:
+        Weights to multiply the physical property with.
+
+        One of ``None``, ``masses``, ``charges``, ``Custom function``
+
+            Default: ``None``
+
+    Custom weights function:
+        Name of the custom weights function to use to obtain weights. This is applicable
+        only when the Weights input above is set to ``Custom function``.
+
+        A custom function can be defined using the Notebook interface. The function should
+        take one parameter (MDAnalysis ``AtomGroup``) as input and should return a 1D array
+        of weights of the same length as the passed in selection ``AtomGroup``.
+
+        Example:
+
+            .. code-block:: python
+
+                import numpy as np
+
+                def acf_custom_weights_function(ag):
+                    return np.sqrt(ag.masses)
+
+            Default: ''
 
     Centered
         Use mean subtacted values to calculate ACF
@@ -183,6 +211,24 @@ class ACFAnalysis(WidgetBase):
             ],
         },
         {
+            "attribute": "weights",
+            "name": "Weights",
+            "description": "Weights to multiply the physical property with",
+            "type": "select",
+            "items": [
+                "None",
+                "masses",
+                "charges",
+                "Custom function",
+            ],
+        },
+        {
+            "attribute": "weights_function",
+            "name": "Custom weights function",
+            "description": "Custom function to obtain weights",
+            "type": "str",
+        },
+        {
             "attribute": "centered",
             "name": "Centered",
             "description": (
@@ -232,6 +278,10 @@ class ACFAnalysis(WidgetBase):
         self.physical_property = "position"
         self.selection = "all"
         self.dim_type = "xyz"
+        self.weights = "None"
+        self.weights_function = ""
+        self.ag = None
+        self.weights_array = None
         self.centered = False
         self.show_running_integral = False
         self.show_particle_acfs = False
@@ -277,13 +327,38 @@ class ACFAnalysis(WidgetBase):
                 f"{self.physical_property.title()} Autocorrelation Function"
             )
 
+    def _get_weights(self):
+        if self.weights in ("masses", "charges"):
+            if not hasattr(self.ag, self.weights):  # pragma: no cover
+                raise ValueError(f"{self.weights} not available")
+            return getattr(self.ag, self.weights)
+        if self.weights == "Custom function":
+            weights = None
+            main = sys.modules.get("__main__")
+            func_name = self.weights_function.strip()
+            if not hasattr(main, func_name):
+                raise ValueError(f"Custom function '{func_name}' not defined")
+            func = getattr(main, func_name)
+            if not callable(func):
+                raise ValueError(f"'{func_name}' is not a callable function")
+            try:
+                weights = func(self.ag)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                raise ValueError("Error invoking custom weights function") from e
+            if np.shape(weights) != (len(self.ag),):
+                raise ValueError(f"Weights is not a 1D array of size {len(self.ag)}")
+            return weights
+        return None
+
     def _create_acf(self):
         """Create acf instance"""
+        self.ag = self.u.select_atoms(self.selection)
+        self.weights_array = self._get_weights()
         self.acf = SlidingWindowACF(
-            self.u,
-            select=self.selection,
+            self.ag,
             physical_property=self.physical_property,
             dim_type=self.dim_type,
+            weights=self.weights_array,
             centered=self.centered,
             show_running_integral=self.show_running_integral,
             show_particle_acfs=self.show_particle_acfs,
@@ -381,30 +456,33 @@ class SlidingWindowACF:
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
-        u: mda.Universe,
+        ag: mda.AtomGroup,
         physical_property: str = "position",
-        select: str = "all",
         dim_type: str = "xyz",
+        weights: npt.NDArray | None = None,
         centered: bool = False,
         show_running_integral: bool = False,
         show_particle_acfs: bool = False,
     ):
-        self.u = u
+        self.ag = ag
+        self.u = ag.universe
+        if weights is None:
+            self.weights = np.ones(len(self.ag))
+        else:
+            self.weights = weights
         property_map = {
             "position": "positions",
             "velocity": "velocities",
             "force": "forces",
         }
         self.physical_property = property_map[physical_property]
-        self.select = select
         self.dim_type = dim_type
         self.centered = centered
         self.show_running_integral = show_running_integral
         self.show_particle_acfs = (not show_running_integral) and show_particle_acfs
         self._parse_dim_type()
-        self.ag = u.select_atoms(self.select)
         self.n_atoms = self.ag.atoms.n_atoms
-        self.n_lags = u.trajectory.buffer_size
+        self.n_lags = self.u.trajectory.buffer_size
         self.frame_dt = None
         self.running_sum = np.zeros_like(
             getattr(self.ag, self.physical_property)[:, self._dim], dtype=np.float64
@@ -440,9 +518,10 @@ class SlidingWindowACF:
         n = len(self.u.trajectory)  # buffer / window might not be full yet
         if batch:
             array = f"_{self.physical_property}"
-            frames = getattr(self.u.trajectory, array)[:n, self.ag.indices][
-                ..., self._dim
-            ]
+            frames = (
+                self.weights[np.newaxis, :, np.newaxis]
+                * getattr(self.u.trajectory, array)[:n, self.ag.indices][..., self._dim]
+            )
             if self.centered:
                 batch_sums = np.cumsum(frames, axis=0)
                 batch_counts = np.arange(1, n + 1)[:, np.newaxis, np.newaxis]
@@ -466,14 +545,19 @@ class SlidingWindowACF:
         else:
             frame = n - 1
             _ = self.u.trajectory[frame]
-            current = getattr(self.ag, self.physical_property)[:, self._dim]
+            current = (
+                self.weights[:, np.newaxis]
+                * getattr(self.ag, self.physical_property)[:, self._dim]
+            )
             self.running_sum += current
             self.running_count += 1
             mu = self.running_sum / self.running_count
             for i in range(frame + 1):
                 lag = frame - i
                 _ = self.u.trajectory[i]  # set trajectory to past frame
-                previous = getattr(self.ag, self.physical_property)
+                previous = self.weights[:, np.newaxis] * getattr(
+                    self.ag, self.physical_property
+                )
                 acf = current * previous[:, self._dim]
                 if self.centered:
                     acf = acf - (mu**2)
