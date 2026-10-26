@@ -31,6 +31,7 @@ The rules for this file:
 
 - Added fallback to regular mem when shared mem not available (PR #106)
 - Added weights support for RMSD widget (PR #110)
+- Added weights support for ACF widget (PR #112)
 
 ### Fixed
 
