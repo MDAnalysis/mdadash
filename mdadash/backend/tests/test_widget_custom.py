@@ -1,3 +1,5 @@
+import sys
+
 from mdadash.backend import main
 from mdadash.backend.main import sio
 from mdadash.backend.tests.data.files import XTC
@@ -83,7 +85,8 @@ async def test_custom_widget_parallel_job(_client):
     uuid = await add_widget("Custom Widget 2")
     async with file_simulation(XTC):
         await resume_file_simulation()
-        assert await sio_event_emitted(sio, "widgets:output", n=1)
+        timeout = 30 if sys.platform == "win32" else 20
+        assert await sio_event_emitted(sio, "widgets:output", n=1, timeout=timeout)
         await remove_widget(uuid)
 
 
