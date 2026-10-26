@@ -15,6 +15,7 @@ from .utils import (
     connect_to_file_simulation,
     disconnect_from_simulation,
     file_simulation,
+    imd_simulation,
     pause_simulation,
     resume_file_simulation,
     resume_imd_simulation,
@@ -173,8 +174,8 @@ async def test_kernel_execute_code_errors(_client):
     assert response[0]["content"] == "x\n"
 
 
-async def test_socketio_connect_disconnect(_client):
-    async with file_simulation(XTC):
+async def test_socketio_connect_disconnect(_client, imd_server):
+    async with imd_simulation(imd_server):
         # connect
         handler = sio.handlers["/"]["connect"]
         response = await run_task_until_done(handler("_sid", {}))
@@ -187,7 +188,7 @@ async def test_socketio_connect_disconnect(_client):
         handler = sio.handlers["/"]["disconnect"]
         response = await run_task_until_done(handler("_sid"))
         assert response is None
-        await resume_file_simulation()
+        await resume_imd_simulation(imd_server)
     # test dashboard activated response
     sio.emit.reset_mock()
     handler = sio.handlers["/"]["dashboard:activated"]
