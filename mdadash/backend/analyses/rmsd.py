@@ -26,7 +26,7 @@ class RMSD(WidgetBase):
     This widget uses `MDAnalysis.analysis.rms.rmsd`_ to calculate `RMSD`_ of a
     selection. The reference positions used by this widget are the initial
     positions of the selection available for the trajectory from the reference
-    timestep (:attr:`~mdadash.backend.kernel.core.BufferedTrajectory.reference_ts`).
+    timestep (:attr:`~mdadash.backend.kernel.core.BufferedTrajectory.ref_u`).
 
     .. note:: If you use trajectory data from simulations performed under periodic boundary
         conditions then you must make your molecules whole before performing RMSD calculations so
@@ -140,7 +140,7 @@ class RMSD(WidgetBase):
         "to the universe in the Universe Configuration section in the Settings page.\n\n"
         "Note: The reference positions used by this widget are the initial positions "
         "of the selection available for the trajectory from the reference "
-        "timestep (`u.trajectory.reference_ts`)."
+        "timestep (`u.trajectory.ref_u`)."
     )
 
     _inputs: ClassVar = [
@@ -320,10 +320,10 @@ class RMSD(WidgetBase):
 
     def _update_selection(self):
         """Update atom groups when selection phrase changes"""
-        # Use the reference timestep to create the reference positions
-        _ = self.u.trajectory.reference_ts
         self.ag = self.u.select_atoms(self.selection)
-        self.reference_positions = self.ag.positions.copy()
+        # Use the reference universe to create the reference positions
+        ref_u = self.u.trajectory.ref_u
+        self.reference_positions = ref_u.select_atoms(self.selection).positions
         # get weights
         self.weights_array = self._get_weights()
         # reset to current frame
@@ -339,10 +339,10 @@ class RMSD(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
-        self._update_selection()
         self.plot_refresh_count = 1
         if self.reset_on_connect:  # pragma: no cover
             self._reset_plot_values()
+        self._update_selection()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""

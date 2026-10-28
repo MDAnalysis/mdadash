@@ -249,18 +249,21 @@ class BufferedTrajectory:
 
     def __init__(
         self,
-        trajectory: ReaderBase,
+        u: mda.Universe,
         buffer_size: int,
         reference_ts: Timestep = None,
         use_shm: bool = True,
     ):
+        trajectory = u.trajectory
         self._trajectory = trajectory
         self._buffer_size = buffer_size
         ts = trajectory.ts
+        self._ref_u = mda.Universe(u._topology, np.zeros((1, ts.n_atoms, 3)))
         if reference_ts is not None:
-            self._reference_ts = reference_ts
+            self._ref_u.trajectory.ts = reference_ts
         else:
-            self._reference_ts = ts.copy()
+            self._ref_u.trajectory.ts = ts.copy()
+        self._ref_u.trajectory.ts.frame = 0
         self._use_shm = use_shm
 
         # _load_ts is used to load timestep info into this buffer
@@ -360,17 +363,17 @@ class BufferedTrajectory:
         self._aux[index] = ts.aux.copy()
 
     @property
-    def reference_ts(self) -> Timestep:
-        """Reference timestep
+    def ref_u(self) -> mda.Universe:
+        """Reference timestep universe
 
         The earliest timestep available for this trajectory since the dashboard
-        was launched. This timestep persists across multiple connect / disconnects
-        while the dashboard is running, but not across different runs of the
-        dashboard (`mdadash`) itself.
+        was launched can be obtained from this single frame reference universe.
+        This timestep persists across multiple connect / disconnects while the
+        dashboard is running, but not across different runs of the dashboard
+        (`mdadash`) itself.
 
         """
-        self._trajectory.ts = self._reference_ts
-        return self._trajectory.ts
+        return self._ref_u
 
     @property
     def n_frames(self):
@@ -692,7 +695,7 @@ class UniverseManager:
                     u.trajectory.add_transformations(NoJump())
                 self._streaming = isinstance(u.trajectory, IMDReader)
                 u.trajectory = BufferedTrajectory(
-                    u.trajectory,
+                    u,
                     config["batch_size"],
                     self._reference_ts,
                     use_shm=config["shared_memory"],

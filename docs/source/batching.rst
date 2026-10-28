@@ -19,7 +19,7 @@ to provide buffered access to the last ``n`` timesteps, where ``n`` is the confi
 
 .. code-block:: python
 
-    u.trajectory = BufferedTrajectory(u.trajectory, config["batch_size"])
+    u.trajectory = BufferedTrajectory(u, config["batch_size"])
 
 ``trajectory[index]`` can be used to access individual frames. Index values can range from 0 to the
 configured batch size ``n``. The batch size ``n`` is available via the ``trajectory.buffer_size``

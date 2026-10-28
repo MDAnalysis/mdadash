@@ -252,10 +252,10 @@ class HelixAnalysis(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
-        self._create_ha()
         self.plot_refresh_count = 1
         if self.reset_on_connect:  # pragma: no cover
             self._reset_plot_values()
+        self._create_ha()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""

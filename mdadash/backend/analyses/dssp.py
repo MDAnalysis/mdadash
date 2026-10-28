@@ -211,6 +211,9 @@ class DSSPAnalysis(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
+        self.plot_refresh_count = 1
+        if self.reset_on_connect:  # pragma: no cover
+            self._reset_plot_values()
         protein = self.u.select_atoms("protein")
         # Fix for ValueError: Universe contains unequal numbers of (N,CA,C,O) atoms
         n_res = self.u.select_atoms("protein and name N").resids
@@ -228,9 +231,6 @@ class DSSPAnalysis(WidgetBase):
         tick_spacing = max(1, self.n_residues // 10)
         self.ax.set_yticks(np.arange(0, self.n_residues, tick_spacing))
         self.ax.set_yticklabels(res_ids[::tick_spacing])
-        self.plot_refresh_count = 1
-        if self.reset_on_connect:  # pragma: no cover
-            self._reset_plot_values()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""
