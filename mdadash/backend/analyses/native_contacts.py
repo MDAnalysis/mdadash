@@ -26,7 +26,7 @@ class NativeContacts(WidgetBase):
 
     .. note:: The two contacting AtomGroups in their reference conformation are from the
         reference timestep available for the trajectory
-        (:attr:`~mdadash.backend.kernel.core.BufferedTrajectory.reference_ts`).
+        (:attr:`~mdadash.backend.kernel.core.BufferedTrajectory.ref_u`).
 
     .. _MDAnalysis.analysis.contacts.Contacts: https://docs.mdanalysis.org/stable/
         documentation_pages/analysis/contacts.html#MDAnalysis.analysis.contacts.Contacts
@@ -108,8 +108,8 @@ class NativeContacts(WidgetBase):
     )
 
     _notes = (
-        "The two contacting AtomGroups in their reference conformation are from the"
-        "reference timestep available for the trajectory (`u.trajectory.reference_ts`)."
+        "The two contacting AtomGroups in their reference conformation are from the "
+        "reference timestep available for the trajectory (`u.trajectory.ref_u`)."
     )
 
     _inputs: ClassVar = [
@@ -265,10 +265,10 @@ class NativeContacts(WidgetBase):
 
     def _create_contacts(self):
         """Update atom groups when selection phrases change"""
-        # Use the reference timestep to create the refgroups
-        _ = self.u.trajectory.reference_ts
-        self.refgroup_ag1 = self.u.select_atoms(self.selection1)
-        self.refgroup_ag2 = self.u.select_atoms(self.selection2)
+        # Use the reference universe to create the refgroups
+        ref_u = self.u.trajectory.ref_u
+        self.refgroup_ag1 = ref_u.select_atoms(self.selection1)
+        self.refgroup_ag2 = ref_u.select_atoms(self.selection2)
         self.contacts = contacts.Contacts(
             self.u,
             select=(self.selection1, self.selection2),
@@ -277,8 +277,6 @@ class NativeContacts(WidgetBase):
             method=self.method,
             pbc=self.pbc,
         )
-        # reset to current frame
-        self.reset_frame_latest()
         self.title = (
             f"Native contacts between\n'{self.selection1}' and '{self.selection2}'"
         )
@@ -292,10 +290,10 @@ class NativeContacts(WidgetBase):
 
     def on_post_connect(self):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_post_connect` handler"""
-        self._create_contacts()
         self.plot_refresh_count = 1
         if self.reset_on_connect:  # pragma: no cover
             self._reset_plot_values()
+        self._create_contacts()
 
     def on_input_change(self, attribute, _old_value, new_value):
         """:meth:`~mdadash.backend.widgets.base.WidgetBase.on_input_change` handler"""

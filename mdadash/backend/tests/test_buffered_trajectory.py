@@ -8,7 +8,7 @@ from mdadash.backend.tests.data.files import TPR, XTC
 
 def test_buffered_trajectory():
     u = mda.Universe(TPR, XTC)
-    u.trajectory = BufferedTrajectory(u.trajectory, 10)
+    u.trajectory = BufferedTrajectory(u, 10)
     with pytest.raises(IndexError, match="BufferedTrajectory index out of range"):
         _ = u.trajectory[10]
     with pytest.raises(IndexError, match="BufferedTrajectory index out of range"):
