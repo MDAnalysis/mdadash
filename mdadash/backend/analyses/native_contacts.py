@@ -329,17 +329,9 @@ class NativeContacts(WidgetBase):
     def _compute_batch(self):
         """Compute values for current batch"""
         self.contacts.run()
-        values = []
-        for i, (_, q) in enumerate(self.contacts.results.timeseries):
-            _ = self.u.trajectory[i]
-            values.append(
-                (
-                    self.u.trajectory.ts.data["step"],
-                    self.u.trajectory.ts.data["time"],
-                    q,
-                )
-            )
-        return values
+        steps = self.u.trajectory._steps
+        times = self.u.trajectory._times
+        return list(zip(steps, times, self.contacts.results.timeseries[:, 1]))
 
     def _update_plot(self, values):
         """Append values and update plot"""

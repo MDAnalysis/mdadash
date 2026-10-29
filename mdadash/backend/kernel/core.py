@@ -14,6 +14,7 @@ import shutil
 import socket
 import sys
 import tempfile
+from contextlib import contextmanager
 from dataclasses import asdict
 from multiprocessing import shared_memory
 
@@ -258,13 +259,11 @@ class BufferedTrajectory:
         self._trajectory = trajectory
         self._buffer_size = buffer_size
         ts = trajectory.ts
-        self._ref_u = mda.Universe(u._topology, np.zeros((1, ts.n_atoms, 3)))
-        if reference_ts is not None:
-            self._ref_u.trajectory.ts = reference_ts
-        else:
-            self._ref_u.trajectory.ts = ts.copy()
-        self._ref_u.trajectory.ts.frame = 0
+        self._ref_u = self._create_ref_u(
+            u._topology, reference_ts if reference_ts is not None else ts
+        )
         self._use_shm = use_shm
+        self._return_ts_copy = False
 
         # _load_ts is used to load timestep info into this buffer
         # _return_ts is used to return the timestep from this buffer
@@ -314,6 +313,18 @@ class BufferedTrajectory:
         self._size = min(1, self._buffer_size)
 
         BufferedTrajectory.next.__doc__ = type(trajectory).next.__doc__
+
+    def _create_ref_u(self, topology, ts):
+        """Internal: Create reference universe from timestep"""
+        ref_u = mda.Universe(
+            topology,
+            ts.positions,
+            velocities=ts.velocities if ts.has_velocities else None,
+            forces=ts.forces if ts.has_forces else None,
+        )
+        ref_u.trajectory.ts.dimensions = ts.dimensions
+        ref_u.trajectory.ts.frame = 0
+        return ref_u
 
     def cleanup(self):
         """Cleanup the buffer"""
@@ -396,6 +407,23 @@ class BufferedTrajectory:
             frame = -1
         return frame
 
+    @contextmanager
+    def return_ts_copies(self):
+        """Context manager to use to get copies of the timestep object instead
+        of timestep objects having references to the buffer during getitem.
+
+        This is needed for cases where anyone modifies the underlying timestep
+        entries (positions, etc) in-place. MDAnalysis's rms.RMSD analysis class
+        does this currently when there are group selections
+
+        """
+        # Use contextvars.ContextVar for concurrency in future if needed
+        self._return_ts_copy = True
+        try:
+            yield
+        finally:
+            self._return_ts_copy = False
+
     def __getitem__(self, index):
         if isinstance(index, numbers.Integral):
             if index < 0:
@@ -418,7 +446,7 @@ class BufferedTrajectory:
             ts.data = self._data[buffer_index]
             ts.aux = self._aux[buffer_index]
             self._trajectory.ts = ts
-            return ts
+            return ts.copy() if self._return_ts_copy else ts
         if isinstance(index, slice):
             return FrameIteratorAll(self)
         if isinstance(index, (list, np.ndarray)):

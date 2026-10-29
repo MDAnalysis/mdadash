@@ -342,21 +342,13 @@ class HydrogenBonds(WidgetBase):
     def _compute_batch(self):
         """Compute values for current batch"""
         self.hba.run()
-        values = []
         indices = np.searchsorted(
             self.hba.frames, self.hba.results.hbonds[:, 0].astype(int)
         )
         counts = np.bincount(indices, minlength=len(self.hba.times))
-        for i, count in enumerate(counts):
-            _ = self.u.trajectory[i]
-            values.append(
-                (
-                    self.u.trajectory.ts.data["step"],
-                    self.u.trajectory.ts.data["time"],
-                    count,
-                )
-            )
-        return values
+        steps = self.u.trajectory._steps
+        times = self.u.trajectory._times
+        return list(zip(steps, times, counts))
 
     def _update_plot(self, values):
         """Append values and update plot"""

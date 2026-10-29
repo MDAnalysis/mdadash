@@ -323,7 +323,7 @@ class ROG(WidgetBase):
             rog = np.sqrt(np.hstack([rog_sq_total, rog_sq_axes]))
             steps = self.u.trajectory._steps
             times = self.u.trajectory._times
-            values = list(zip(steps.tolist(), times.tolist(), rog))
+            values = list(zip(steps, times, rog))
         else:
             values = []
             for i in range(self.u.trajectory.buffer_size):

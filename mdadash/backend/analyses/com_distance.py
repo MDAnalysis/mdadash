@@ -377,7 +377,7 @@ class COMDistance(WidgetBase):
             com_distances = np.linalg.norm(displacement, axis=1)
             steps = self.u.trajectory._steps
             times = self.u.trajectory._times
-            values = list(zip(steps.tolist(), times.tolist(), com_distances.tolist()))
+            values = list(zip(steps, times, com_distances))
         else:
             values = []
             for i in range(self.u.trajectory.buffer_size):
