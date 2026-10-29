@@ -292,18 +292,9 @@ class HelixAnalysis(WidgetBase):
             warnings.simplefilter("ignore", category=RuntimeWarning)
             self.ha.run()
         results = getattr(self.ha.results, self.property)
-        mean_values = results.mean(axis=1)
-        values = []
-        for i, v in enumerate(mean_values):
-            _ = self.u.trajectory[i]
-            values.append(
-                (
-                    self.u.trajectory.ts.data["step"],
-                    self.u.trajectory.ts.data["time"],
-                    v,
-                )
-            )
-        return values
+        steps = self.u.trajectory._steps
+        times = self.u.trajectory._times
+        return list(zip(steps, times, results.mean(axis=1)))
 
     def _update_plot(self, values):
         """Append values and update plot"""

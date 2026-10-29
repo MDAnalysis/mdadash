@@ -36,6 +36,10 @@ and can run in parallel:
      - Widgets for various simulation energies
      - ✅
      - —
+   * - :mod:`~mdadash.backend.analyses.group_rmsd`
+     - Group RMSD Analysis
+     - ✅
+     - ✅
    * - :mod:`~mdadash.backend.analyses.helix_analysis`
      - Helix Analysis
      - ✅
@@ -82,6 +86,7 @@ and can run in parallel:
    Custom Code <autosummary/mdadash.backend.analyses.custom_code>
    DSSP <autosummary/mdadash.backend.analyses.dssp>
    Energies <autosummary/mdadash.backend.analyses.energies>
+   Group RMSD <autosummary/mdadash.backend.analyses.group_rmsd>
    Helix Analysis <autosummary/mdadash.backend.analyses.helix_analysis>
    Hydrogen bonds <autosummary/mdadash.backend.analyses.hydrogen_bonds>
    Janin Plot <autosummary/mdadash.backend.analyses.janin>
