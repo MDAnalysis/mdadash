@@ -18,6 +18,29 @@ from mdadash.backend.widgets.base import WidgetBase
 logger = logging.getLogger(__name__)
 
 
+class CustomRMSD(rms.RMSD):
+    """Custom class to override ``_prepare()`` behavior of ``rms.RMSD`` class.
+
+    This class avoids the repeated setup of weights, group selections and
+    reference coordinates and leads to a 5x speed improvment especially when
+    run in the ``every-frame`` mode.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._is_prepared = False
+
+    def _prepare(self):
+        if self._is_prepared:
+            self.results.rmsd = np.zeros(
+                (self.n_frames, 3 + len(self._groupselections_atoms))
+            )
+            return
+        super()._prepare()
+        self._is_prepared = True
+
+
 class GroupRMSD(WidgetBase):
     """
 
@@ -266,18 +289,12 @@ class GroupRMSD(WidgetBase):
         self.fig, self.ax = plt.subplots()
         self.canvas = FigureCanvasAgg(self.fig)
         groups = self.group_selections
-        labels = self.labels
         groups = [g.strip() for g in groups.split(",")] if groups.strip() else []
-        labels = [l.strip() for l in labels.split(",")] if labels.strip() else []
-        self.plots = []
-        for i in range(1 + len(groups)):
-            label = labels[i] if i < len(labels) else f"Group {i}"
-            (line,) = self.ax.plot([], [], label=label)
-            self.plots.append(line)
+        self.plots = [self.ax.plot([], [])[0] for _ in range(1 + len(groups))]
         self.ax.set_ylabel("RMSD (Å)")
-        self.ax.legend(loc="upper left")
         self.ax.grid(True)
         self._set_title()
+        self._set_labels()
 
     def _reset_plot_values(self):
         """Reset plot values"""
@@ -292,6 +309,15 @@ class GroupRMSD(WidgetBase):
         self.ax.set_title(
             self.custom_title.replace("\\n", "\n") if self.custom_title else self.title
         )
+
+    def _set_labels(self):
+        """Set plot labels"""
+        labels = self.labels
+        labels = [l.strip() for l in labels.split(",")] if labels.strip() else []
+        for i, plot in enumerate(self.plots):
+            label = labels[i] if i < len(labels) else f"Group {i}"
+            plot.set_label(label)
+        self.ax.legend(loc="upper left")
 
     def _set_x_values(self):
         """Set the values for the x-axis"""
@@ -330,7 +356,7 @@ class GroupRMSD(WidgetBase):
             self.group_selections.split(",") if self.group_selections.strip() else []
         )
         self.ag = self.u.select_atoms(self.selection)
-        self.rmsd = rms.RMSD(
+        self.rmsd = CustomRMSD(
             self.u,
             self.u.trajectory.ref_u,
             select=self.selection,
@@ -365,10 +391,11 @@ class GroupRMSD(WidgetBase):
             self._set_x_values()
         elif attribute == "custom_title":
             self._set_title()
+        elif attribute == "labels":
+            self._set_labels()
         elif attribute in (
             "selection",
             "group_selections",
-            "labels",
             "weights",
             "weights_function",
         ):
