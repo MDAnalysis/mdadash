@@ -23,6 +23,7 @@ async def test_widget_run_group_rmsd_serial_every_frame(_client):
             ("maxlen", -1),
             ("x_type", "step"),
             ("custom_title", "Title"),
+            ("labels", "backbone"),
             ("plot_refresh_frequency", 1),
             ("reset_on_connect", False),
         ]
