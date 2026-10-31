@@ -29,6 +29,15 @@
           ></v-btn>
           <span class="text-caption font-weight-bold text-grey-darken-1">{{ label }}</span>
           <v-spacer></v-spacer>
+          <!-- Cell Type -->
+          <v-btn-toggle v-if="showType" v-model="cellType" mandatory style="height: 28px">
+            <v-btn value="python" icon size="x-small" title="Python">
+              <v-icon :icon="mdiLanguagePython" size="small" :style="{ opacity: 0.7 }"></v-icon>
+            </v-btn>
+            <v-btn value="markdown" icon size="x-small" title="Markdown">
+              <v-icon :icon="mdiLanguageMarkdown" size="small" :style="{ opacity: 0.7 }"></v-icon>
+            </v-btn>
+          </v-btn-toggle>
           <!-- Move up -->
           <v-btn
             v-if="showMove"
@@ -73,15 +82,22 @@
         </v-card-actions>
         <!-- Cell contents -->
         <v-expand-transition>
-          <div v-show="show">
+          <div v-show="show" class="d-flex flex-column">
             <!-- Code Editor -->
-            <v-card-text class="pa-0">
+            <div
+              v-if="cellType === 'markdown' && !isEditing"
+              id="renderedMarkdown"
+              class="markdown-preview"
+              @dblclick="isEditing = true"
+              v-html="renderedMarkdown"
+            ></div>
+            <v-card-text v-else class="pa-0">
               <codemirror
                 v-model="code"
-                placeholder="# Python code here... "
+                :placeholder="cellType === 'python' ? '# Python code...' : '# Markdown text...'"
                 :extensions="getExtensions()"
                 :style="{ minHeight: '100px' }"
-                @blur="emitChange"
+                @blur="handleBlur"
                 :disabled="isFormDisabled"
               />
               <!-- Output -->
@@ -136,7 +152,7 @@
 
 <script setup>
 import { socket } from '@/socket'
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import {
   mdiDrag,
   mdiDeleteOutline,
@@ -146,9 +162,13 @@ import {
   mdiUnfoldMoreHorizontal,
   mdiChevronUp,
   mdiChevronDown,
+  mdiLanguagePython,
+  mdiLanguageMarkdown,
 } from '@mdi/js'
 import { Codemirror } from 'vue-codemirror'
 import { python } from '@codemirror/lang-python'
+import { markdown } from '@codemirror/lang-markdown'
+import { marked } from 'marked'
 import { keymap, tooltips } from '@codemirror/view'
 import { Prec } from '@codemirror/state'
 import { autocompletion } from '@codemirror/autocomplete'
@@ -157,12 +177,14 @@ import { AnsiUp } from 'ansi_up'
 
 const settings = inject('settings')
 const ansiUp = new AnsiUp()
-ansiUp.escape_for_html = true
-const code = defineModel()
+const code = defineModel({ type: String, default: '' })
+const cellType = defineModel('type', { type: String, default: 'python' })
 const show = ref(true)
 const outputs = ref([])
 const isRunning = ref(false)
+const isEditing = ref(false)
 let originalCode = code.value
+let originalCellType = cellType.value
 
 const vuetifyForm = inject(Symbol.for('vuetify:form'), null)
 const isFormDisabled = computed(() => {
@@ -173,6 +195,7 @@ const props = defineProps({
   id: String,
   label: String,
   showDrag: Boolean,
+  showType: Boolean,
   showMove: Boolean,
   showDelete: Boolean,
   showAddCell: Boolean,
@@ -235,11 +258,7 @@ const autoComplete = () => {
 }
 
 const getExtensions = () => {
-  return [
-    python(),
-    indentUnit.of('    '),
-    autocompletion({ override: [autoComplete()] }),
-    tooltips({ parent: document.body }),
+  const extensions = [
     Prec.highest(
       keymap.of([
         {
@@ -267,17 +286,51 @@ const getExtensions = () => {
       ]),
     ),
   ]
+
+  if (cellType.value === 'markdown') {
+    return [...extensions, markdown()]
+  }
+
+  return [
+    ...extensions,
+    python(),
+    autocompletion({ override: [autoComplete()] }),
+    indentUnit.of('    '),
+    tooltips({ parent: document.body }),
+  ]
 }
 
 // v8 ignore next
 const emitChange = () => {
-  if (originalCode !== code.value) {
+  if (originalCode !== code.value || originalCellType !== cellType.value) {
     emit('change')
     originalCode = code.value
+    originalCellType = cellType.value
   }
 }
 
+const handleBlur = () => {
+  if (cellType.value === 'markdown') {
+    runCell()
+  }
+  emitChange()
+}
+
+const renderedMarkdown = computed(() => {
+  return marked.parse(code.value)
+})
+
+watch(cellType, (newType) => {
+  isEditing.value = newType === 'markdown'
+  emitChange()
+})
+
 const runCell = async () => {
+  if (cellType.value === 'markdown') {
+    isEditing.value = false
+    emitChange()
+    return
+  }
   if (isRunning.value) return
   emitChange()
   outputs.value = []
@@ -343,6 +396,13 @@ const deleteCell = () => {
   color: #757575;
   margin-top: 8px;
   padding-left: 16px;
+}
+/* Markdown preview */
+.markdown-preview {
+  min-height: 100px;
+  padding-left: 16px;
+  background: #f9f9f9;
+  cursor: pointer;
 }
 </style>
 

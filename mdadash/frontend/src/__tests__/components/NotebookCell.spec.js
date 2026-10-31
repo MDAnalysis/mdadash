@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, expect, describe, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { Codemirror } from 'vue-codemirror'
 import NotebookCell from '@/components/NotebookCell.vue'
 
@@ -82,6 +82,7 @@ describe('NotebookCell.vue', () => {
       },
       props: {
         showDrag: true,
+        showType: true,
         showDelete: true,
         showAddCell: true,
         hint: 'hint',
@@ -97,6 +98,7 @@ describe('NotebookCell.vue', () => {
       },
       props: {
         showDrag: true,
+        showType: true,
         showMove: true,
         showDelete: true,
         showAddCell: true,
@@ -147,7 +149,26 @@ describe('NotebookCell.vue', () => {
     })
     expect(wrapper).toBeDefined()
     const cm = wrapper.findComponent(Codemirror)
-    await cm.vm.$emit('update:modelValue', 'newCode')
+    cm.vm.$emit('update:modelValue', 'newCode')
     expect(wrapper.vm.code).toBe('newCode')
+  })
+
+  it('check markdown mode', async () => {
+    const wrapper = mount(NotebookCell, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper).toBeDefined()
+    const cm = wrapper.findComponent(Codemirror)
+    cm.vm.$emit('blur')
+    wrapper.vm.cellType = 'markdown'
+    await nextTick()
+    cm.vm.$emit('blur')
+    await nextTick()
+    expect(wrapper.vm.isEditing).toBe(false)
+    const renderedMarkdown = wrapper.find('#renderedMarkdown')
+    await renderedMarkdown.trigger('dblclick')
+    expect(wrapper.vm.isEditing).toBe(true)
   })
 })

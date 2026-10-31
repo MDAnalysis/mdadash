@@ -386,11 +386,12 @@ class MDADash:
         self.sm.notebooks[uuid].update({"name": name, "description": description})
         await self.sm.save()
 
-    async def on_notebook_cell_change(self, _sid, uuid, _id, code):
+    async def on_notebook_cell_change(self, _sid, uuid, _id, code, cell_type):
         """notebook:cell_change handler"""
         notebook = self.sm.notebooks[uuid]
         cell = next((c for c in notebook["cells"] if c["id"] == _id), None)
         cell["code"] = code
+        cell["type"] = cell_type
         await self.sm.save()
 
     async def on_notebook_update_cells(self, _sid, uuid, cells):

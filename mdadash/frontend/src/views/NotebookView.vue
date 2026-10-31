@@ -99,9 +99,11 @@
         <NotebookCell
           :key="cell.id"
           v-model="cell.code"
+          v-model:type="cell.type"
           :id="cell.id"
           :label="`[${index}]`"
           :show-drag="true"
+          :show-type="true"
           :show-move="true"
           :show-delete="true"
           :show-add-cell="true"
@@ -162,7 +164,8 @@ function updateCells() {
 }
 
 const onCellChange = (id, index) => {
-  socket.emit('notebook:cell_change', uuid, id, notebook.value.cells[index].code)
+  const cell = notebook.value.cells[index]
+  socket.emit('notebook:cell_change', uuid, id, cell.code, cell.type)
 }
 
 const onCellDelete = (index) => {
@@ -179,6 +182,7 @@ const onCellAdd = async (index) => {
   const newCell = {
     id,
     code: '',
+    type: 'python',
   }
   notebook.value.cells.splice(index + 1, 0, newCell)
   updateCells()
@@ -256,7 +260,13 @@ onMounted(async () => {
       .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
       .emitWithAck('notebooks:get_notebook', uuid)
     if (response) {
-      notebook.value = response
+      notebook.value = {
+        ...response,
+        cells: response.cells.map((cell) => ({
+          ...cell,
+          type: cell.type ?? 'python',
+        })),
+      }
     } else {
       router.push({ path: '/notebooks' })
     }

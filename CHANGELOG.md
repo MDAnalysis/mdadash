@@ -34,6 +34,7 @@ The rules for this file:
 - Added weights support for ACF widget (PR #112)
 - Made reference ts available in a new Universe (PR #113)
 - Added Group RMSD widget (PR #114)
+- Added Markdown support in Notebook cells (PR #116)
 
 ### Fixed
 
