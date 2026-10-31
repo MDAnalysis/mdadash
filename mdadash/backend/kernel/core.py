@@ -1061,7 +1061,8 @@ if (
             if not notebook["run_on_launch"]:
                 continue
             for cell in notebook["cells"]:
-                ipy.run_cell(cell["code"])
+                if cell.get("type") == "python":
+                    ipy.run_cell(cell["code"])
         comms.send({"status": "ok"})
 
     comms = CommHandler()

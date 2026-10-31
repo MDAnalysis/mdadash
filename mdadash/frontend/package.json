@@ -14,10 +14,12 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/lang-python": "^6.2.1",
     "ansi_up": "^6.0.6",
     "codemirror": "^6.0.2",
     "grid-layout-plus": "^1.1.1",
+    "marked": "^18.1.2",
     "molstar": "^5.11.0",
     "socket.io-client": "^4.8.3",
     "vue": "^3.5.42",
@@ -51,6 +53,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "overrides": {
-    "glob": "^13.0.6"
+    "glob": "^14.0.2",
+    "minimatch": "^11.0.1"
   }
 }

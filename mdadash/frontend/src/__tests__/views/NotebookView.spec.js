@@ -58,6 +58,19 @@ vi.mock('@/socket', () => {
   }
 })
 
+const old_notebook = {
+  uuid: 'uuid1',
+  name: 'name1',
+  description: 'description1',
+  run_on_launch: true,
+  cells: [
+    {
+      id: 'id1',
+      code: 'code1',
+    },
+  ],
+}
+
 const notebook = {
   uuid: 'uuid1',
   name: 'name1',
@@ -67,6 +80,7 @@ const notebook = {
     {
       id: 'id1',
       code: 'code1',
+      type: 'python',
     },
   ],
 }
@@ -134,7 +148,7 @@ describe('NotebookView.vue', () => {
     expect(mockEmit).toHaveBeenCalledWith('notebook:update_cells', 'uuid1', notebook.cells)
     // cell change
     wrapper.vm.onCellChange('id1', 0)
-    expect(mockEmit).toHaveBeenCalledWith('notebook:cell_change', 'uuid1', 'id1', 'code1')
+    expect(mockEmit).toHaveBeenCalledWith('notebook:cell_change', 'uuid1', 'id1', 'code1', 'python')
     // cell add
     wrapper.vm.onCellAdd(0)
     expect(notebook.cells.length).toStrictEqual(2)
@@ -170,5 +184,18 @@ describe('NotebookView.vue', () => {
     wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))
     // Not Enter key
     wrapper.vm.handleKeydown(new KeyboardEvent('keydown', { key: ' ' }))
+  })
+
+  it('check upgrade', async () => {
+    mockEmitWithAck.mockResolvedValueOnce(old_notebook)
+    const wrapper = mount(NotebookView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    await nextTick()
+    expect(wrapper.vm.notebook.cells.length).toStrictEqual(1)
+    expect(wrapper.vm.notebook.cells[0].type).toStrictEqual('python')
   })
 })

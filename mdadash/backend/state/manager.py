@@ -251,6 +251,7 @@ class StateManager:
                 {
                     "id": str(uuid1()),
                     "code": code,
+                    "type": "python",
                 },
             ],
         }

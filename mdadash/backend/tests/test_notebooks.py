@@ -83,7 +83,7 @@ async def test_notebook_updates(_client):
     await run_task_until_done(handler("_sid", uuid1, "name1", "description1"))
     # update cell 0
     handler = sio.handlers["/"]["notebook:cell_change"]
-    await run_task_until_done(handler("_sid", uuid1, cell0_id, "u"))
+    await run_task_until_done(handler("_sid", uuid1, cell0_id, "u", "python"))
     # check get notebook 1
     handler = sio.handlers["/"]["notebooks:get_notebook"]
     notebook = await run_task_until_done(handler("_sid", uuid1))
@@ -94,8 +94,8 @@ async def test_notebook_updates(_client):
     # update cells
     handler = sio.handlers["/"]["notebook:update_cells"]
     cells = [
-        {"id": "id1", "code": "code1"},
-        {"id": "id2", "code": "code2"},
+        {"id": "id1", "code": "code1", "type": "python"},
+        {"id": "id2", "code": "code2", "type": "python"},
     ]
     await run_task_until_done(handler("_sid", uuid1, cells))
     # check get notebook 1
@@ -114,6 +114,7 @@ async def test_notebooks_run_on_launch(_client):
                     {
                         "id": "id1",
                         "code": "x1 = 5",
+                        "type": "python",
                     },
                 ],
             },
@@ -124,6 +125,7 @@ async def test_notebooks_run_on_launch(_client):
                     {
                         "id": "id1",
                         "code": "x2 = 5",
+                        "type": "python",
                     },
                 ],
             },
