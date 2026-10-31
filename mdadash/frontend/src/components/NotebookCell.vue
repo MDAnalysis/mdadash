@@ -400,7 +400,7 @@ const deleteCell = () => {
 /* Markdown preview */
 .markdown-preview {
   min-height: 100px;
-  padding-left: 16px;
+  padding-inline: 16px;
   background: #f9f9f9;
   cursor: pointer;
 }
