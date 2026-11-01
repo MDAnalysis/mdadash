@@ -29,14 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added fallback to regular mem when shared mem not available (PR #106)
-- Added weights support for RMSD widget (PR #110)
-- Added weights support for ACF widget (PR #112)
-- Made reference ts available in a new Universe (PR #113)
-- Added Group RMSD widget (PR #114)
-- Added Markdown support in Notebook cells (PR #116)
-- Added Notebook Import / Export support (PR #117)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -52,6 +44,26 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.6]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+11/01/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added fallback to regular mem when shared mem not available (PR #106)
+- Added weights support for RMSD widget (PR #110)
+- Added weights support for ACF widget (PR #112)
+- Made reference ts available in a new Universe (PR #113)
+- Added Group RMSD widget (PR #114)
+- Added Markdown support in Notebook cells (PR #116)
+- Added Notebook Import / Export support (PR #117)
 
 ## [0.1.5]
 
