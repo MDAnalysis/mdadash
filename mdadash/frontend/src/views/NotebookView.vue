@@ -302,16 +302,15 @@ const onDeleteNotebook = async () => {
   }
 }
 
-// v8 ignore next
 const onImport = async (action) => {
   importOpen.value = false
   importAction.value = action
+  // v8 ignore next
   if (fileInput.value) {
     fileInput.value.click()
   }
 }
 
-// v8 ignore next
 const handleFileImport = async (event, action) => {
   const target = event.target
   const file = target.files[0]
@@ -336,6 +335,7 @@ const handleFileImport = async (event, action) => {
       isLoading.value = false
     }
   }
+  // v8 ignore next
   reader.onerror = () => {
     target.value = ''
     isLoading.value = false
@@ -343,7 +343,6 @@ const handleFileImport = async (event, action) => {
   reader.readAsText(file)
 }
 
-// v8 ignore next
 const onExport = async () => {
   try {
     const content = await socket
