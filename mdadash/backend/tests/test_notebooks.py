@@ -154,3 +154,59 @@ async def test_notebooks_clone_widget(_client):
         handler("_sid", widget["name"], widget["description"], widget["class_name"])
     )
     assert uuid is not None
+
+
+async def test_notebook_import_export(_client):
+    # add notebook
+    handler = sio.handlers["/"]["notebooks:add_notebook"]
+    uuid = await run_task_until_done(handler("_sid"))
+    assert uuid is not None
+    notebook = main.mdadash.sm.notebooks[uuid]
+    assert len(notebook["cells"]) == 1
+    # import ipynb into notebook
+    content = """
+    {
+        "cells": [
+            {
+                "cell_type": "markdown",
+                "id": "731fc9a2",
+                "metadata": {},
+                "source": [
+                    "# Markdown"
+                ]
+            },
+            {
+                "cell_type": "code",
+                "execution_count": null,
+                "id": "8ccd5427",
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "u.trajectory"
+                ]
+            }
+        ],
+        "metadata": {},
+        "nbformat": 4,
+        "nbformat_minor": 5
+    }
+    """
+    # overwrite
+    handler = sio.handlers["/"]["notebook:import_notebook"]
+    ret = await run_task_until_done(handler("_sid", uuid, content, "overwrite"))
+    assert ret == uuid
+    assert len(notebook["cells"]) == 2
+    # append
+    handler = sio.handlers["/"]["notebook:import_notebook"]
+    ret = await run_task_until_done(handler("_sid", uuid, content, "append"))
+    assert ret == uuid
+    assert len(notebook["cells"]) == 4
+    # invalid
+    handler = sio.handlers["/"]["notebook:import_notebook"]
+    ret = await run_task_until_done(handler("_sid", uuid, "invalid", "append"))
+    assert ret is None
+    assert len(notebook["cells"]) == 4
+    # export
+    handler = sio.handlers["/"]["notebook:export_notebook"]
+    content = await run_task_until_done(handler("_sid", uuid))
+    assert content

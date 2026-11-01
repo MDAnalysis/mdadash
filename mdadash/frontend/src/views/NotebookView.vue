@@ -36,6 +36,41 @@
           </v-card-text>
         </v-card>
       </v-menu>
+      <!-- v8 ignore start -->
+      <!-- Import -->
+      <input
+        type="file"
+        ref="fileInput"
+        accept=".ipynb"
+        style="display: none"
+        @change="handleFileImport($event, importAction)"
+      />
+      <v-menu id="import" v-model="importOpen" :close-on-content-click="false">
+        <template #activator="{ props }">
+          <v-btn
+            :icon="mdiImport"
+            v-bind="props"
+            variant="text"
+            v-tooltip="{
+              text: 'Import',
+              location: 'bottom',
+              disabled: importOpen,
+            }"
+          />
+        </template>
+        <v-list>
+          <v-list-item
+            v-for="(option, index) in importOptions"
+            :key="index"
+            @click="onImport(option.action)"
+          >
+            <v-list-item-title>{{ option.title }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+      <!-- Export -->
+      <v-btn :icon="mdiExport" variant="text" @click="onExport" v-tooltip:bottom="'Export'"></v-btn>
+      <!-- v8 ignore stop -->
       <!-- Run on Launch -->
       <v-tooltip
         :text="notebook.run_on_launch ? 'Disable run on launch' : 'Enable run on launch'"
@@ -144,7 +179,14 @@ import { inject, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import NotebookCell from '@/components/NotebookCell.vue'
-import { mdiAlert, mdiDeleteOutline, mdiKeyboardOutline, mdiRun } from '@mdi/js'
+import {
+  mdiAlert,
+  mdiDeleteOutline,
+  mdiExport,
+  mdiImport,
+  mdiKeyboardOutline,
+  mdiRun,
+} from '@mdi/js'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,6 +196,13 @@ const uuid = route.query.uuid
 const notebook = ref({})
 const confirmDelete = ref(false)
 const kbShortcutsOpen = ref(false)
+const fileInput = ref(null)
+const importOpen = ref(false)
+const importAction = ref('null')
+const importOptions = ref([
+  { title: 'Append cells', action: 'append' },
+  { title: 'Overwrite cells', action: 'overwrite' },
+])
 
 function onNameDescChange() {
   socket.emit('notebook:name_desc_change', uuid, notebook.value.name, notebook.value.description)
@@ -253,7 +302,69 @@ const onDeleteNotebook = async () => {
   }
 }
 
-onMounted(async () => {
+// v8 ignore next
+const onImport = async (action) => {
+  importOpen.value = false
+  importAction.value = action
+  if (fileInput.value) {
+    fileInput.value.click()
+  }
+}
+
+// v8 ignore next
+const handleFileImport = async (event, action) => {
+  const target = event.target
+  const file = target.files[0]
+  if (!file) {
+    target.value = ''
+    return
+  }
+  isLoading.value = true
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    const fileContent = e.target.result
+    try {
+      await socket
+        .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+        .emitWithAck('notebook:import_notebook', uuid, fileContent, action)
+      loadNotebook(uuid)
+    } catch (error) {
+      // v8 ignore next
+      console.log(error)
+    } finally {
+      target.value = ''
+      isLoading.value = false
+    }
+  }
+  reader.onerror = () => {
+    target.value = ''
+    isLoading.value = false
+  }
+  reader.readAsText(file)
+}
+
+// v8 ignore next
+const onExport = async () => {
+  try {
+    const content = await socket
+      .timeout(settings.value.dashboard_config.ui_request_timeout * 1000)
+      .emitWithAck('notebook:export_notebook', uuid)
+    const blob = new Blob([content], { type: 'application/x-ipynb+json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', notebook.value.name + '.ipynb')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    // v8 ignore next
+    console.log(error)
+  }
+}
+
+const loadNotebook = async (uuid) => {
   isLoading.value = true
   try {
     const response = await socket
@@ -276,6 +387,10 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(async () => {
+  loadNotebook(uuid)
 })
 
 onBeforeUnmount(() => {

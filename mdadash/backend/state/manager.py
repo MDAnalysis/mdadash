@@ -9,6 +9,9 @@ import logging
 from pathlib import Path
 from uuid import uuid1
 
+import nbformat
+from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
+
 logger = logging.getLogger(__name__)
 
 
@@ -262,10 +265,10 @@ class StateManager:
     async def duplicate_notebook(self, uuid):
         """Duplicate notebook"""
         new_uuid = str(uuid1())
-        new_notebook = copy.deepcopy(self.notebooks[uuid])
-        new_notebook["uuid"] = new_uuid
-        new_notebook["name"] = f"Copy of {new_notebook['name']}"
-        self.notebooks[new_uuid] = new_notebook
+        notebook = copy.deepcopy(self.notebooks[uuid])
+        notebook["uuid"] = new_uuid
+        notebook["name"] = f"Copy of {notebook['name']}"
+        self.notebooks[new_uuid] = notebook
         await self.save()
         return new_uuid
 
@@ -273,6 +276,40 @@ class StateManager:
         """Remove notebook from notebooks dict"""
         del self.notebooks[uuid]
         await self.save()
+
+    async def import_notebook(self, uuid, content, action) -> None:
+        """Import notebook from ipynb"""
+        notebook = self.notebooks[uuid]
+        if action == "overwrite":
+            notebook["cells"] = []
+        try:
+            nb = nbformat.reads(content, as_version=4)
+            for cell in nb.cells:
+                cell_type = "python" if cell.cell_type == "code" else "markdown"
+                notebook["cells"].append(
+                    {
+                        "id": str(uuid1()),
+                        "code": cell.source,
+                        "type": cell_type,
+                    }
+                )
+            await self.save()
+            return uuid
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Failed to import notebook")
+            return None
+
+    async def export_notebook(self, uuid) -> str:
+        """Export notebook to ipynb"""
+        nb = new_notebook()
+        notebook = self.notebooks[uuid]
+        for cell in notebook["cells"]:
+            code = cell["code"]
+            if cell.get("type") == "markdown":
+                nb.cells.append(new_markdown_cell(code))
+            else:
+                nb.cells.append(new_code_cell(code))
+        return nbformat.writes(nb)
 
     @property
     def view3d(self) -> dict:
