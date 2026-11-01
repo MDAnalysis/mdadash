@@ -198,4 +198,50 @@ describe('NotebookView.vue', () => {
     expect(wrapper.vm.notebook.cells.length).toStrictEqual(1)
     expect(wrapper.vm.notebook.cells[0].type).toStrictEqual('python')
   })
+
+  it('import', async () => {
+    mockEmitWithAck.mockResolvedValueOnce(notebook)
+    const wrapper = mount(NotebookView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    const importAction = 'append'
+    wrapper.vm.onImport(importAction)
+    const readAsTextMock = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(() => {})
+    const onloadSpy = vi.spyOn(FileReader.prototype, 'onload', 'set')
+    const fileContent = 'ipynb_contents'
+    const file = new File([fileContent], 'test.ipynb', { type: 'application/x-ipynb+json' })
+    // no file selected
+    const mockEventEmpty = { target: { files: [] } }
+    await wrapper.vm.handleFileImport(mockEventEmpty, importAction)
+    // file selected
+    const mockEvent = { target: { files: [file] } }
+    await wrapper.vm.handleFileImport(mockEvent, importAction)
+    expect(readAsTextMock).toHaveBeenCalledWith(file)
+    const mockEventPayload = { target: { result: fileContent } }
+    const readerOnload = onloadSpy.mock.calls[0][0]
+    await readerOnload(mockEventPayload)
+    expect(mockTimeout).toHaveBeenCalledWith(5000)
+    expect(mockEmitWithAck).toHaveBeenCalledWith(
+      'notebook:import_notebook',
+      'uuid1',
+      fileContent,
+      importAction,
+    )
+  })
+
+  it('export', async () => {
+    mockEmitWithAck.mockResolvedValueOnce(notebook)
+    const wrapper = mount(NotebookView, {
+      global: {
+        provide: allProvides,
+      },
+    })
+    expect(wrapper.exists()).toBe(true)
+    wrapper.vm.onExport()
+    expect(mockTimeout).toHaveBeenCalledWith(5000)
+    expect(mockEmitWithAck).toHaveBeenCalledWith('notebook:export_notebook', 'uuid1')
+  })
 })

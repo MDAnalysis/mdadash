@@ -121,6 +121,8 @@ class MDADash:
         self.sio.on("notebook:name_desc_change")(self.on_notebook_name_desc_change)
         self.sio.on("notebook:cell_change")(self.on_notebook_cell_change)
         self.sio.on("notebook:update_cells")(self.on_notebook_update_cells)
+        self.sio.on("notebook:import_notebook")(self.on_import_notebook)
+        self.sio.on("notebook:export_notebook")(self.on_export_notebook)
         self.sio.on("notebooks:get_clonable_widgets")(self.on_get_clonable_widgets)
         self.sio.on("notebooks:clone_widget")(self.on_notebook_clone_widget)
         self.sio.on("load_3dview")(self.on_load_3dview)
@@ -398,6 +400,14 @@ class MDADash:
         """notebook:update_cells handler"""
         self.sm.notebooks[uuid]["cells"] = cells
         await self.sm.save()
+
+    async def on_import_notebook(self, _sid, uuid, content, action):
+        """notebook:import_notebook handler"""
+        return await self.sm.import_notebook(uuid, content, action)
+
+    async def on_export_notebook(self, _sid, uuid):
+        """notebook:export_notebook handler"""
+        return await self.sm.export_notebook(uuid)
 
     async def on_get_clonable_widgets(self, _sid):
         """notebooks:get_clonable_widgets handler"""

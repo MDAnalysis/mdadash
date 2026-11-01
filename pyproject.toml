@@ -26,6 +26,7 @@ dependencies = [
     "MDAnalysis>=2.10.0",
     "python-socketio>=5.16.2",
     "uvicorn>=0.47.0",
+    "nbformat>=5.11.1",
 ]
 keywords = [
     "streaming monitoring mdanalysis molecular-dynamics-simulations",
