@@ -959,6 +959,7 @@ class UniverseManager:
             if u is not None:
                 u.trajectory.cleanup()
                 self._universes[i] = None
+                self._wm._set_universe(i, None)
 
     async def _disconnect_cleanup(self):
         """Internal: Cleanup after disconnecting from simulation
@@ -1061,7 +1062,7 @@ if (
             if not notebook["run_on_launch"]:
                 continue
             for cell in notebook["cells"]:
-                if cell.get("type") == "python":
+                if cell.get("type") in {None, "python"}:
                     ipy.run_cell(cell["code"])
         comms.send({"status": "ok"})
 
