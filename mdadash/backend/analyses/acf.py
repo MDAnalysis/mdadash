@@ -469,7 +469,7 @@ class SlidingWindowACF:
         if weights is None:
             self.weights = np.ones(len(self.ag))
         else:
-            self.weights = weights
+            self.weights = np.sqrt(weights)
         property_map = {
             "position": "positions",
             "velocity": "velocities",

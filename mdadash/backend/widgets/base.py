@@ -436,8 +436,9 @@ class WidgetManager:
         """Internal: Set the universe for instance"""
         if widget.uid == uid:
             widget._set_universe(u)
-            # invoke the on_post_connect handler
-            self._invoke_widget_lifecyle_method(widget, "on_post_connect")
+            if u is not None:
+                # invoke the on_post_connect handler
+                self._invoke_widget_lifecyle_method(widget, "on_post_connect")
 
     def _set_universe(self, uid: int, u: mda.Universe, uuid: str | None = None) -> None:
         """Internal: Set the universe for all or given widget"""
