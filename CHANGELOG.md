@@ -29,8 +29,6 @@ The rules for this file:
 
 <!-- New added features -->
 
-- Added Vibrational Density of States (VDoS) widget (PR #119)
-
 ### Fixed
 
 <!-- Bug fixes -->
@@ -46,6 +44,30 @@ The rules for this file:
 ### Removed
 
 <!-- Removed features -->
+
+## [0.1.7]
+
+### Authors
+
+<!-- GitHub usernames of contributors to this release -->
+
+11/07/2026 PardhavMaradani
+
+### Added
+
+<!-- New added features -->
+
+- Added Vibrational Density of States (VDoS) widget (PR #119)
+- Added additional MSD and ACF widget plots in docs (PR #120)
+
+### Fixed
+
+<!-- Bug fixes -->
+
+- Misc fixes (PR #118)
+  - Use sqrt of weights for correctness in ACF widget
+  - Unset universe in widgets when disconnected
+  - Backward compatibility with notebooks prior to cell type changes
 
 ## [0.1.6]
 
