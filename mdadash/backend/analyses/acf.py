@@ -135,6 +135,17 @@ class ACFAnalysis(WidgetBase):
     .. figure:: /_static/images/acf_output.jpg
         :alt: ACF output
 
+    Here is an example output that shows particle ACFs:
+
+    .. figure:: /_static/images/acf_output_particle_acfs.jpg
+        :alt: Particle ACFs output
+
+    Here is an example output that shows running integral of VACF that can be
+    used to observe the self diffusion coefficient:
+
+    .. figure:: /_static/images/acf_output_running_integral.jpg
+        :alt: VACF running integral - diffusion coefficient
+
     .. tip::
         This widget can run in parallel
 

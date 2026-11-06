@@ -86,6 +86,16 @@ class MSDAnalysis(WidgetBase):
     .. figure:: /_static/images/msd_output.jpg
         :alt: MSD output
 
+    Here is an example output that shows particle MSDs:
+
+    .. figure:: /_static/images/msd_output_particle_msds.jpg
+        :alt: Particle MSDs output
+
+    Here is an example output that shows the diffusion coefficient:
+
+    .. figure:: /_static/images/msd_output_diffusion_coefficient.jpg
+        :alt: MSD diffusion coefficient output
+
     .. tip::
         This widget can run in parallel
 
