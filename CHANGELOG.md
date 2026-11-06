@@ -29,6 +29,8 @@ The rules for this file:
 
 <!-- New added features -->
 
+- Added Vibrational Density of States (VDoS) widget (PR #119)
+
 ### Fixed
 
 <!-- Bug fixes -->
