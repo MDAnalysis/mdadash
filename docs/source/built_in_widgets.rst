@@ -72,6 +72,10 @@ and can run in parallel:
      - Radii of Gyration
      - ✅
      - ✅
+   * - :mod:`~mdadash.backend.analyses.vdos`
+     - Vibrational Density of States (VDoS)
+     - ✅
+     - ✅
 
 .. raw:: html
 
@@ -95,3 +99,4 @@ and can run in parallel:
    Ramachandran Plot <autosummary/mdadash.backend.analyses.ramachandran>
    RMSD <autosummary/mdadash.backend.analyses.rmsd>
    ROG <autosummary/mdadash.backend.analyses.rog>
+   VDoS <autosummary/mdadash.backend.analyses.vdos>

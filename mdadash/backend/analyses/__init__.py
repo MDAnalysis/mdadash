@@ -18,6 +18,7 @@ from . import (
     ramachandran,
     rmsd,
     rog,
+    vdos,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "ramachandran",
     "rmsd",
     "rog",
+    "vdos",
 ]
